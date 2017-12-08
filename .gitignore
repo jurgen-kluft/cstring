@@ -1,0 +1,33 @@
+#ignore all files
+*.*
+vendor/
+source/main/builddir/
+source/test/builddir/
+tags
+
+#except the following files
+!*.cpp
+!*.hpp
+!*.c
+!*.h
+!*.inl
+
+!*.build
+
+!*.go
+
+!*.cs
+!*.csproj
+!*.resx
+
+!*.hlsl
+!*.fragment
+
+!*.mold
+!*.sc
+!*.diagram
+
+!*.ini
+!*.bat
+
+#except the following folders
