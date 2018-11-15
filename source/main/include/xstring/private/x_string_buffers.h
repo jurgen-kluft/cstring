@@ -5,10 +5,9 @@
 #pragma once 
 #endif
 
-#include "xbase\x_types.h"
+#include "xbase\x_target.h"
 #include "xbase\x_debug.h"
-
-#include "xbase\x_string_std.h"
+#include "xbase\x_string_ascii.h"
 
 //==============================================================================
 // xCore namespace
