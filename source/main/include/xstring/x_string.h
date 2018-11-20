@@ -98,8 +98,9 @@ namespace xcore
 
 	void				insert(string_t&, string_t const& inString);									// Insert inString starting at current position
 
-	void				remove(string_t&, const string_t& remove);										// Remove <inLength> characters starting at <inStart>
-	void				remove(const string_t& inCharSet);												// Remove characters in <inCharSet> from string_t
+	void				remove(string_t& remove);														// Remove 'remove' from main slice
+	void				find_remove(string_t& str, const string_t& remove);								// Remove 'remove' from 'str'
+	void				remove_charset(const string_t& inCharSet);										// Remove characters in <inCharSet> from string_t
 
 	void				upper(string_t& inStr);															// Uppercase all chars in string_t (e.g. "myWord" -> "MYWORD")
 	void				lower(string_t& inStr);															// Lowercase all chars in string_t (e.g. "myWord" -> "myword")

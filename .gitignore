@@ -4,8 +4,11 @@ vendor/
 source/main/builddir/
 source/test/builddir/
 tags
+target/
 
 #except the following files
+!.gitignore
+
 !*.cpp
 !*.hpp
 !*.c
