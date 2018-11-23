@@ -78,7 +78,7 @@ namespace xcore
 	///@name Comparison
 	s32					compare(const xstring& inLHS, const xstring& inRHS);						// Return relationship between strings
 	bool				isEqual(const xstring& inLHS, const xstring& inRHS);						// Check if two strings are equal, taking capitalization into account
-	bool				contains(const xstring& inStr, const xstring& inContains)					{ return find(inStr, inContains).is_empty() == false; }			//< Check if this xstring contains xstring <inString>
+	bool				contains(const xstring& inStr, const xstring& inContains)					// Check if this xstring contains xstring <inString>
 
 	void				repeat(xstring&, xstring const& inStr, s32 inTimes);
 

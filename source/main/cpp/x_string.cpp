@@ -446,8 +446,62 @@ namespace xcore
 		return xstring();
 	}
 
+	s32				xstring::compare(const xstring& lhs, const xstring& rhs)
+	{
+		if (lhs.size() < rhs.size())
+			return -1;
+		if (lhs.size() > rhs.size())
+			return 1;
 
+		uchar32 const* lsrc = (uchar32 const*)lhs.m_slice.begin();
+		uchar32 const* lend = (uchar32 const*)lhs.m_slice.end();
+		uchar32 const* rsrc = (uchar32 const*)rhs.m_slice.begin();
+		uchar32 const* rend = (uchar32 const*)rhs.m_slice.end();
+		while (lsrc < lend && rsrc < rend)
+		{
+			if (*src < *dst)
+			{
+				return -1;
+			}
+			else if (*src > *dst)
+			{
+				return 1;
+			}
+			++lsrc;
+			++rsrc;
+		}
+		return 0;
+	}
 
+	bool			xstring::isEqual(const xstring& lhs, const xstring& rhs)
+	{
+		return compare(lhs, rhs) == 0;
+	}
+
+	bool			xstring::contains(const xstring& str, const xstring& contains)
+	{
+		s32 pos = 0;
+		uchar32 const* src = (uchar32 const*)str.m_slice.begin();
+		uchar32 const* end = (uchar32 const*)str.m_slice.end();
+		while (src < end)
+		{
+			uchar32 const* ssrc = src;
+			uchar32 const* fsrc = (uchar32 const*)contains.m_slice.begin();
+			uchar32 const* fdst = (uchar32 const*)contains.m_slice.end();
+			while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
+			{
+				++ssrc;
+				++fsrc;
+			}
+			if (fsrc == fend)
+			{
+				return true;
+			}
+			++pos;
+			++src;
+		}
+		return false;
+	}
 
 
 
