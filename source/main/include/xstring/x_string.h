@@ -12,7 +12,8 @@
 #include "xbase/x_slice.h"
 
 //==============================================================================
-// string_t, a UTF32 string class
+// xstring, a UTF32 string class
+// NOTE: xstring does not have a null terminator!
 //==============================================================================
 namespace xcore
 {
@@ -20,113 +21,115 @@ namespace xcore
 	class x_va_list;
 	class xalloc;
 
-	class string_t
+	class xstring
 	{
 	public:
-		string_t();
-		string_t(xalloc* mem, s32 size);
-		string_t(string_t const& other);
-		~string_t();
+		xstring();
+		xstring(xalloc* mem, s32 size);
+		xstring(xstring const& other);
+		xstring(xstring const& left, xstring const& right);
+		~xstring();
 
 		bool			is_empty() const;
 		s32				size() const;
 
-		string_t		operator () (s32 to) const;
-		string_t		operator () (s32 from, s32 to) const;
+		xstring			operator () (s32 to) const;
+		xstring			operator () (s32 from, s32 to) const;
 
 		uchar32 		operator [] (s32 index);
 		uchar32 		operator [] (s32 index) const;
 
-		string_t&		operator = (const string_t& other)
+		xstring&		operator = (const xstring& other)
 		{
 			m_slice.release();
 			m_slice = other.m_slice.obtain();
 			return *this;
 		}
 
-		string_t&		operator += (const string_t& other)
-		{
-			concatenate(*this, other);
-			return *this;
-		}
-
 		slice			m_slice;
+
+		static slice	s_slice;	// Global slice we use to clone from
 	};
 
-	static void user_case_for_string()
-	{
-		string_t str;
-		string_t substr = str(0, 10);
-	}
+	xstring				selectUntil(const xstring& inStr, const xstring& inFind);					// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
+	xstring				selectUntilIncluded(const xstring& inStr, const xstring& inFind);			// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
 
-	bool				isUpper(const string_t&);
-	bool				isLower(const string_t&);
-	bool				isCapitalized(const string_t&);
-	bool				isQuoted(const string_t&);
-	bool				isQuoted(const string_t&, rune inQuote);
-	bool				isDelimited(const string_t&, rune inLeft, rune inRight);
+	bool				narrowIfDelimited(xstring& inStr, uchar32 leftdel, uchar32 rightdel);		// Return true if str could be narrowed since it was quoted (e.g. str='<quoted>', narrow_if_delimited(str, '<', '>'))
 
-	rune				firstChar(const string_t&);
-	rune				lastChar(const string_t&);
+	bool				isUpper(const xstring&);
+	bool				isLower(const xstring&);
+	bool				isCapitalized(const xstring&);
+	bool				isQuoted(const xstring&);
+	bool				isQuoted(const xstring&, rune inQuote);
+	bool				isDelimited(const xstring&, rune inLeft, rune inRight);
 
-	bool				startsWith(const string_t&, crunes const& inStartStr);
-	bool				endsWith(const string_t&, crunes const& inEndStr);
+	rune				firstChar(const xstring&);
+	rune				lastChar(const xstring&);
 
-	///@name Comparison
-	s32					compare(const string_t& inLHS, const string_t& inRHS);							// Return relationship between strings
-	s32					compareNoCase(const string_t& inLHS, const string_t& inRHS);					// Return relationship between strings, not taking capitalization into account
-	bool				isEqual(const string_t& inLHS, const string_t& inRHS);							// Check if two strings are equal, taking capitalization into account
-	bool				isEqualNoCase(const string_t& inLHS, const string_t& inRHS);					// Check if two strings are equal, not taking capitalization into account
-	bool				contains(const string_t& inStr, const string_t& inContains)						{ return find(inStr, inContains).is_empty() == false; }				//< Check if this string_t contains string_t <inString>
-	bool				containsNoCase(const string_t& inStr, const string_t& inContains)				{ return findNoCase(inStr, inContains).is_empty() == false; }	//< Check if this string_t contains <inString> without paying attention to case
+	bool				startsWith(const xstring&, xstring const& inStartStr);
+	bool				endsWith(const xstring&, xstring const& inEndStr);
 
 	///@name Search/replace
-	string_t			find(const string_t& inStr, const string_t& inFind);							// Return selection as string of first occurrence of <inStr> after <inPosition> or string_t.is_empty() if not found
-	string_t			findNoCase(const string_t& inStr, const string_t& inFind);						// Return selection as string of first occurrence of <inStr> after <inPosition> or string_t.is_empty() if not found
-	string_t			rfind(const string_t& inStr, const string_t& inFind);							// Return selection as string of last occurrence of <inChar> on or before <inPosition> or string_t.is_empty() if not found
-	string_t			rfindNoCase(const string_t& inStr, const string_t& inFind);						// Return selection as string of last occurrence of <inChar> on or before <inPosition> or string_t.is_empty() if not found
-	string_t			findOneOf(const string_t& inStr, const string_t& inFind);						// Return selection as string of first occurrence of a character in <inCharSet> after <inPosition> or string_t.is_empty() if not found
-	string_t			rfindOneOf(const string_t& inStr, const string_t& inFind);						// Return selection as string of last occurrence of a character in <inCharSet> after <inPosition> or string_t.is_empty() if not found
+	xstring				find(const xstring& inStr, const xstring& inFind);							// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
+	xstring				rfind(const xstring& inStr, const xstring& inFind);							// Return selection as string of last occurrence of <inChar> on or before <inPosition> or xstring.is_empty() if not found
+	xstring				findOneOf(const xstring& inStr, const xstring& inFind);						// Return selection as string of first occurrence of a character in <inCharSet> after <inPosition> or xstring.is_empty() if not found
+	xstring				rfindOneOf(const xstring& inStr, const xstring& inFind);					// Return selection as string of last occurrence of a character in <inCharSet> after <inPosition> or xstring.is_empty() if not found
 
-	void				repeat(const string_t&, string_t const& inStr, s32 inTimes);
+	///@name Comparison
+	s32					compare(const xstring& inLHS, const xstring& inRHS);						// Return relationship between strings
+	bool				isEqual(const xstring& inLHS, const xstring& inRHS);						// Check if two strings are equal, taking capitalization into account
+	bool				contains(const xstring& inStr, const xstring& inContains)					{ return find(inStr, inContains).is_empty() == false; }			//< Check if this xstring contains xstring <inString>
 
-	s32					format(const string_t&, string_t const& formatString, const x_va_list& args);
-	s32					formatAdd(const string_t&, string_t const& formatString, const x_va_list& args);
+	void				repeat(xstring&, xstring const& inStr, s32 inTimes);
 
-	void				replace(string_t& inStr, string_t const& inReplace);							// Replace character at <inPosition> with <inString>
-	s32					replaceAnyWith(string_t&, string_t const& inAny, char inWith);					// Replace any character from <inAny> in the string_t with the <inWith> character
+	s32					format(xstring&, xstring const& formatString, const x_va_list& args);
+	s32					formatAdd(xstring&, xstring const& formatString, const x_va_list& args);
 
-	void				insert(string_t&, string_t const& inString);									// Insert inString starting at current position
+	void				replace(xstring& inStr, xstring const& inReplace);							// Replace character at <inPosition> with <inString>
+	s32					replaceAnyWith(xstring&, xstring const& inAny, rune inWith);				// Replace any character from <inAny> in the xstring with the <inWith> character
 
-	void				remove(string_t& remove);														// Remove 'remove' from main slice
-	void				find_remove(string_t& str, const string_t& remove);								// Remove 'remove' from 'str'
-	void				remove_charset(const string_t& inCharSet);										// Remove characters in <inCharSet> from string_t
+	void				insert(xstring&, xstring const& inString);									// Insert inString starting at current position
 
-	void				upper(string_t& inStr);															// Uppercase all chars in string_t (e.g. "myWord" -> "MYWORD")
-	void				lower(string_t& inStr);															// Lowercase all chars in string_t (e.g. "myWord" -> "myword")
-	void				capitalize(string_t& inStr);													// Capitalize first char in string_t (e.g. "myWord" -> "Myword")
-	void				capitalize(string_t& inStr, crunes const& inSeperators);						// Capitalize first char in words (e.g. "my1stWord my2ndWord" -> "My1stword My2ndword")
-	void				trim(string_t& inStr);															// Trim whitespace from left and right side of string_t
-	void				trimLeft(string_t& inStr);														// Trim whitespace from left side of string_t
-	void				trimRight(string_t&);															// Trim whitespace from right side of string_t
-	void				trim(string_t&, rune inChar);													// Trim characters in <inCharSet> from left and right side of string_t
-	void				trimLeft(string_t&, rune inChar);												// Trim character <inChar> from left side of string_t
-	void				trimRight(string_t&, rune inChar);												// Trim character <inChar> from right side of string_t
-	void				trim(string_t&, crunes const& inCharSet);										// Trim characters in <inCharSet> from left and right side of string_t
-	void				trimLeft(string_t&, crunes const& inCharSet);									// Trim characters in <inCharSet> from left side of string_t
-	void				trimRight(string_t&, crunes const& inCharSet);									// Trim characters in <inCharSet> from right side of string_t
-	void				trimQuotes(string_t&);															// Trim double quotes from left and right side of string_t
-	void				trimQuotes(string_t&, rune quote);												// Trim double quotes from left and right side of string_t
-	void				trimDelimiters(string_t&, rune inLeft, rune inRight);							// Trim delimiters from left and right side of string_t
-	void				reverse(string_t&);																// Reverse characters in string_t
+	void				remove(xstring& remove);													// Remove 'remove' from main slice
+	void				find_remove(xstring& str, const xstring& remove);							// Remove 'remove' from 'str'
+	void				remove_charset(const xstring& inCharSet);									// Remove characters in <inCharSet> from xstring
 
-	bool				splitOn(string_t&, char inChar, string_t& outLeft, string_t& outRight);			// Split string_t on first occurrence of <ch>, moves all text after <ch> into <outRight>
-	bool				splitOn(string_t&, string_t& inStr, string_t& outLeft, string_t& outRight);		// Split string_t on first occurrence of <ch>, moves all text after <ch> into <outRight>
-	bool				rsplitOn(string_t&, char inChar, string_t& outLeft, string_t& outRight);		// Split string_t on last occurrence of <ch>, moves all text after <ch> into <outRight>
-	bool				rsplitOn(string_t&, string_t& inStr, string_t& outLeft, string_t& outRight);	// Split string_t on last occurrence of <ch>, moves all text after <ch> into <outRight>
+	void				upper(xstring& inStr);														// Uppercase all chars in xstring (e.g. "myWord" -> "MYWORD")
+	void				lower(xstring& inStr);														// Lowercase all chars in xstring (e.g. "myWord" -> "myword")
+	void				capitalize(xstring& inStr);													// Capitalize first char in xstring (e.g. "myWord" -> "Myword")
+	void				capitalize(xstring& inStr, xstring const& inSeperators);					// Capitalize first char in words (e.g. "my1stWord my2ndWord" -> "My1stword My2ndword")
 
-	string_t			copy(const string_t& src);
-	void				concatenate(string_t& str, const string_t& );
+	void				trim(xstring& inStr);														// Trim whitespace from left and right side of xstring
+	void				trimLeft(xstring& inStr);													// Trim whitespace from left side of xstring
+	void				trimRight(xstring&);														// Trim whitespace from right side of xstring
+	void				trim(xstring&, rune inChar);												// Trim characters in <inCharSet> from left and right side of xstring
+	void				trimLeft(xstring&, rune inChar);											// Trim character <inChar> from left side of xstring
+	void				trimRight(xstring&, rune inChar);											// Trim character <inChar> from right side of xstring
+	void				trim(xstring&, xstring const& inCharSet);									// Trim characters in <inCharSet> from left and right side of xstring
+	void				trimLeft(xstring&, xstring const& inCharSet);								// Trim characters in <inCharSet> from left side of xstring
+	void				trimRight(xstring&, xstring const& inCharSet);								// Trim characters in <inCharSet> from right side of xstring
+	void				trimQuotes(xstring&);														// Trim double quotes from left and right side of xstring
+	void				trimQuotes(xstring&, rune quote);											// Trim double quotes from left and right side of xstring
+	void				trimDelimiters(xstring&, rune inLeft, rune inRight);						// Trim delimiters from left and right side of xstring
+
+	void				reverse(xstring&);															// Reverse characters in xstring
+
+	bool				splitOn(xstring&, rune inChar, xstring& outLeft, xstring& outRight);		// Split xstring on first occurrence of <ch>, moves all text after <ch> into <outRight>
+	bool				splitOn(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);		// Split xstring on first occurrence of <ch>, moves all text after <ch> into <outRight>
+	bool				rsplitOn(xstring&, rune inChar, xstring& outLeft, xstring& outRight);		// Split xstring on last occurrence of <ch>, moves all text after <ch> into <outRight>
+	bool				rsplitOn(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);	// Split xstring on last occurrence of <ch>, moves all text after <ch> into <outRight>
+
+	xstring				copy(const xstring& str);
+	void				concatenate(xstring& str, const xstring& c);
+
+
+	// Global xstring operators
+
+	inline xstring		operator + (const xstring& left, const xstring& right)
+	{
+		return xstring(left, right);
+	}
+
 }
 
 #endif	///< __XSTRING_STRING_H__
