@@ -253,7 +253,7 @@ xstring::xstring(const char *str)
 	: m_slice()
 {
 	const char *end = nullptr;
-	s32 const len = ascii_nr_chars(str, &end);
+	s32 const len = ascii_nr_chars(str, end);
 	m_slice = s_slice.construct(len, sizeof(uchar32));
 	ascii_to_utf32(str, end, (uchar32 *)m_slice.begin(), (uchar32 const *)m_slice.end());
 }
