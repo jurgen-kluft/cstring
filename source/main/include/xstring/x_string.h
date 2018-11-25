@@ -25,6 +25,7 @@ namespace xcore
 	{
 	public:
 		xstring();
+		xstring(const char* str);
 		xstring(xalloc* mem, s32 size);
 		xstring(xstring const& other);
 		xstring(xstring const& left, xstring const& right);

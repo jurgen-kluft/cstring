@@ -12,31 +12,236 @@
 //==============================================================================
 namespace xcore
 {
-static s32 ascii_nr_chars(uchar const *src, uchar const *src_end)
+static s32 WriteCodeUnit(uchar32 cdpt, uchar8 *&pDst) noexcept
 {
+	if (cdpt <= 0x7F)
+	{
+		*pDst++ = (uchar8)(cdpt);
+		return 1;
+	}
+	else if (cdpt <= 0x7FF)
+	{
+		*pDst++ = (uchar8)(0xC0 | ((cdpt >> 6) & 0x1F));
+		*pDst++ = (uchar8)(0x80 | (cdpt & 0x3F));
+		return 2;
+	}
+	else if (cdpt <= 0xFFFF)
+	{
+		*pDst++ = (uchar8)(0xE0 | ((cdpt >> 12) & 0x0F));
+		*pDst++ = (uchar8)(0x80 | ((cdpt >> 6) & 0x3F));
+		*pDst++ = (uchar8)(0x80 | (cdpt & 0x3F));
+		return 3;
+	}
+	else if (cdpt <= 0x10FFFF)
+	{
+		*pDst++ = (uchar8)(0xF0 | ((cdpt >> 18) & 0x07));
+		*pDst++ = (uchar8)(0x80 | ((cdpt >> 12) & 0x3F));
+		*pDst++ = (uchar8)(0x80 | ((cdpt >> 6) & 0x3F));
+		*pDst++ = (uchar8)(0x80 | (cdpt & 0x3F));
+		return 4;
+	}
 	return 0;
+}
+
+static s32 WriteCodeUnit(uchar32 cdpt, uchar16 *&pDst) noexcept
+{
+	if (cdpt < 0x10000)
+	{
+		*pDst++ = (uchar16)cdpt;
+		return 1;
+	}
+	else
+	{
+		*pDst++ = (uchar16)(0xD7C0 + (cdpt >> 10));
+		*pDst++ = (uchar16)(0xDC00 + (cdpt & 0x3FF));
+		return 2;
+	}
+}
+
+bool ReadCodePoint(uchar8 const *&pSrc, uchar8 const *pSrcEnd, uchar32 &cdpt) noexcept
+{
+	static const uchar32 REPLACEMENT_CHAR = '?';
+
+	if (((unsigned char)*str) < 0x80)
+	{
+		cdpt = (unsigned char)*str++;
+	}
+	else if (((unsigned char)*str) < 0xC0)
+	{
+		++str;
+		cdpt = REPLACEMENT_CHAR;
+		return false;
+	}
+	else if (((unsigned char)*str) < 0xE0)
+	{
+		cdpt = (((unsigned char)*str++) & 0x1F) << 6;
+		if (((unsigned char)*str) < 0x80 || ((unsigned char)*str) >= 0xC0)
+		{
+			cdpt = REPLACEMENT_CHAR;
+			return false;
+		}
+		cdpt += (((unsigned char)*str++) & 0x3F);
+	}
+	else if (((unsigned char)*str) < 0xF0)
+	{
+		cdpt = (((unsigned char)*str++) & 0x0F) << 12;
+		if (((unsigned char)*str) < 0x80 || ((unsigned char)*str) >= 0xC0)
+		{
+			cdpt = REPLACEMENT_CHAR;
+			return false;
+		}
+		cdpt += (((unsigned char)*str++) & 0x3F) << 6;
+		if (((unsigned char)*str) < 0x80 || ((unsigned char)*str) >= 0xC0)
+		{
+			cdpt = REPLACEMENT_CHAR;
+			return false;
+		}
+		cdpt += (((unsigned char)*str++) & 0x3F);
+	}
+	else if (((unsigned char)*str) < 0xF8)
+	{
+		cdpt = (((unsigned char)*str++) & 0x07) << 18;
+		if (((unsigned char)*str) < 0x80 || ((unsigned char)*str) >= 0xC0)
+		{
+			cdpt = REPLACEMENT_CHAR;
+			return false;
+		}
+		cdpt += (((unsigned char)*str++) & 0x3F) << 12;
+		if (((unsigned char)*str) < 0x80 || ((unsigned char)*str) >= 0xC0)
+		{
+			cdpt = REPLACEMENT_CHAR;
+			return false;
+		}
+		cdpt += (((unsigned char)*str++) & 0x3F) << 6;
+		if (((unsigned char)*str) < 0x80 || ((unsigned char)*str) >= 0xC0)
+		{
+			cdpt = REPLACEMENT_CHAR;
+			return false;
+		}
+		cdpt += (((unsigned char)*str++) & 0x3F);
+	}
+	else
+	{
+		++str;
+		cdpt = REPLACEMENT_CHAR;
+		return false;
+	}
+	return true;
+}
+
+bool ReadCodePoint(uchar16 const *&pSrc, uchar16 const *pSrcEnd, uchar32 &cdpt) noexcept
+{
+	static const uchar32 REPLACEMENT_CHAR = '?';
+
+	if (*pSrc < 0xD800 || *pSrc >= 0xE000)
+	{
+		cdpt = *pSrc++;
+		return true;
+	}
+	if (*pSrc >= 0xDC00)
+	{
+		++pSrc;
+		cdpt = REPLACEMENT_CHAR;
+		return true;
+	}
+	else if ((pSrc + 1) < pSrcEnd)
+	{
+		uchar32 const res = 0x10000 + ((*pSrc++ - 0xD800) << 10);
+		if (*pSrc >= 0xDC00 && *pSrc < 0xE000)
+		{
+			cdpt = res + (*pSrc++ - 0xDC00);
+			return true;
+		}
+		cdpt = REPLACEMENT_CHAR;
+	}
+	return false;
+}
+
+static s32 ascii_nr_chars(uchar const *src, uchar const *&src_end)
+{
+	s32 c = 0;
+	if (src_end == nullptr)
+	{
+		while (*src != '\0')
+		{
+			src++;
+			c++;
+		}
+		src_end = src;
+	}
+	else
+	{
+		c = src_end - src;
+	}
+	return c;
 }
 
 static void ascii_to_utf32(uchar const *src, uchar const *src_end, uchar32 *dst, uchar32 const *dst_end)
 {
+	while (src < src_end && dst < dst_end)
+	{
+		uchar32 c = *src++;
+		*dst++ = c;
+	}
+	return;
 }
 
 static s32 utf8_nr_chars(uchar8 const *src, uchar8 const *src_end)
 {
-	return 0;
+	s32 len = 0;
+	while (src < src_end)
+	{
+		uchar32 c;
+		if (!ReadCodePoint(src, src_end, c))
+		{
+			return -len;
+		}
+		++len;
+	}
+	return len;
 }
 
 static void utf8_to_utf32(uchar8 const *src, uchar8 const *src_end, uchar32 *dst, uchar32 const *dst_end)
 {
+	while (src < src_end && dst < dst_end)
+	{
+		uchar32 c;
+		if (!ReadCodePoint(src, src_end, c))
+		{
+			return;
+		}
+		*dst++ = c;
+	}
+	return;
 }
 
 static s32 utf16_nr_chars(uchar16 const *src, uchar16 const *src_end)
 {
-	return 0;
+	s32 len = 0;
+	while (src < src_end)
+	{
+		uchar32 c;
+		if (!ReadCodePoint(src, src_end, c))
+		{
+			return -len;
+		}
+		++len;
+	}
+	return len;
 }
 
 static void utf16_to_utf32(uchar16 const *src, uchar16 const *src_end, uchar32 *dst, uchar32 const *dst_end)
 {
+	while (src < src_end && dst < dst_end)
+	{
+		uchar32 c;
+		if (!ReadCodePoint(src, src_end, c))
+		{
+			return;
+		}
+		*dst++ = c;
+	}
+	return;
 }
 
 xstring::xstring(void)
@@ -47,8 +252,10 @@ xstring::xstring(void)
 xstring::xstring(const char *str)
 	: m_slice()
 {
-	s32 const len = ascii_nr_chars(str, nullptr);
+	const char *end = nullptr;
+	s32 const len = ascii_nr_chars(str, &end);
 	m_slice = s_slice.construct(len, sizeof(uchar32));
+	ascii_to_utf32(str, end, (uchar32 *)m_slice.begin(), (uchar32 const *)m_slice.end());
 }
 
 xstring::xstring(xalloc *_allocator, s32 _len)
@@ -61,8 +268,6 @@ xstring::xstring(const xstring &other)
 {
 }
 
-//------------------------------------------------------------------------------
-
 xstring::xstring(const xstring &left, const xstring &right)
 {
 	s32 const len = left.size() + right.size();
@@ -74,6 +279,8 @@ xstring::xstring(const xstring &left, const xstring &right)
 	void const *rsrc = right.m_slice.get_at(0);
 	xmemcpy(rdst, rsrc, right.size());
 }
+
+//------------------------------------------------------------------------------
 
 bool xstring::is_empty() const
 {
@@ -590,26 +797,36 @@ s32 replaceAnyWith(xstring &str, xstring const &any, rune inWith)
 
 // Growing and Shrinking
 //
-// Things to consider
+// Things to consider:
 // - We are the only reference to this string, we can resize without problems
-// - We are not the only reference to this string, resizing means that others will end up with wrong <from,to> selections
-// - Also the reference we hold can point to not only a small but also a very large backed buffer, this would mean that
-//   a resize would have a big performance hit.
+// - We are not the only reference to this string, resizing means that others
+//   will end up with wrong <from,to> selections
+// - Also the reference we hold can point to not only a small but also a very
+//   large backed buffer, this would mean that a resize would have a big
+//   performance hit.
 //
+// However we still leave all of the above to the 'user' since they should be
+// aware of how this string is working.
 
 void insert(xstring &str, xstring const &insert)
 {
-	// Grow the place at the front of @str to be able to insert @insert
+	str.m_slice.insert(insert.size());
+	xmemcpy(str.m_slice.begin(), insert.m_slice.begin(), insert.size());
 }
 
 void remove(xstring &remove)
 {
-	// Shrink the place
+	str.m_slice.remove(insert.size());
 }
 
 void find_remove(xstring &str, const xstring &remove)
 {
-	// Find the string @remove in @str and remove it
+	xstring found = str.find(remove);
+	if (found.is_empty())
+		return;
+	s32 const strlen = str.size();
+	found.m_slice.remove(remove.size());
+	str = str(0, strlen - remove.size());
 }
 
 void remove_charset(xstring &str, const xstring &charset)
@@ -867,17 +1084,19 @@ bool splitOn(xstring &str, xstring &inStr, xstring &outLeft, xstring &outRight)
 
 xstring copy(const xstring &str)
 {
+	return xstring(str);
 }
 
 void concatenate(xstring &left, const xstring &right)
 {
 	s32 const llen = left.size();
 	s32 const rlen = right.size();
-	left.m_slice.resize(llen+rlen, sizeof(uchar32));
+	left.m_slice.resize(llen + rlen);
 	void *rdst = left.m_slice.get_at(llen);
-	void const *rsrc = right.m_slice.get_at(0);
-	xmemcpy(rdst, rsrc, right.size());
-}}
+	void const *rsrc = right.m_slice.begin();
+	xmemcpy(rdst, rsrc, rlen);
+}
+} // namespace xcore
 
 //------------------------------------------------------------------------------
 static void user_case_for_string()
@@ -885,5 +1104,5 @@ static void user_case_for_string()
 	xstring str;
 	xstring substr = str(0, 10);
 }
-
-}; // namespace xcore
+}
+; // namespace xcore
