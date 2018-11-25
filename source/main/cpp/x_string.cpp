@@ -308,7 +308,7 @@ xstring xstring::operator()(s32 from, s32 to) const
 
 uchar32 xstring::operator[](s32 index)
 {
-	uchar32 *str = (uchar32 *)m_slice.get_at(index);
+	uchar32 const *str = (uchar32 const *)m_slice.at(index);
 	if (str == nullptr)
 		return '\0';
 	return *str;
@@ -316,7 +316,7 @@ uchar32 xstring::operator[](s32 index)
 
 uchar32 xstring::operator[](s32 index) const
 {
-	uchar32 const *str = (uchar32 const *)m_slice.get_at(index);
+	uchar32 const *str = (uchar32 const *)m_slice.at(index);
 	if (str == nullptr)
 		return '\0';
 	return *str;
@@ -332,8 +332,7 @@ xstring selectUntil(const xstring &str, const xstring &find)
 	{
 		uchar32 const *ssrc = src;
 		uchar32 const *fsrc = (uchar32 const *)find.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)find.m_slice.end();
-		bool found_match = true;
+		uchar32 const *fend = (uchar32 const *)find.m_slice.end();
 		while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
 		{
 			++ssrc;
@@ -343,6 +342,8 @@ xstring selectUntil(const xstring &str, const xstring &find)
 		{
 			return str.m_slice.view(0, src_pos);
 		}
+		if (ssrc == end)
+			break;
 		++src_pos;
 		++src;
 	}
@@ -358,8 +359,7 @@ xstring selectUntilIncluded(const xstring &inStr, const xstring &inFind)
 	{
 		uchar32 const *ssrc = src;
 		uchar32 const *fsrc = (uchar32 const *)find.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)find.m_slice.end();
-		bool found_match = true;
+		uchar32 const *fend = (uchar32 const *)find.m_slice.end();
 		while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
 		{
 			++ssrc;
@@ -369,6 +369,8 @@ xstring selectUntilIncluded(const xstring &inStr, const xstring &inFind)
 		{
 			return str.m_slice.view(0, src_pos + find.m_slice.size());
 		}
+		if (ssrc == end)
+			break;
 		++src_pos;
 		++src;
 	}
@@ -506,7 +508,7 @@ bool startsWith(const xstring &str, xstring const &inStartStr)
 	if (src < end)
 	{
 		uchar32 const *fsrc = (uchar32 const *)inStartStr.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)inStartStr.m_slice.end();
+		uchar32 const *fend = (uchar32 const *)inStartStr.m_slice.end();
 		while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
 		{
 			++ssrc;
@@ -528,7 +530,7 @@ bool endsWith(const xstring &str, xstring const &inEndStr)
 	if (src >= beg && src < end)
 	{
 		uchar32 const *fsrc = (uchar32 const *)inEndStr.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)inEndStr.m_slice.end();
+		uchar32 const *fend = (uchar32 const *)inEndStr.m_slice.end();
 		while (src < end && fsrc < fend && *src == *fsrc)
 		{
 			++src;
@@ -568,7 +570,7 @@ xstring find(const xstring &str, const xstring &find)
 	{
 		uchar32 const *ssrc = src;
 		uchar32 const *fsrc = (uchar32 const *)find.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)find.m_slice.end();
+		uchar32 const *fend = (uchar32 const *)find.m_slice.end();
 		while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
 		{
 			++ssrc;
@@ -578,6 +580,8 @@ xstring find(const xstring &str, const xstring &find)
 		{
 			return str.m_slice.view(pos, pos + find.size());
 		}
+		if (ssrc == end)
+			break;
 		++pos;
 		++src;
 	}
@@ -594,7 +598,7 @@ xstring rfind(const xstring &str, const xstring &find)
 	{
 		uchar32 const *ssrc = iter;
 		uchar32 const *fsrc = (uchar32 const *)find.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)find.m_slice.end();
+		uchar32 const *fend = (uchar32 const *)find.m_slice.end();
 		while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
 		{
 			++ssrc;
@@ -618,7 +622,7 @@ xstring findOneOf(const xstring &str, const xstring &find)
 	while (src < end)
 	{
 		uchar32 const *fsrc = (uchar32 const *)find.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)find.m_slice.end();
+		uchar32 const *fend = (uchar32 const *)find.m_slice.end();
 		while (fsrc < fend)
 		{
 			if (*src == *fsrc)
@@ -638,11 +642,10 @@ xstring rfindOneOf(const xstring &str, const xstring &find)
 	s32 pos = str.size() - 1;
 	uchar32 const *src = (uchar32 const *)str.m_slice.begin();
 	uchar32 const *iter = (uchar32 const *)str.m_slice.end() - 1;
-	uchar32 const *end = (uchar32 const *)str.m_slice.end();
 	while (iter >= src)
 	{
 		uchar32 const *fsrc = (uchar32 const *)find.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)find.m_slice.end();
+		uchar32 const *fend = (uchar32 const *)find.m_slice.end();
 		while (fsrc < fend)
 		{
 			if (*iter == *fsrc)
@@ -697,7 +700,7 @@ bool contains(const xstring &str, const xstring &contains)
 	{
 		uchar32 const *ssrc = src;
 		uchar32 const *fsrc = (uchar32 const *)contains.m_slice.begin();
-		uchar32 const *fdst = (uchar32 const *)contains.m_slice.end();
+		uchar32 const *fend = (uchar32 const *)contains.m_slice.end();
 		while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
 		{
 			++ssrc;
@@ -707,6 +710,8 @@ bool contains(const xstring &str, const xstring &contains)
 		{
 			return true;
 		}
+		if (ssrc == end)	// Last possible length where we still could have found @contains
+			break;
 		++src;
 	}
 	return false;
