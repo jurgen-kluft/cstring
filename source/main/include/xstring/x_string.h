@@ -62,7 +62,7 @@ namespace xcore
 	bool				isQuoted(const xstring&);
 	bool				isQuoted(const xstring&, rune inQuote);
 	bool				isDelimited(const xstring&, rune inLeft, rune inRight);
-
+	
 	rune				firstChar(const xstring&);
 	rune				lastChar(const xstring&);
 
@@ -70,6 +70,7 @@ namespace xcore
 	bool				endsWith(const xstring&, xstring const& inEndStr);
 
 	///@name Search/replace
+	xstring				find(const xstring& inStr, rune inFind);									// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
 	xstring				find(const xstring& inStr, const xstring& inFind);							// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
 	xstring				rfind(const xstring& inStr, const xstring& inFind);							// Return selection as string of last occurrence of <inChar> on or before <inPosition> or xstring.is_empty() if not found
 	xstring				findOneOf(const xstring& inStr, const xstring& inFind);						// Return selection as string of first occurrence of a character in <inCharSet> after <inPosition> or xstring.is_empty() if not found
@@ -78,7 +79,8 @@ namespace xcore
 	///@name Comparison
 	s32					compare(const xstring& inLHS, const xstring& inRHS);						// Return relationship between strings
 	bool				isEqual(const xstring& inLHS, const xstring& inRHS);						// Check if two strings are equal, taking capitalization into account
-	bool				contains(const xstring& inStr, const xstring& inContains)					// Check if this xstring contains xstring <inString>
+	bool				contains(const xstring& inStr, rune inContains);							// Check if this xstring contains rune
+	bool				contains(const xstring& inStr, const xstring& inContains);					// Check if this xstring contains xstring <inString>
 
 	void				repeat(xstring&, xstring const& inStr, s32 inTimes);
 
@@ -92,25 +94,25 @@ namespace xcore
 
 	void				remove(xstring& remove);													// Remove 'remove' from main slice
 	void				find_remove(xstring& str, const xstring& remove);							// Remove 'remove' from 'str'
-	void				remove_charset(const xstring& inCharSet);									// Remove characters in <inCharSet> from xstring
+	void				remove_charset(xstring& str, const xstring& inCharSet);						// Remove characters in <inCharSet> from xstring
 
 	void				upper(xstring& inStr);														// Uppercase all chars in xstring (e.g. "myWord" -> "MYWORD")
 	void				lower(xstring& inStr);														// Lowercase all chars in xstring (e.g. "myWord" -> "myword")
 	void				capitalize(xstring& inStr);													// Capitalize first char in xstring (e.g. "myWord" -> "Myword")
 	void				capitalize(xstring& inStr, xstring const& inSeperators);					// Capitalize first char in words (e.g. "my1stWord my2ndWord" -> "My1stword My2ndword")
 
-	void				trim(xstring& inStr);														// Trim whitespace from left and right side of xstring
-	void				trimLeft(xstring& inStr);													// Trim whitespace from left side of xstring
+	void				trim(xstring& );															// Trim whitespace from left and right side of xstring
+	void				trimLeft(xstring& );														// Trim whitespace from left side of xstring
 	void				trimRight(xstring&);														// Trim whitespace from right side of xstring
-	void				trim(xstring&, rune inChar);												// Trim characters in <inCharSet> from left and right side of xstring
-	void				trimLeft(xstring&, rune inChar);											// Trim character <inChar> from left side of xstring
-	void				trimRight(xstring&, rune inChar);											// Trim character <inChar> from right side of xstring
-	void				trim(xstring&, xstring const& inCharSet);									// Trim characters in <inCharSet> from left and right side of xstring
-	void				trimLeft(xstring&, xstring const& inCharSet);								// Trim characters in <inCharSet> from left side of xstring
-	void				trimRight(xstring&, xstring const& inCharSet);								// Trim characters in <inCharSet> from right side of xstring
-	void				trimQuotes(xstring&);														// Trim double quotes from left and right side of xstring
-	void				trimQuotes(xstring&, rune quote);											// Trim double quotes from left and right side of xstring
-	void				trimDelimiters(xstring&, rune inLeft, rune inRight);						// Trim delimiters from left and right side of xstring
+	void				trim(xstring& , rune inChar);												// Trim characters in <inCharSet> from left and right side of xstring
+	void				trimLeft(xstring& , rune inChar);											// Trim character <inChar> from left side of xstring
+	void				trimRight(xstring& , rune inChar);											// Trim character <inChar> from right side of xstring
+	void				trim(xstring& , xstring const& inCharSet);									// Trim characters in <inCharSet> from left and right side of xstring
+	void				trimLeft(xstring& , xstring const& inCharSet);								// Trim characters in <inCharSet> from left side of xstring
+	void				trimRight(xstring& , xstring const& inCharSet);								// Trim characters in <inCharSet> from right side of xstring
+	void				trimQuotes(xstring& );														// Trim double quotes from left and right side of xstring
+	void				trimQuotes(xstring& , rune quote);											// Trim double quotes from left and right side of xstring
+	void				trimDelimiters(xstring& , rune inLeft, rune inRight);						// Trim delimiters from left and right side of xstring
 
 	void				reverse(xstring&);															// Reverse characters in xstring
 
