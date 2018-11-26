@@ -329,6 +329,33 @@ namespace xcore
 	}
 
 	//------------------------------------------------------------------------------
+	xstring		select(const xstring& str, const xstring& find)
+	{
+		s32 src_pos = 0;
+		uchar32 const *src = (uchar32 const *)str.m_slice.begin();
+		uchar32 const *end = (uchar32 const *)str.m_slice.end();
+		while (src < end)
+		{
+			uchar32 const *ssrc = src;
+			uchar32 const *fsrc = (uchar32 const *)find.m_slice.begin();
+			uchar32 const *fend = (uchar32 const *)find.m_slice.end();
+			while (ssrc < end && fsrc < fend && *ssrc == *fsrc)
+			{
+				++ssrc;
+				++fsrc;
+			}
+			if (fsrc == fend)
+			{
+				return str(src_pos, src_pos + find.size());
+			}
+			if (ssrc == end)
+				break;
+			++src_pos;
+			++src;
+		}
+		return xstring();
+	}
+
 	xstring selectUntil(const xstring &str, const xstring &find)
 	{
 		s32 src_pos = 0;
@@ -432,23 +459,35 @@ namespace xcore
 	{
 		uchar32 const *src = (uchar32 const *)str.m_slice.begin();
 		uchar32 const *dst = (uchar32 const *)str.m_slice.end();
-		if (src < dst)
+		while(src < dst)
 		{
+			while (src < dst && utf32::is_space(*src))
+			{
+				++src;
+			}
+
 			if (utf32::is_upper(*src))
 			{
 				++src;
 				while (src < dst && !utf32::is_space(*src))
 				{
-					if (utf32::is_lower(*src))
+					if (!utf32::is_lower(*src))
 					{
 						return false;
 					}
 					++src;
 				}
-				return true;
+			}
+			else if (utf32::is_alpha(*src))
+			{
+				return false;
+			}
+			else
+			{
+				++src;
 			}
 		}
-		return false;
+		return true;
 	}
 
 	bool isQuoted(const xstring &str)

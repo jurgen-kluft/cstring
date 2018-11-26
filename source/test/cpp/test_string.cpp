@@ -60,6 +60,20 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_TRUE(c1[0] == '\0');
 		}
 
+		UNITTEST_TEST(test_select)
+		{
+			xstring str("This is an ASCII string converted to UTF-32");
+
+			xstring c1 = select(str, xstring("ASCII"));
+			CHECK_FALSE(c1.is_empty());
+			CHECK_EQUAL(c1.size(), 5);
+			CHECK_TRUE(c1[0] == 'A');
+			CHECK_TRUE(c1[1] == 'S');
+			CHECK_TRUE(c1[2] == 'C');
+			CHECK_TRUE(c1[3] == 'I');
+			CHECK_TRUE(c1[4] == 'I');
+		}
+
 		UNITTEST_TEST(test_selectUntil)
 		{
 			xstring str("This is an ASCII string converted to UTF-32");
@@ -91,6 +105,92 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(str.size(), 7);
 			CHECK_TRUE(str[0] == 'X');
 			CHECK_TRUE(str[6] == 'g');
+		}
+
+		UNITTEST_TEST(test_isUpper)
+		{
+			xstring str1("THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
+			CHECK_TRUE(isUpper(str1));
+			xstring str2("this is a lowercase string with numbers 1234");
+			CHECK_TRUE(!isUpper(str2));
+		}
+
+		UNITTEST_TEST(test_isLower)
+		{
+			xstring str1("THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
+			CHECK_TRUE(!isLower(str1));
+			xstring str2("this is a lowercase string with numbers 1234");
+			CHECK_TRUE(isLower(str2));
+		}
+
+		UNITTEST_TEST(test_isCapitalized)
+		{
+			xstring str1("This Is A Capitalized String With Numbers 1234");
+			CHECK_TRUE(isCapitalized(str1));
+			xstring str2("this is a lowercase string with numbers 1234");
+			CHECK_TRUE(!isCapitalized(str2));
+		}
+
+		UNITTEST_TEST(test_isQuoted)
+		{
+			xstring str1("\"a quoted piece of text\"");
+			CHECK_TRUE(isQuoted(str1));
+			xstring str2("just a piece of text");
+			CHECK_TRUE(!isQuoted(str2));
+		}
+
+		UNITTEST_TEST(test_isQuoted2)
+		{
+			xstring str1("$a quoted piece of text$");
+			CHECK_TRUE(isQuoted(str1, '$'));
+			xstring str2("just a piece of text");
+			CHECK_TRUE(!isQuoted(str2, '$'));
+		}
+
+		UNITTEST_TEST(test_isDelimited)
+		{
+			xstring str1("[a delimited piece of text]");
+			CHECK_TRUE(isDelimited(str1, '[', ']'));
+			xstring str2("just a piece of text");
+			CHECK_TRUE(!isDelimited(str2, '[', ']'));
+		}
+
+		UNITTEST_TEST(test_firstChar)
+		{
+			xstring str1("First character");
+			CHECK_EQUAL(firstChar(str1), 'F');
+			CHECK_NOT_EQUAL(firstChar(str1), 'G');
+		}
+
+		UNITTEST_TEST(test_lastChar)
+		{
+			xstring str1("Last character");
+			CHECK_EQUAL(lastChar(str1), 'r');
+			CHECK_NOT_EQUAL(lastChar(str1), 's');
+		}
+
+		UNITTEST_TEST(test_startsWith)
+		{
+			xstring str1("Last character");
+			CHECK_TRUE(startsWith(str1, xstring("Last")));
+			CHECK_FALSE(startsWith(str1, xstring("First")));
+		}
+
+		UNITTEST_TEST(test_endsWith)
+		{
+			xstring str1("Last character");
+			CHECK_TRUE(endsWith(str1, xstring("character")));
+			CHECK_FALSE(endsWith(str1, xstring("first")));
+		}
+
+		UNITTEST_TEST(test_find)
+		{
+			xstring str1("This is a piece of text to find something in");
+			
+			xstring c1 = find(str1, 'p');
+			CHECK_FALSE(c1.is_empty());
+			CHECK_EQUAL(c1.size(), 1);
+			CHECK_EQUAL(c1[0], 'p');
 		}
 	}
 }

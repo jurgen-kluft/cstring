@@ -50,6 +50,7 @@ namespace xcore
 		slice			m_slice;
 	};
 
+	xstring				select(const xstring& inStr, const xstring& inFind);						// Return selection as string in <inStr>
 	xstring				selectUntil(const xstring& inStr, const xstring& inFind);					// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
 	xstring				selectUntilIncluded(const xstring& inStr, const xstring& inFind);			// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
 
