@@ -389,9 +389,9 @@ namespace xcore
 		uchar32 const *end = (uchar32 const *)str.m_slice.end() - 1;
 		if (src < end && *src == leftdel)
 		{
-			if (*src == rightdel)
+			if (*end == rightdel)
 			{
-				str = str(1, str.size() - 2);
+				str = str(1, str.size() - 1);
 				return true;
 			}
 		}
