@@ -48,8 +48,6 @@ namespace xcore
 		}
 
 		slice			m_slice;
-
-		static slice	s_slice;	// Global slice we use to clone from
 	};
 
 	xstring				selectUntil(const xstring& inStr, const xstring& inFind);					// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
@@ -61,17 +59,17 @@ namespace xcore
 	bool				isLower(const xstring&);
 	bool				isCapitalized(const xstring&);
 	bool				isQuoted(const xstring&);
-	bool				isQuoted(const xstring&, rune inQuote);
-	bool				isDelimited(const xstring&, rune inLeft, rune inRight);
+	bool				isQuoted(const xstring&, uchar32 inQuote);
+	bool				isDelimited(const xstring&, uchar32 inLeft, uchar32 inRight);
 	
-	rune				firstChar(const xstring&);
-	rune				lastChar(const xstring&);
+	uchar32				firstChar(const xstring&);
+	uchar32				lastChar(const xstring&);
 
 	bool				startsWith(const xstring&, xstring const& inStartStr);
 	bool				endsWith(const xstring&, xstring const& inEndStr);
 
 	///@name Search/replace
-	xstring				find(const xstring& inStr, rune inFind);									// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
+	xstring				find(const xstring& inStr, uchar32 inFind);									// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
 	xstring				find(const xstring& inStr, const xstring& inFind);							// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
 	xstring				rfind(const xstring& inStr, const xstring& inFind);							// Return selection as string of last occurrence of <inChar> on or before <inPosition> or xstring.is_empty() if not found
 	xstring				findOneOf(const xstring& inStr, const xstring& inFind);						// Return selection as string of first occurrence of a character in <inCharSet> after <inPosition> or xstring.is_empty() if not found
@@ -80,7 +78,7 @@ namespace xcore
 	///@name Comparison
 	s32					compare(const xstring& inLHS, const xstring& inRHS);						// Return relationship between strings
 	bool				isEqual(const xstring& inLHS, const xstring& inRHS);						// Check if two strings are equal, taking capitalization into account
-	bool				contains(const xstring& inStr, rune inContains);							// Check if this xstring contains rune
+	bool				contains(const xstring& inStr, uchar32 inContains);							// Check if this xstring contains rune
 	bool				contains(const xstring& inStr, const xstring& inContains);					// Check if this xstring contains xstring <inString>
 
 	void				repeat(xstring&, xstring const& inStr, s32 inTimes);
@@ -89,7 +87,7 @@ namespace xcore
 	s32					formatAdd(xstring&, xstring const& formatString, const x_va_list& args);
 
 	void				replace(xstring& inStr, xstring const& inReplace);							// Replace character at <inPosition> with <inString>
-	s32					replaceAnyWith(xstring&, xstring const& inAny, rune inWith);				// Replace any character from <inAny> in the xstring with the <inWith> character
+	s32					replaceAnyWith(xstring&, xstring const& inAny, uchar32 inWith);				// Replace any character from <inAny> in the xstring with the <inWith> character
 
 	void				insert(xstring&, xstring const& inString);									// Insert inString starting at current position
 
@@ -105,21 +103,21 @@ namespace xcore
 	void				trim(xstring& );															// Trim whitespace from left and right side of xstring
 	void				trimLeft(xstring& );														// Trim whitespace from left side of xstring
 	void				trimRight(xstring&);														// Trim whitespace from right side of xstring
-	void				trim(xstring& , rune inChar);												// Trim characters in <inCharSet> from left and right side of xstring
-	void				trimLeft(xstring& , rune inChar);											// Trim character <inChar> from left side of xstring
-	void				trimRight(xstring& , rune inChar);											// Trim character <inChar> from right side of xstring
+	void				trim(xstring& , uchar32 inChar);											// Trim characters in <inCharSet> from left and right side of xstring
+	void				trimLeft(xstring& , uchar32 inChar);										// Trim character <inChar> from left side of xstring
+	void				trimRight(xstring& , uchar32 inChar);										// Trim character <inChar> from right side of xstring
 	void				trim(xstring& , xstring const& inCharSet);									// Trim characters in <inCharSet> from left and right side of xstring
 	void				trimLeft(xstring& , xstring const& inCharSet);								// Trim characters in <inCharSet> from left side of xstring
 	void				trimRight(xstring& , xstring const& inCharSet);								// Trim characters in <inCharSet> from right side of xstring
 	void				trimQuotes(xstring& );														// Trim double quotes from left and right side of xstring
-	void				trimQuotes(xstring& , rune quote);											// Trim double quotes from left and right side of xstring
-	void				trimDelimiters(xstring& , rune inLeft, rune inRight);						// Trim delimiters from left and right side of xstring
+	void				trimQuotes(xstring& , uchar32 quote);										// Trim double quotes from left and right side of xstring
+	void				trimDelimiters(xstring& , uchar32 inLeft, uchar32 inRight);					// Trim delimiters from left and right side of xstring
 
 	void				reverse(xstring&);															// Reverse characters in xstring
 
-	bool				splitOn(xstring&, rune inChar, xstring& outLeft, xstring& outRight);		// Split xstring on first occurrence of <ch>, moves all text after <ch> into <outRight>
+	bool				splitOn(xstring&, uchar32 inChar, xstring& outLeft, xstring& outRight);		// Split xstring on first occurrence of <ch>, moves all text after <ch> into <outRight>
 	bool				splitOn(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);		// Split xstring on first occurrence of <ch>, moves all text after <ch> into <outRight>
-	bool				rsplitOn(xstring&, rune inChar, xstring& outLeft, xstring& outRight);		// Split xstring on last occurrence of <ch>, moves all text after <ch> into <outRight>
+	bool				rsplitOn(xstring&, uchar32 inChar, xstring& outLeft, xstring& outRight);		// Split xstring on last occurrence of <ch>, moves all text after <ch> into <outRight>
 	bool				rsplitOn(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);	// Split xstring on last occurrence of <ch>, moves all text after <ch> into <outRight>
 
 	xstring				copy(const xstring& str);
