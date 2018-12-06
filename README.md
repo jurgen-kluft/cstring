@@ -24,8 +24,9 @@ ascii_substring = insert_after(str, ascii_substring, xstring(" string"));
 // And @ascii_substring = ""
 ```
 
-One thing to keep in mind is that a view can keep holding on to a larger string
-inserted or removed, so know what you are doing.
+One thing to keep in mind is that a view can be invalidated when the actual string is resized
+due to insert, replace or remove calls, so know what you are doing. It is just something to be
+aware of, invalidated views can still be used and will not cause any crashes.
 
 You can clone a string (slice is copied):
 
