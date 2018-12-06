@@ -1,19 +1,18 @@
 #ifndef __XSTRING_STRING_H__
 #define __XSTRING_STRING_H__
 #include "xbase/x_target.h"
-#ifdef USE_PRAGMA_ONCE 
-#pragma once 
+#ifdef USE_PRAGMA_ONCE
+#pragma once
 #endif
 
 //==============================================================================
 // INCLUDES
 //==============================================================================
 #include "xbase/x_debug.h"
-#include "xbase/x_slice.h"
+#include "xbase/x_runes.h"
 
 //==============================================================================
 // xstring, a UTF32 string class
-// NOTE: xstring does not have a null terminator!
 //==============================================================================
 namespace xcore
 {
@@ -26,111 +25,160 @@ namespace xcore
 	public:
 		xstring();
 		xstring(const char* str);
-		xstring(xalloc* mem, s32 size);
 		xstring(xstring const& other);
-		xstring(xstring const& left, xstring const& right);
 		~xstring();
 
-		bool			is_empty() const;
-		s32				size() const;
-
-		xstring			operator () (s32 to) const;
-		xstring			operator () (s32 from, s32 to) const;
-
-		uchar32 		operator [] (s32 index);
-		uchar32 		operator [] (s32 index) const;
-
-		xstring&		operator = (const xstring& other)
+		struct view
 		{
-			m_slice.release();
-			m_slice = other.m_slice.obtain();
-			return *this;
-		}
+			~view();
 
-		slice			m_slice;
+			s32		size() const;
+			bool	is_empty() const;
+			xstring to_string() const;
+
+			view  operator()(s32 to);
+			view  operator()(s32 from, s32 to);
+			view  operator()(s32 to) const;
+			view  operator()(s32 from, s32 to) const;
+
+			uchar32 operator[](s32 index) const;
+
+			view& operator=(view const& other);
+
+			bool operator == (view const& other) const;
+			bool operator != (view const& other) const;
+
+		protected:
+			friend class xstring;
+			friend class xview;
+			view();
+
+			void		  add(view** list);
+			void		  rem();
+			void		  invalidate();
+			utf32::crunes get_runes() const;
+
+			utf32::alloc*  m_alloc;
+			utf32::runes   m_runes;
+			bool		   m_const;
+			s32			   m_from;
+			s32			   m_size;
+			mutable view** m_list;
+			view*		   m_next;
+			view*		   m_prev;
+		};
+
+		xstring(xstring::view const& left, xstring::view const& right);
+
+		bool is_empty() const;
+		s32  size() const;
+
+		view full();
+		view full() const;
+
+		view operator()(s32 to);
+		view operator()(s32 from, s32 to);
+
+		view operator()(s32 to) const;
+		view operator()(s32 from, s32 to) const;
+
+		uchar32 operator[](s32 index);
+		uchar32 operator[](s32 index) const;
+
+		xstring& operator=(const xstring& other);
+		xstring& operator=(const xstring::view& other);
+
+		static utf32::alloc* s_allocator;
+
+	protected:
+		friend class xview;
+
+		xstring(utf32::alloc* mem, s32 size);
+
+		void release();
+		void clone(utf32::runes const& str, utf32::alloc* allocator);
+
+		utf32::alloc* m_allocator;
+		utf32::runes  m_runes;
+		mutable view* m_views;
 	};
 
-	xstring				selectUntil(const xstring& inStr, const xstring& inFind);					// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
-	xstring				selectUntilIncluded(const xstring& inStr, const xstring& inFind);			// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
+	bool isUpper(const xstring::view&);
+	bool isLower(const xstring::view&);
+	bool isCapitalized(const xstring::view&);
+	bool isQuoted(const xstring::view&);
+	bool isQuoted(const xstring::view&, uchar32 inQuote);
+	bool isDelimited(const xstring::view&, uchar32 inLeft, uchar32 inRight);
 
-	bool				narrowIfDelimited(xstring& inStr, uchar32 leftdel, uchar32 rightdel);		// Return true if str could be narrowed since it was quoted (e.g. str='<quoted>', narrow_if_delimited(str, '<', '>'))
+	uchar32 firstChar(const xstring::view&);
+	uchar32 lastChar(const xstring::view&);
 
-	bool				isUpper(const xstring&);
-	bool				isLower(const xstring&);
-	bool				isCapitalized(const xstring&);
-	bool				isQuoted(const xstring&);
-	bool				isQuoted(const xstring&, uchar32 inQuote);
-	bool				isDelimited(const xstring&, uchar32 inLeft, uchar32 inRight);
-	
-	uchar32				firstChar(const xstring&);
-	uchar32				lastChar(const xstring&);
-
-	bool				startsWith(const xstring&, xstring const& inStartStr);
-	bool				endsWith(const xstring&, xstring const& inEndStr);
-
-	///@name Search/replace
-	xstring				find(const xstring& inStr, uchar32 inFind);									// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
-	xstring				find(const xstring& inStr, const xstring& inFind);							// Return selection as string of first occurrence of <inStr> after <inPosition> or xstring.is_empty() if not found
-	xstring				rfind(const xstring& inStr, const xstring& inFind);							// Return selection as string of last occurrence of <inChar> on or before <inPosition> or xstring.is_empty() if not found
-	xstring				findOneOf(const xstring& inStr, const xstring& inFind);						// Return selection as string of first occurrence of a character in <inCharSet> after <inPosition> or xstring.is_empty() if not found
-	xstring				rfindOneOf(const xstring& inStr, const xstring& inFind);					// Return selection as string of last occurrence of a character in <inCharSet> after <inPosition> or xstring.is_empty() if not found
+	bool startsWith(const xstring::view&, xstring::view const& inStartStr);
+	bool endsWith(const xstring::view&, xstring::view const& inEndStr);
 
 	///@name Comparison
-	s32					compare(const xstring& inLHS, const xstring& inRHS);						// Return relationship between strings
-	bool				isEqual(const xstring& inLHS, const xstring& inRHS);						// Check if two strings are equal, taking capitalization into account
-	bool				contains(const xstring& inStr, uchar32 inContains);							// Check if this xstring contains rune
-	bool				contains(const xstring& inStr, const xstring& inContains);					// Check if this xstring contains xstring <inString>
+	s32  compare(const xstring::view& inLHS, const xstring::view& inRHS);
+	bool isEqual(const xstring::view& inLHS, const xstring::view& inRHS);
+	bool contains(const xstring::view& inStr, uchar32 inContains);
+	bool contains(const xstring::view& inStr, const xstring::view& inContains);
 
-	void				repeat(xstring&, xstring const& inStr, s32 inTimes);
+	s32 format(xstring&, xstring::view const& formatString, const x_va_list& args);
+	s32 formatAdd(xstring&, xstring::view const& formatString, const x_va_list& args);
 
-	s32					format(xstring&, xstring const& formatString, const x_va_list& args);
-	s32					formatAdd(xstring&, xstring const& formatString, const x_va_list& args);
+	void upper(xstring::view& inStr);
+	void lower(xstring::view& inStr);
+	void capitalize(xstring::view& inStr);
+	void capitalize(xstring::view& inStr, xstring::view const& inSeperators);
 
-	void				replace(xstring& inStr, xstring const& inReplace);							// Replace character at <inPosition> with <inString>
-	s32					replaceAnyWith(xstring&, xstring const& inAny, uchar32 inWith);				// Replace any character from <inAny> in the xstring with the <inWith> character
+	xstring::view selectUntil(const xstring::view& inStr, uchar32 inFind);
+	xstring::view selectUntil(const xstring::view& inStr, const xstring::view& inFind);
 
-	void				insert(xstring&, xstring const& inString);									// Insert inString starting at current position
+	xstring::view selectUntilLast(const xstring::view& inStr, uchar32 inFind);
+	xstring::view selectUntilLast(const xstring::view& inStr, const xstring::view& inFind);
 
-	void				remove(xstring& remove);													// Remove 'remove' from main slice
-	void				find_remove(xstring& str, const xstring& remove);							// Remove 'remove' from 'str'
-	void				remove_charset(xstring& str, const xstring& inCharSet);						// Remove characters in <inCharSet> from xstring
+	xstring::view selectUntilIncluded(const xstring::view& inStr, const xstring::view& inFind);
 
-	void				upper(xstring& inStr);														// Uppercase all chars in xstring (e.g. "myWord" -> "MYWORD")
-	void				lower(xstring& inStr);														// Lowercase all chars in xstring (e.g. "myWord" -> "myword")
-	void				capitalize(xstring& inStr);													// Capitalize first char in xstring (e.g. "myWord" -> "Myword")
-	void				capitalize(xstring& inStr, xstring const& inSeperators);					// Capitalize first char in words (e.g. "my1stWord my2ndWord" -> "My1stword My2ndword")
+	///@name Search/replace
+	xstring::view find(xstring::view& inStr, uchar32 inFind);
+	xstring::view find(xstring::view& inStr, const xstring::view& inFind);
+	xstring::view findLast(xstring::view& inStr, const xstring::view& inFind);
+	xstring::view findOneOf(xstring::view& inStr, const xstring::view& inFind);
+	xstring::view findOneOfLast(xstring::view& inStr, const xstring::view& inFind);
 
-	void				trim(xstring& );															// Trim whitespace from left and right side of xstring
-	void				trimLeft(xstring& );														// Trim whitespace from left side of xstring
-	void				trimRight(xstring&);														// Trim whitespace from right side of xstring
-	void				trim(xstring& , uchar32 inChar);											// Trim characters in <inCharSet> from left and right side of xstring
-	void				trimLeft(xstring& , uchar32 inChar);										// Trim character <inChar> from left side of xstring
-	void				trimRight(xstring& , uchar32 inChar);										// Trim character <inChar> from right side of xstring
-	void				trim(xstring& , xstring const& inCharSet);									// Trim characters in <inCharSet> from left and right side of xstring
-	void				trimLeft(xstring& , xstring const& inCharSet);								// Trim characters in <inCharSet> from left side of xstring
-	void				trimRight(xstring& , xstring const& inCharSet);								// Trim characters in <inCharSet> from right side of xstring
-	void				trimQuotes(xstring& );														// Trim double quotes from left and right side of xstring
-	void				trimQuotes(xstring& , uchar32 quote);										// Trim double quotes from left and right side of xstring
-	void				trimDelimiters(xstring& , uchar32 inLeft, uchar32 inRight);					// Trim delimiters from left and right side of xstring
+	void insert(xstring&, xstring::view const& pos, xstring::view const& inString);
 
-	void				reverse(xstring&);															// Reverse characters in xstring
+	void remove(xstring&, xstring::view const& selection);
+	void find_remove(xstring& str, const xstring::view& find);
+	void find_replace(xstring& inStr, xstring::view const& find, xstring::view const& replace);
+	void remove_any(xstring& str, const xstring::view& inAny);
+	void replace_any(xstring&, xstring::view const& inAny, uchar32 inWith);
 
-	bool				splitOn(xstring&, uchar32 inChar, xstring& outLeft, xstring& outRight);		// Split xstring on first occurrence of <ch>, moves all text after <ch> into <outRight>
-	bool				splitOn(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);		// Split xstring on first occurrence of <ch>, moves all text after <ch> into <outRight>
-	bool				rsplitOn(xstring&, uchar32 inChar, xstring& outLeft, xstring& outRight);		// Split xstring on last occurrence of <ch>, moves all text after <ch> into <outRight>
-	bool				rsplitOn(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);	// Split xstring on last occurrence of <ch>, moves all text after <ch> into <outRight>
+	void trim(xstring::view&);
+	void trimLeft(xstring::view&);
+	void trimRight(xstring::view&);
+	void trim(xstring::view&, uchar32 inChar);
+	void trimLeft(xstring::view&, uchar32 inChar);
+	void trimRight(xstring::view&, uchar32 inChar);
+	void trim(xstring::view&, xstring::view const& inCharSet);
+	void trimLeft(xstring::view&, xstring::view const& inCharSet);
+	void trimRight(xstring::view&, xstring::view const& inCharSet);
+	void trimQuotes(xstring::view&);
+	void trimQuotes(xstring::view&, uchar32 quote);
+	void trimDelimiters(xstring::view&, uchar32 inLeft, uchar32 inRight);
 
-	xstring				copy(const xstring& str);
-	void				concatenate(xstring& str, const xstring& c);
+	void reverse(xstring::view&);
 
+	bool splitOn(xstring::view&, uchar32 inChar, xstring::view& outLeft, xstring::view& outRight);
+	bool splitOn(xstring::view&, xstring::view& inStr, xstring::view& outLeft, xstring::view& outRight);
+	bool splitOnLast(xstring::view&, uchar32 inChar, xstring::view& outLeft, xstring::view& outRight);
+	bool splitOnLast(xstring::view&, xstring::view& inStr, xstring::view& outLeft, xstring::view& outRight);
+
+	void concatenate(xstring& str, const xstring::view& con);
+	void concatenate_repeat(xstring&, xstring::view const& con, s32 ntimes);
 
 	// Global xstring operators
 
-	inline xstring		operator + (const xstring& left, const xstring& right)
-	{
-		return xstring(left, right);
-	}
-
+	inline xstring operator+(const xstring& left, const xstring& right) { return xstring(left.full(), right.full()); }
 }
 
-#endif	///< __XSTRING_STRING_H__
+#endif ///< __XSTRING_STRING_H__
