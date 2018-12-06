@@ -5,7 +5,7 @@ Cross platform string library (still under construction)
 This string has a UTF-32 encoding, it allows to have views on part of the string.
 Since we now can have multiple views on the string we can do away with the user
 managing indices. However the string may re-allocate when an operation is causing
-it to re-allocate, this include 'insert', 'replace' and 'remove'.
+it to resize; this includes 'insert', 'replace' and 'remove'.
 When this happens all of the active views are automatically 'invalidated'.
 
 Instead we can do things like this:
