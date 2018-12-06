@@ -17,10 +17,10 @@ xstring::view ascii_substring = find(str, "ascii");
 upper(ascii_substring);    // 'ascii' to 'ASCII'
 
 // This inserts " string" into the main string at the location indicated by @ascii_substring
-// which gets a newly allocated string, this invalidates the view @ascii_substring
+// which gets the string to resize, this invalidates the view @ascii_substring.
 ascii_substring = insert_after(str, ascii_substring, xstring(" string"));
 
-// So now @str = "This is an ASCII converted to UTF-32 when constructed"
+// So now @str = "This is an ASCII string converted to UTF-32 when constructed"
 // And @ascii_substring = ""
 ```
 
