@@ -3,12 +3,13 @@
 Cross platform string library (still under construction)
 
 This string has a UTF-32 encoding, it allows to have views on part of the string.
-Since we now can have multiple views using on the string we can do away with the 
-user managing indices. However the string will re-allocate when an operation is 
-resizing it, this include 'insert', 'replace' and 'remove'. When this happens the
-active views are 'invalidated'.
+Since we now can have multiple views on the string we can do away with the user
+managing indices. However the string may re-allocate when an operation is causing
+it to re-allocate, this include 'insert', 'replace' and 'remove'.
+When this happens all of the active views are automatically 'invalidated'.
 
 Instead we can do things like this:
+
 ``` c++
 xstring str("This is an ascii converted to UTF-32 when constructed");
 
@@ -27,6 +28,7 @@ One thing to keep in mind is that a view can keep holding on to a larger string
 inserted or removed, so know what you are doing.
 
 You can clone a string (slice is copied):
+
 ``` c++
 xstring a_copy(str);
 xstring::view to_remove = find(a_copy, xstring(" when constructed"));
