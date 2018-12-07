@@ -89,7 +89,7 @@ namespace xcore
 			return v;
 		}
 
-		static xstring::view default() { return xstring::view(); }
+		static xstring::view get_default() { return xstring::view(); }
 	};
 
 	//==============================================================================
@@ -757,7 +757,7 @@ namespace xcore
 				return str(0, i + 1);
 			}
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	xstring::view selectUntil(const xstring::view& str, const xstring::view& find)
@@ -775,7 +775,7 @@ namespace xcore
 			if (!xview::move_view(v, 1))
 				break;
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 
@@ -789,7 +789,7 @@ namespace xcore
 				return str(0, i + 1);
 			}
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	xstring::view selectUntilLast(const xstring::view& str, const xstring::view& find)
@@ -807,7 +807,7 @@ namespace xcore
 			if (!xview::move_view(v, -1))
 				break;
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	xstring::view selectUntilIncluded(const xstring::view& str, const xstring::view& find)
@@ -825,7 +825,7 @@ namespace xcore
 			if (!xview::move_view(v, 1))
 				break;
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	bool isUpper(const xstring::view& str)
@@ -935,7 +935,7 @@ namespace xcore
 			if (c == find)
 				return str(i, i + 1);
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	xstring::view find(xstring::view& str, const xstring::view& find)
@@ -952,7 +952,7 @@ namespace xcore
 			if (!xview::move_view(v, 1))
 				break;
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	xstring::view findLast(const xstring::view& str, const xstring::view& find)
@@ -969,7 +969,7 @@ namespace xcore
 			if (!xview::move_view(v, -1))
 				break;
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	xstring::view findOneOf(const xstring::view& str, const xstring::view& find)
@@ -986,7 +986,7 @@ namespace xcore
 				}
 			}
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	xstring::view findOneOfLast(const xstring::view& str, const xstring::view& find)
@@ -1003,7 +1003,7 @@ namespace xcore
 				}
 			}
 		}
-		return xview::default();
+		return xview::get_default();
 	}
 
 	s32 compare(const xstring::view& lhs, const xstring::view& rhs)

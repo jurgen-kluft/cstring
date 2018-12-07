@@ -28,7 +28,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(str.size(), 0);
 			CHECK_TRUE(str[0] == '\0');
 
-			xstring v1 = str(2);
+			xstring::view v1 = str(2);
 			CHECK_TRUE(v1.is_empty());
 			CHECK_EQUAL(v1.size(), 0);
 			CHECK_TRUE(v1[0] == '\0');
@@ -41,7 +41,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(str.size(), 0);
 			CHECK_TRUE(str[0] == '\0');
 
-			xstring c1 = str(4, 10);
+			xstring::view c1 = str(4, 10);
 			CHECK_TRUE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 0);
 			CHECK_TRUE(c1[0] == '\0');
@@ -64,7 +64,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		{
 			xstring str("This is an ASCII string converted to UTF-32");
 
-			xstring c1 = select(str, xstring("ASCII"));
+			xstring::view c1 = find(str, xstring("ASCII"));
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 5);
 			CHECK_TRUE(c1[0] == 'A');
@@ -78,7 +78,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		{
 			xstring str("This is an ASCII string converted to UTF-32");
 
-			xstring c1 = selectUntil(str, xstring("ASCII"));
+			xstring::view c1 = selectUntil(str, xstring("ASCII"));
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 11);
 			CHECK_TRUE(c1[0] == 'T');
@@ -88,7 +88,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		{
 			xstring str("This is an ASCII string converted to UTF-32");
 
-			xstring c1 = selectUntilIncluded(str, xstring("ASCII"));
+			xstring::view c1 = selectUntilIncluded(str, xstring("ASCII"));
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 16);
 			CHECK_TRUE(c1[11] == 'A');
@@ -96,15 +96,6 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_TRUE(c1[13] == 'C');
 			CHECK_TRUE(c1[14] == 'I');
 			CHECK_TRUE(c1[15] == 'I');
-		}
-
-		UNITTEST_TEST(test_narrowIfDelimited)
-		{
-			xstring str("<XML tag>");
-			CHECK_TRUE(narrowIfDelimited(str, '<', '>'));
-			CHECK_EQUAL(str.size(), 7);
-			CHECK_TRUE(str[0] == 'X');
-			CHECK_TRUE(str[6] == 'g');
 		}
 
 		UNITTEST_TEST(test_isUpper)
@@ -187,11 +178,29 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		{
 			xstring str1("This is a piece of text to find something in");
 			
-			xstring c1 = find(str1, 'p');
+			xstring::view c1 = find(str1, 'p');
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 1);
 			CHECK_EQUAL(c1[0], 'p');
 		}
+
+		UNITTEST_TEST(test_views_invalidated)
+		{
+			xstring str1("This is text to change something in");
+
+			// First some views
+			xstring::view v1 = find(str1, xstring("text"));
+			xstring::view v2 = find(str1, xstring(" in"));
+			CHECK_EQUAL(v1.size(), 4);
+			CHECK_EQUAL(v2.size(), 3);
+
+			// Now change the string so that it will reallocate
+			insert(str1, v1, xstring("modified "));
+
+			CHECK_TRUE(v1.is_empty());
+			CHECK_TRUE(v2.is_empty());
+		}
+
 	}
 }
 UNITTEST_SUITE_END
