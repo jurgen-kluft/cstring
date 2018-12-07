@@ -88,6 +88,8 @@ namespace xcore
 		xstring& operator=(const xstring& other);
 		xstring& operator=(const xstring::view& other);
 
+		operator view() { return full(); }
+
 		static utf32::alloc* s_allocator;
 
 	protected:

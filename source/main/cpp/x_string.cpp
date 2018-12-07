@@ -1367,8 +1367,13 @@ namespace xcore
 	static void user_case_for_string()
 	{
 		xstring		  str("This is an ascii string that will be converted to UTF-32");
-		xstring::view substr = find(str.full(), xstring("ascii").full());
+		
+		xstring::view substr = find(str.full(), xstring("ascii"));
 		upper(substr);
+
+		find_remove(str, xstring("converted "));
+
+
 	}
 
 } // namespace xcore
