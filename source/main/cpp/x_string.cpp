@@ -18,7 +18,7 @@ namespace xcore
 	public:
 		static inline uchar32* get_ptr_unsafe(xstring::view& str, s32 i) { return &str.m_runes.m_str[i]; }
 		static inline uchar32  get_char_unsafe(xstring::view& str, s32 i) { return str.m_runes.m_str[i]; }
-		static inline uchar32* set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_runes.m_str[i] = c; }
+		static inline void set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_runes.m_str[i] = c; }
 
 		static void resize(xstring& str, s32 new_size)
 		{
@@ -330,6 +330,18 @@ namespace xcore
 	//------------------------------------------------------------------------------
 	xstring::view::view() : m_alloc(nullptr), m_runes(), m_from(0), m_size(0), m_list(nullptr), m_next(nullptr), m_prev(nullptr) {}
 
+	xstring::view::view(const view& other)
+		: m_alloc(other.m_alloc)
+		, m_runes(other.m_runes)
+		, m_from(other.m_from)
+		, m_size(other.m_size)
+		, m_list(nullptr)
+		, m_next(nullptr)
+		, m_prev(nullptr)
+	{
+		add(other.m_list);
+	}
+	
 	xstring::view::~view() { rem(); }
 
 	s32 xstring::view::size() const { return m_size; }
@@ -413,7 +425,7 @@ namespace xcore
 
 	uchar32 xstring::view::operator[](s32 index) const
 	{
-		if (index < 0 || index > m_size)
+		if (index < 0 || index >= m_size)
 			return '\0';
 		return m_runes.m_str[m_from + index];
 	}
@@ -579,17 +591,22 @@ namespace xcore
 
 	xstring::xstring(const xstring& other) : m_allocator(other.m_allocator), m_runes(), m_views(nullptr)
 	{
-		m_runes = m_allocator->allocate(0, other.m_runes.cap());
-		utf32::copy(other.m_runes, m_runes);
+		if (m_allocator != nullptr && !other.m_runes.is_empty())
+		{
+			m_runes = m_allocator->allocate(0, other.m_runes.cap());
+			utf32::copy(other.m_runes, m_runes);
+		}
 	}
 
 	xstring::xstring(const xstring::view& left, const xstring::view& right)
 	{
 		m_allocator = left.m_alloc;
-
-		s32 cap = left.size() + right.size();
-		m_runes = m_allocator->allocate(0, cap);
-		utf32::concatenate(m_runes, left.get_runes(), right.get_runes());
+		if (m_allocator != nullptr)
+		{
+			s32 cap = left.size() + right.size();
+			m_runes = m_allocator->allocate(0, cap);
+			utf32::concatenate(m_runes, left.get_runes(), right.get_runes(), m_allocator, 16);
+		}
 	}
 
 	xstring::~xstring()
@@ -927,7 +944,7 @@ namespace xcore
 		return false;
 	}
 
-	xstring::view find(const xstring::view& str, uchar32 find)
+	xstring::view find(xstring::view& str, uchar32 find)
 	{
 		for (s32 i = 0; i < str.size(); i++)
 		{

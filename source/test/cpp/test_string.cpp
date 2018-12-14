@@ -63,8 +63,9 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		UNITTEST_TEST(test_select)
 		{
 			xstring str("This is an ASCII string converted to UTF-32");
+			xstring ascii("ASCII");
 
-			xstring::view c1 = find(str, xstring("ASCII"));
+			xstring::view c1 = find(str.full(), ascii.full());
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 5);
 			CHECK_TRUE(c1[0] == 'A');
@@ -77,8 +78,9 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		UNITTEST_TEST(test_selectUntil)
 		{
 			xstring str("This is an ASCII string converted to UTF-32");
+			xstring ascii("ASCII");
 
-			xstring::view c1 = selectUntil(str, xstring("ASCII"));
+			xstring::view c1 = selectUntil(str.full(), ascii.full());
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 11);
 			CHECK_TRUE(c1[0] == 'T');
@@ -178,7 +180,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		{
 			xstring str1("This is a piece of text to find something in");
 			
-			xstring::view c1 = find(str1, 'p');
+			xstring::view c1 = find(str1.full(), 'p');
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 1);
 			CHECK_EQUAL(c1[0], 'p');
@@ -189,8 +191,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			xstring str1("This is text to change something in");
 
 			// First some views
-			xstring::view v1 = find(str1, xstring("text"));
-			xstring::view v2 = find(str1, xstring(" in"));
+			xstring::view v1 = find(str1.full(), xstring("text"));
+			xstring::view v2 = find(str1.full(), xstring(" in"));
 			CHECK_EQUAL(v1.size(), 4);
 			CHECK_EQUAL(v2.size(), 3);
 

@@ -56,6 +56,7 @@ namespace xcore
 
 		struct view
 		{
+			view(const view& other);
 			~view();
 
 			s32		size() const;
