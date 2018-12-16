@@ -98,7 +98,10 @@ namespace xcore
 		xstring(xstring::view const& left, xstring::view const& right);
 
 		bool is_empty() const;
+		s32  cap() const;
 		s32  size() const;
+
+		void clear();
 
 		view full();
 		view full() const;
@@ -109,7 +112,6 @@ namespace xcore
 		view operator()(s32 to) const;
 		view operator()(s32 from, s32 to) const;
 
-		uchar32 operator[](s32 index);
 		uchar32 operator[](s32 index) const;
 
 		xstring& operator=(const xstring& other);
@@ -180,10 +182,10 @@ namespace xcore
 	void insert(xstring&, xstring::view const& pos, xstring::view const& inString);
 
 	void remove(xstring&, xstring::view const& selection);
-	void find_remove(xstring& str, const xstring::view& find);
-	void find_replace(xstring& inStr, xstring::view const& find, xstring::view const& replace);
-	void remove_any(xstring& str, const xstring::view& inAny);
-	void replace_any(xstring&, xstring::view const& inAny, uchar32 inWith);
+	void find_remove(xstring&, const xstring::view& find);
+	void find_replace(xstring&, xstring::view const& find, xstring::view const& replace);
+	void remove_any(xstring&, const xstring::view& inAny);
+	void replace_any(xstring::view&, xstring::view const& inAny, uchar32 inWith);
 
 	void trim(xstring::view&);
 	void trimLeft(xstring::view&);
