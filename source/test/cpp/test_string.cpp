@@ -253,7 +253,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_TRUE(str1 == str2);
 		}
 
-		UNITTEST_TEST(test_remove)
+		UNITTEST_TEST(test_find_remove)
 		{
 			xstring str1(gTestUtf32Allocator, "This is text to remove something from");
 			CHECK_EQUAL(37, str1.size());
@@ -274,6 +274,44 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_TRUE(v2.is_empty());
 
 			xstring str2(gTestUtf32Allocator, "This is text");
+			CHECK_EQUAL(str2.size(), str1.size());
+			CHECK_TRUE(str1 == str2);
+		}
+
+		UNITTEST_TEST(test_find_replace)
+		{
+			xstring str1(gTestUtf32Allocator, "This is text to change something in");
+			CHECK_EQUAL(35, str1.size());
+
+			// First some views
+			xstring::view v1 = find(str1.full(), xstring(gTestUtf32Allocator, "change"));
+			xstring::view v2 = find(str1.full(), xstring(gTestUtf32Allocator, "in"));
+			CHECK_EQUAL(v1.size(), 6);
+			CHECK_EQUAL(v2.size(), 2);
+
+			// Now change the string so that it will resize
+			xstring strr(gTestUtf32Allocator, "fix");
+			CHECK_EQUAL(3, strr.size());
+			find_replace(str1, v1, strr);
+			CHECK_EQUAL(35 - 3, str1.size());
+
+			xstring str2(gTestUtf32Allocator, "This is text to fix something in");
+			CHECK_EQUAL(str2.size(), str1.size());
+			CHECK_TRUE(str1 == str2);
+		}
+
+		UNITTEST_TEST(test_remove_any)
+		{
+			xstring str1(gTestUtf32Allocator, "This is text to #change $something &in");
+			CHECK_EQUAL(38, str1.size());
+
+			// Now change the string so that it will resize
+			xstring strr(gTestUtf32Allocator, "#$&");
+			CHECK_EQUAL(3, strr.size());
+			remove_any(str1, strr);
+			CHECK_EQUAL(38 - 3, str1.size());
+
+			xstring str2(gTestUtf32Allocator, "This is text to change something in");
 			CHECK_EQUAL(str2.size(), str1.size());
 			CHECK_TRUE(str1 == str2);
 		}

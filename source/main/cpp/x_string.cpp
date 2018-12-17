@@ -133,7 +133,7 @@ namespace xcore
 			s32 src = pos + len;
 			s32 dst = pos;
 			s32 const end = pos + len;
-			while (dst < end)
+			while (src < r.size())
 			{
 				r.m_str[dst++] = r.m_str[src++];
 			}
@@ -206,7 +206,7 @@ namespace xcore
 				s32 src = 0;
 				s32 dst = remove_from;
 				s32 const end = remove_from + replace.size();
-				while (dst < end)
+				while (src < replace.size())
 				{
 					str.m_runes.m_str[dst++] = replace[src++];
 				}
