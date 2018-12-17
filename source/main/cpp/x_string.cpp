@@ -729,8 +729,11 @@ namespace xcore
 
 		virtual void deallocate(utf32::runes& r)
 		{
-			xalloc::get_system()->deallocate(r.m_str);
-			r = utf32::runes();
+			if (r.m_str != nullptr)
+			{
+				xalloc::get_system()->deallocate(r.m_str);
+				r = utf32::runes();
+			}
 		}
 	};
 
@@ -738,6 +741,16 @@ namespace xcore
 	utf32::alloc*				 xstring::s_allocator = &s_utf32_runes_allocator;
 
 	xstring::xstring(void) : m_allocator(s_allocator), m_runes(), m_views(nullptr) {}
+
+	xstring::xstring(utf32::alloc* allocator) : m_allocator(allocator), m_runes(), m_views(nullptr) {}
+
+	xstring::xstring(utf32::alloc* allocator, const char* str) : m_allocator(allocator), m_runes(), m_views(nullptr) 
+	{
+		const char* end = nullptr;
+		s32 const   len = ascii_nr_chars(str, end) + 1;
+		m_runes			= m_allocator->allocate(0, len);
+		ascii_to_utf32(str, end, m_runes.m_end, m_runes.m_eos);
+	}
 
 	xstring::xstring(const char* str) : m_allocator(s_allocator), m_runes(), m_views(nullptr)
 	{

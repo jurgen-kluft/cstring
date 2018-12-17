@@ -52,6 +52,8 @@ namespace xcore
 	{
 	public:
 		xstring();
+		xstring(utf32::alloc* allocator);
+		xstring(utf32::alloc* allocator, const char* str);
 		xstring(const char* str);
 		xstring(xstring const& other);
 		~xstring();

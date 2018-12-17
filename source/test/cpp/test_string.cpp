@@ -1,19 +1,63 @@
+#include "xbase/x_allocator.h"
 #include "xbase/x_runes.h"
 #include "xstring/x_string.h"
 #include "xunittest/xunittest.h"
 
 using namespace xcore;
 
+	class test_utf32_runes_allocator : public utf32::alloc
+	{
+		xalloc* m_allocator;
+	public:
+		test_utf32_runes_allocator (xalloc* allocator) : m_allocator(allocator) {}
+
+		virtual utf32::runes allocate(s32 len, s32 cap)
+		{
+			if (len > cap)
+				cap = len;
+
+			utf32::runes r;
+			r.m_str			 = (utf32::prune)m_allocator->allocate(cap * sizeof(utf32::rune), sizeof(void*));
+			r.m_end			 = r.m_str + len;
+			r.m_eos			 = r.m_str + cap - 1;
+			r.m_end[0]		 = '\0';
+			r.m_end[cap - 1] = '\0';
+			return r;
+		}
+
+		virtual void deallocate(utf32::runes& r)
+		{
+			if (r.m_str != nullptr)
+			{
+				m_allocator->deallocate(r.m_str);
+				r = utf32::runes();
+			}
+		}
+
+		XCORE_CLASS_PLACEMENT_NEW_DELETE
+	};
+
+	extern xcore::xalloc* gTestAllocator;
+	test_utf32_runes_allocator* gTestUtf32Allocator = nullptr;
+
 UNITTEST_SUITE_BEGIN(test_xstring)
 {
 	UNITTEST_FIXTURE(main)
 	{
-		UNITTEST_FIXTURE_SETUP() {}
-		UNITTEST_FIXTURE_TEARDOWN() {}
+		UNITTEST_FIXTURE_SETUP() 
+		{
+			xheap heap(gTestAllocator);
+			gTestUtf32Allocator = heap.construct<test_utf32_runes_allocator>(gTestAllocator);
+		}
+		UNITTEST_FIXTURE_TEARDOWN() 
+		{
+			xheap heap(gTestAllocator);
+			heap.destruct<test_utf32_runes_allocator>(gTestUtf32Allocator);
+		}
 
 		UNITTEST_TEST(test_index_op)
 		{
-			xstring str;
+			xstring str(gTestUtf32Allocator);
 			CHECK_TRUE(str.is_empty());
 			CHECK_EQUAL(str.size(), 0);
 			CHECK_TRUE(str[0] == '\0');
@@ -23,7 +67,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_view)
 		{
-			xstring str;
+			xstring str(gTestUtf32Allocator);
 			CHECK_TRUE(str.is_empty());
 			CHECK_EQUAL(str.size(), 0);
 			CHECK_TRUE(str[0] == '\0');
@@ -36,7 +80,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_view2)
 		{
-			xstring str;
+			xstring str(gTestUtf32Allocator);
 			CHECK_TRUE(str.is_empty());
 			CHECK_EQUAL(str.size(), 0);
 			CHECK_TRUE(str[0] == '\0');
@@ -49,7 +93,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_copy_con)
 		{
-			xstring str;
+			xstring str(gTestUtf32Allocator);
 			CHECK_TRUE(str.is_empty());
 			CHECK_EQUAL(str.size(), 0);
 			CHECK_TRUE(str[0] == '\0');
@@ -62,8 +106,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_select)
 		{
-			xstring str("This is an ASCII string converted to UTF-32");
-			xstring ascii("ASCII");
+			xstring str(gTestUtf32Allocator, "This is an ASCII string converted to UTF-32");
+			xstring ascii(gTestUtf32Allocator, "ASCII");
 
 			xstring::view c1 = find(str.full(), ascii.full());
 			CHECK_FALSE(c1.is_empty());
@@ -77,8 +121,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_selectUntil)
 		{
-			xstring str("This is an ASCII string converted to UTF-32");
-			xstring ascii("ASCII");
+			xstring str(gTestUtf32Allocator, "This is an ASCII string converted to UTF-32");
+			xstring ascii(gTestUtf32Allocator, "ASCII");
 
 			xstring::view c1 = selectUntil(str.full(), ascii.full());
 			CHECK_FALSE(c1.is_empty());
@@ -88,9 +132,9 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_selectUntilIncluded)
 		{
-			xstring str("This is an ASCII string converted to UTF-32");
+			xstring str(gTestUtf32Allocator, "This is an ASCII string converted to UTF-32");
 
-			xstring::view c1 = selectUntilIncluded(str, xstring("ASCII"));
+			xstring::view c1 = selectUntilIncluded(str, xstring(gTestUtf32Allocator, "ASCII"));
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 16);
 			CHECK_TRUE(c1[11] == 'A');
@@ -102,83 +146,83 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_isUpper)
 		{
-			xstring str1("THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
+			xstring str1(gTestUtf32Allocator, "THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
 			CHECK_TRUE(isUpper(str1));
-			xstring str2("this is a lowercase string with numbers 1234");
+			xstring str2(gTestUtf32Allocator, "this is a lowercase string with numbers 1234");
 			CHECK_TRUE(!isUpper(str2));
 		}
 
 		UNITTEST_TEST(test_isLower)
 		{
-			xstring str1("THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
+			xstring str1(gTestUtf32Allocator, "THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
 			CHECK_TRUE(!isLower(str1));
-			xstring str2("this is a lowercase string with numbers 1234");
+			xstring str2(gTestUtf32Allocator, "this is a lowercase string with numbers 1234");
 			CHECK_TRUE(isLower(str2));
 		}
 
 		UNITTEST_TEST(test_isCapitalized)
 		{
-			xstring str1("This Is A Capitalized String With Numbers 1234");
+			xstring str1(gTestUtf32Allocator, "This Is A Capitalized String With Numbers 1234");
 			CHECK_TRUE(isCapitalized(str1));
-			xstring str2("this is a lowercase string with numbers 1234");
+			xstring str2(gTestUtf32Allocator, "this is a lowercase string with numbers 1234");
 			CHECK_TRUE(!isCapitalized(str2));
 		}
 
 		UNITTEST_TEST(test_isQuoted)
 		{
-			xstring str1("\"a quoted piece of text\"");
+			xstring str1(gTestUtf32Allocator, "\"a quoted piece of text\"");
 			CHECK_TRUE(isQuoted(str1));
-			xstring str2("just a piece of text");
+			xstring str2(gTestUtf32Allocator, "just a piece of text");
 			CHECK_TRUE(!isQuoted(str2));
 		}
 
 		UNITTEST_TEST(test_isQuoted2)
 		{
-			xstring str1("$a quoted piece of text$");
+			xstring str1(gTestUtf32Allocator, "$a quoted piece of text$");
 			CHECK_TRUE(isQuoted(str1, '$'));
-			xstring str2("just a piece of text");
+			xstring str2(gTestUtf32Allocator, "just a piece of text");
 			CHECK_TRUE(!isQuoted(str2, '$'));
 		}
 
 		UNITTEST_TEST(test_isDelimited)
 		{
-			xstring str1("[a delimited piece of text]");
+			xstring str1(gTestUtf32Allocator, "[a delimited piece of text]");
 			CHECK_TRUE(isDelimited(str1, '[', ']'));
-			xstring str2("just a piece of text");
+			xstring str2(gTestUtf32Allocator, "just a piece of text");
 			CHECK_TRUE(!isDelimited(str2, '[', ']'));
 		}
 
 		UNITTEST_TEST(test_firstChar)
 		{
-			xstring str1("First character");
+			xstring str1(gTestUtf32Allocator, "First character");
 			CHECK_EQUAL(firstChar(str1), 'F');
 			CHECK_NOT_EQUAL(firstChar(str1), 'G');
 		}
 
 		UNITTEST_TEST(test_lastChar)
 		{
-			xstring str1("Last character");
+			xstring str1(gTestUtf32Allocator, "Last character");
 			CHECK_EQUAL(lastChar(str1), 'r');
 			CHECK_NOT_EQUAL(lastChar(str1), 's');
 		}
 
 		UNITTEST_TEST(test_startsWith)
 		{
-			xstring str1("Last character");
-			CHECK_TRUE(startsWith(str1, xstring("Last")));
-			CHECK_FALSE(startsWith(str1, xstring("First")));
+			xstring str1(gTestUtf32Allocator, "Last character");
+			CHECK_TRUE(startsWith(str1, xstring(gTestUtf32Allocator, "Last")));
+			CHECK_FALSE(startsWith(str1, xstring(gTestUtf32Allocator, "First")));
 		}
 
 		UNITTEST_TEST(test_endsWith)
 		{
-			xstring str1("Last character");
-			CHECK_TRUE(endsWith(str1, xstring("character")));
-			CHECK_FALSE(endsWith(str1, xstring("first")));
+			xstring str1(gTestUtf32Allocator, "Last character");
+			CHECK_TRUE(endsWith(str1, xstring(gTestUtf32Allocator, "character")));
+			CHECK_FALSE(endsWith(str1, xstring(gTestUtf32Allocator, "first")));
 		}
 
 		UNITTEST_TEST(test_find)
 		{
-			xstring str1("This is a piece of text to find something in");
+			xstring str1(gTestUtf32Allocator, "This is a piece of text to find something in");
 			
 			xstring::view c1 = find(str1.full(), 'p');
 			CHECK_FALSE(c1.is_empty());
@@ -188,23 +232,23 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
 		UNITTEST_TEST(test_views_invalidated)
 		{
-			xstring str1("This is text to change something in");
+			xstring str1(gTestUtf32Allocator, "This is text to change something in");
 			CHECK_EQUAL(str1.size(), 35);
 
 			// First some views
-			xstring::view v1 = find(str1.full(), xstring("text"));
-			xstring::view v2 = find(str1.full(), xstring(" in"));
+			xstring::view v1 = find(str1.full(), xstring(gTestUtf32Allocator, "text"));
+			xstring::view v2 = find(str1.full(), xstring(gTestUtf32Allocator, " in"));
 			CHECK_EQUAL(v1.size(), 4);
 			CHECK_EQUAL(v2.size(), 3);
 
 			// Now change the string so that it will resize
-			insert(str1, v1, xstring("modified "));
+			insert(str1, v1, xstring(gTestUtf32Allocator, "modified "));
 			CHECK_EQUAL(35 + 9, str1.size());
 
 			CHECK_TRUE(v1.is_empty());
 			CHECK_TRUE(v2.is_empty());
 
-			xstring str2("This is modified text to change something in");
+			xstring str2(gTestUtf32Allocator, "This is modified text to change something in");
 			CHECK_EQUAL(str2.size(), str1.size());
 			CHECK_TRUE(str1 == str2);
 		}
