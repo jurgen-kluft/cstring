@@ -27,6 +27,7 @@ namespace xcore
 		~xstr8();
 
 		uchar8 const*	str() const;
+		uchar8 const*	end() const;
 
 	private:
         utf8::alloc* m_allocator;
@@ -40,6 +41,7 @@ namespace xcore
 		~xstr16();
 
 		uchar16 const*	str() const;
+		uchar16 const*	end() const;
 
 	private:
         utf16::alloc* m_allocator;
@@ -116,6 +118,9 @@ namespace xcore
 
 		xstring& operator=(const xstring& other);
 		xstring& operator=(const xstring::view& other);
+
+		bool operator==(const xstring& other) const;
+		bool operator!=(const xstring& other) const;
 
 		operator view() { return full(); }
 

@@ -189,6 +189,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		UNITTEST_TEST(test_views_invalidated)
 		{
 			xstring str1("This is text to change something in");
+			CHECK_EQUAL(str1.size(), 35);
 
 			// First some views
 			xstring::view v1 = find(str1.full(), xstring("text"));
@@ -196,13 +197,17 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(v1.size(), 4);
 			CHECK_EQUAL(v2.size(), 3);
 
-			// Now change the string so that it will reallocate
+			// Now change the string so that it will resize
 			insert(str1, v1, xstring("modified "));
+			CHECK_EQUAL(35 + 9, str1.size());
 
 			CHECK_TRUE(v1.is_empty());
 			CHECK_TRUE(v2.is_empty());
-		}
 
+			xstring str2("This is modified text to change something in");
+			CHECK_EQUAL(str2.size(), str1.size());
+			CHECK_TRUE(str1 == str2);
+		}
 	}
 }
 UNITTEST_SUITE_END
