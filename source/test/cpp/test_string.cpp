@@ -230,7 +230,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(c1[0], 'p');
 		}
 
-		UNITTEST_TEST(test_views_invalidated)
+		UNITTEST_TEST(test_insert)
 		{
 			xstring str1(gTestUtf32Allocator, "This is text to change something in");
 			CHECK_EQUAL(str1.size(), 35);
@@ -252,6 +252,32 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(str2.size(), str1.size());
 			CHECK_TRUE(str1 == str2);
 		}
+
+		UNITTEST_TEST(test_remove)
+		{
+			xstring str1(gTestUtf32Allocator, "This is text to remove something from");
+			CHECK_EQUAL(37, str1.size());
+
+			// First some views
+			xstring::view v1 = find(str1.full(), xstring(gTestUtf32Allocator, "remove"));
+			xstring::view v2 = find(str1.full(), xstring(gTestUtf32Allocator, "from"));
+			CHECK_EQUAL(v1.size(), 6);
+			CHECK_EQUAL(v2.size(), 4);
+
+			// Now change the string so that it will resize
+			xstring strr(gTestUtf32Allocator, " to remove something from");
+			CHECK_EQUAL(25, strr.size());
+			find_remove(str1, strr.full());
+			CHECK_EQUAL(37 - 25, str1.size());
+
+			CHECK_TRUE(v1.is_empty());
+			CHECK_TRUE(v2.is_empty());
+
+			xstring str2(gTestUtf32Allocator, "This is text");
+			CHECK_EQUAL(str2.size(), str1.size());
+			CHECK_TRUE(str1 == str2);
+		}
+
 	}
 }
 UNITTEST_SUITE_END
