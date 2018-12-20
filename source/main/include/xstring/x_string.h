@@ -50,6 +50,9 @@ namespace xcore
 
 	class xstring
 	{
+	protected:
+		struct data;
+
 	public:
 		xstring();
 		xstring(utf32::alloc* allocator);
@@ -82,19 +85,17 @@ namespace xcore
 		protected:
 			friend class xstring;
 			friend class xview;
-			view();
+			view(xstring::data*);
 
-			void		  add(view** list);
+			void		  add();
 			void		  rem();
 			void		  invalidate();
 			utf32::crunes get_runes() const;
 
-			utf32::alloc*  m_alloc;
-			utf32::runes   m_runes;
-			bool		   m_const;
+			xstring::data* m_data;
 			s32			   m_from;
 			s32			   m_size;
-			mutable view** m_list;
+
 			view*		   m_next;
 			view*		   m_prev;
 		};
@@ -132,6 +133,7 @@ namespace xcore
 		static utf32::alloc* s_allocator;
 
 	protected:
+		friend struct view;
 		friend class xview;
 
 		xstring(utf32::alloc* mem, s32 size);
@@ -139,9 +141,15 @@ namespace xcore
 		void release();
 		void clone(utf32::runes const& str, utf32::alloc* allocator);
 
-		utf32::alloc* m_allocator;
-		utf32::runes  m_runes;
-		mutable view* m_views;
+		struct data
+		{
+			inline data() : m_alloc(nullptr), m_runes(), m_views(nullptr) {}
+			inline data(utf32::alloc* a) : m_alloc(a), m_runes(), m_views(nullptr) {}
+			utf32::alloc* m_alloc;
+			utf32::runes  m_runes;
+			mutable view* m_views;
+		};
+		mutable data m_data;
 	};
 
 	bool isUpper(const xstring::view&);

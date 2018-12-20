@@ -16,41 +16,41 @@ namespace xcore
 	class xview
 	{
 	public:
-		static inline uchar32* get_ptr_unsafe(xstring::view& str, s32 i) { return &str.m_runes.m_str[i]; }
-		static inline uchar32  get_char_unsafe(xstring::view const& str, s32 i) { return str.m_runes.m_str[i]; }
-		static inline uchar32  get_char_unsafe(xstring const& str, s32 i) { return str.m_runes.m_str[i]; }
+		static inline uchar32* get_ptr_unsafe(xstring::view& str, s32 i) { return &str.m_data->m_runes.m_str[i]; }
+		static inline uchar32  get_char_unsafe(xstring::view const& str, s32 i) { return str.m_data->m_runes.m_str[i]; }
+		static inline uchar32  get_char_unsafe(xstring const& str, s32 i) { return str.m_data.m_runes.m_str[i]; }
 
-		static inline void set_char_unsafe(xstring& str, s32 i, uchar32 c) { str.m_runes.m_str[i] = c; }
-		static inline void set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_runes.m_str[i] = c; }
+		static inline void set_char_unsafe(xstring& str, s32 i, uchar32 c) { str.m_data.m_runes.m_str[i] = c; }
+		static inline void set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_data->m_runes.m_str[i] = c; }
 
 		static inline utf32::runes & get_runes(xstring & str)
 		{
-			return str.m_runes;
+			return str.m_data.m_runes;
 		}
 
 		static inline utf32::runes const& get_runes(xstring const& str)
 		{
-			return str.m_runes;
+			return str.m_data.m_runes;
 		}
 
 		static inline utf32::runes const& get_runes(xstring::view const& str)
 		{
-			return str.m_runes;
+			return str.m_data->m_runes;
 		}
 
 		static inline bool str_has_view(xstring const& str, xstring::view const& vw)
 		{
-			return (vw.m_list == &str.m_views);
+			return (vw.m_data == &str.m_data);
 		}
 
 		static void resize(xstring& str, s32 new_size)
 		{
 			if (str.cap() < new_size)
 			{
-				utf32::runes nrunes = str.m_allocator->allocate(0, new_size);
-				utf32::copy(str.m_runes, nrunes);
+				utf32::runes nrunes = str.m_data.m_alloc->allocate(0, new_size);
+				utf32::copy(str.m_data.m_runes, nrunes);
 				str.release();
-				str.m_runes = nrunes;
+				str.m_data.m_runes = nrunes;
 			}
 			else
 			{
@@ -91,7 +91,7 @@ namespace xcore
 
 			// Check if the movement doesn't invalidate this view
 			s32 const to = (from + v.m_size);
-			if (to > v.m_runes.size())
+			if (to > v.m_data->m_runes.size())
 				return false;
 
 			// Movement is ok, new view is valid
@@ -164,7 +164,7 @@ namespace xcore
 				return;
 			if (xview::str_has_view(str, selection))
 			{
-				remove_selspace(str.m_runes, selection.m_from, selection.size());
+				remove_selspace(str.m_data.m_runes, selection.m_from, selection.size());
 				// TODO: Decision to shrink the allocated memory of m_runes ?
 				// TODO: handle the active views!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 			}
@@ -208,7 +208,7 @@ namespace xcore
 				s32 const end = remove_from + replace.size();
 				while (src < replace.size())
 				{
-					str.m_runes.m_str[dst++] = replace[src++];
+					str.m_data.m_runes.m_str[dst++] = replace[src++];
 				}
 			}
 		}
@@ -239,12 +239,12 @@ namespace xcore
 			s32 const r = i - d;
 			if (r > 0)
 			{
-				str.m_runes.m_end -= r;
-				str.m_runes.m_end[0] = '\0';
+				str.m_data.m_runes.m_end -= r;
+				str.m_data.m_runes.m_end[0] = '\0';
 			}
 		}
 
-		static xstring::view get_default() { return xstring::view(); }
+		static xstring::view get_default() { return xstring::view(nullptr); }
 	};
 
 	//==============================================================================
@@ -483,18 +483,16 @@ namespace xcore
 	//------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------
-	xstring::view::view() : m_alloc(nullptr), m_runes(), m_from(0), m_size(0), m_list(nullptr), m_next(nullptr), m_prev(nullptr) {}
+	xstring::view::view(xstring::data* d) : m_data(d), m_from(0), m_size(0), m_next(nullptr), m_prev(nullptr) {}
 
 	xstring::view::view(const view& other)
-		: m_alloc(other.m_alloc)
-		, m_runes(other.m_runes)
+		: m_data(other.m_data)
 		, m_from(other.m_from)
 		, m_size(other.m_size)
-		, m_list(nullptr)
 		, m_next(nullptr)
 		, m_prev(nullptr)
 	{
-		add(other.m_list);
+		add();
 	}
 	
 	xstring::view::~view() { rem(); }
@@ -505,16 +503,16 @@ namespace xcore
 
 	xstring xstring::view::to_string() const
 	{
-		if (m_alloc != nullptr && !m_runes.is_empty())
+		if (m_data->m_alloc != nullptr && !m_data->m_runes.is_empty())
 		{
-			utf32::runes dstrunes = m_alloc->allocate(0, m_size);
-			utf32::runes srcrunes = m_runes;
+			utf32::runes dstrunes = m_data->m_alloc->allocate(0, m_size);
+			utf32::runes srcrunes = m_data->m_runes;
 			srcrunes.m_str += m_from;
 			utf32::copy(srcrunes, dstrunes);
 
 			xstring str;
-			str.m_allocator = m_alloc;
-			str.m_runes		= dstrunes;
+			str.m_data.m_alloc = m_data->m_alloc;
+			str.m_data.m_runes = dstrunes;
 			return str;
 		}
 		return xstring();
@@ -523,13 +521,10 @@ namespace xcore
 	xstring::view xstring::view::operator()(s32 to)
 	{
 		to = xmin(m_size, to);
-		xstring::view v;
-		v.m_alloc = m_alloc;
-		v.m_runes = m_runes;
-		v.m_const = m_const;
-		v.m_from  = m_from;
-		v.m_size  = to;
-		v.add(m_list);
+		xstring::view v(m_data);
+		v.m_from = m_from;
+		v.m_size = to;
+		v.add();
 		return v;
 	}
 
@@ -539,26 +534,20 @@ namespace xcore
 		s32 t = xmax(from, to);
 		from  = xmin(f, m_size);
 		to	= xmin(t, m_size);
-		xstring::view v;
-		v.m_alloc = m_alloc;
-		v.m_runes = m_runes;
-		v.m_const = m_const;
+		xstring::view v(m_data);
 		v.m_from  = m_from + from;
 		v.m_size  = to - from;
-		v.add(m_list);
+		v.add();
 		return v;
 	}
 
 	xstring::view xstring::view::operator()(s32 to) const
 	{
 		to = xmin(m_size, to);
-		xstring::view v;
-		v.m_alloc = m_alloc;
-		v.m_runes = m_runes;
-		v.m_const = m_const;
+		xstring::view v(m_data);
 		v.m_from  = m_from;
 		v.m_size  = to;
-		v.add(m_list);
+		v.add();
 		return v;
 	}
 
@@ -568,13 +557,10 @@ namespace xcore
 		s32 t = xmax(from, to);
 		from  = xmin(f, m_size);
 		to	= xmin(t, m_size);
-		xstring::view v;
-		v.m_alloc = m_alloc;
-		v.m_runes = m_runes;
-		v.m_const = m_const;
+		xstring::view v(m_data);
 		v.m_from  = m_from + from;
 		v.m_size  = to - from;
-		v.add(m_list);
+		v.add();
 		return v;
 	}
 
@@ -582,18 +568,17 @@ namespace xcore
 	{
 		if (index < 0 || index >= m_size)
 			return '\0';
-		return m_runes.m_str[m_from + index];
+		return m_data->m_runes.m_str[m_from + index];
 	}
 
 	xstring::view& xstring::view::operator=(xstring::view const& other)
 	{
 		rem();
 
-		m_alloc = other.m_alloc;
-		m_runes = other.m_runes;
+		m_data = other.m_data;
 		m_from  = other.m_from;
 		m_size  = other.m_size;
-		add(other.m_list);
+		add();
 
 		return *this;
 	}
@@ -602,10 +587,10 @@ namespace xcore
 	{
 		if (m_size == other.m_size)
 		{
-			uchar32 const* tsrc = m_runes.m_str + m_from;
-			uchar32 const* tend = m_runes.m_str + m_from + m_size;
-			uchar32 const* osrc = other.m_runes.m_str + other.m_from;
-			uchar32 const* oend = other.m_runes.m_str + other.m_from + other.m_size;
+			uchar32 const* tsrc = m_data->m_runes.m_str + m_from;
+			uchar32 const* tend = m_data->m_runes.m_str + m_from + m_size;
+			uchar32 const* osrc = other.m_data->m_runes.m_str + other.m_from;
+			uchar32 const* oend = other.m_data->m_runes.m_str + other.m_from + other.m_size;
 			while (tsrc < tend)
 			{
 				if (*tsrc++ != *osrc++)
@@ -620,10 +605,10 @@ namespace xcore
 	{
 		if (m_size == other.m_size)
 		{
-			uchar32 const* tsrc = m_runes.m_str + m_from;
-			uchar32 const* tend = m_runes.m_str + m_from + m_size;
-			uchar32 const* osrc = other.m_runes.m_str + other.m_from;
-			uchar32 const* oend = other.m_runes.m_str + other.m_from + other.m_size;
+			uchar32 const* tsrc = m_data->m_runes.m_str + m_from;
+			uchar32 const* tend = m_data->m_runes.m_str + m_from + m_size;
+			uchar32 const* osrc = other.m_data->m_runes.m_str + other.m_from;
+			uchar32 const* oend = other.m_data->m_runes.m_str + other.m_from + other.m_size;
 			while (tsrc < tend)
 			{
 				if (*tsrc++ != *osrc++)
@@ -634,13 +619,12 @@ namespace xcore
 		return true;
 	}
 
-	void xstring::view::add(xstring::view** _list)
+	void xstring::view::add()
 	{
-		m_list = _list;
-		if (m_list == nullptr)
+		if (m_data != nullptr || m_data->m_views == nullptr)
 			return;
 
-		xstring::view*& list = *m_list;
+		xstring::view*& list = m_data->m_views;
 		if (list == nullptr)
 		{
 			list   = this;
@@ -661,9 +645,9 @@ namespace xcore
 
 	void xstring::view::rem()
 	{
-		if (m_list != nullptr)
+		if (m_data != nullptr && m_data->m_views != nullptr)
 		{
-			xstring::view*& list = *m_list;
+			xstring::view*& list = m_data->m_views;
 
 			xstring::view* prev = m_prev;
 			xstring::view* next = m_next;
@@ -679,9 +663,7 @@ namespace xcore
 				}
 			}
 
-			m_list  = nullptr;
-			m_alloc = nullptr;
-			m_runes = utf32::runes();
+			m_data = nullptr;
 			m_next  = nullptr;
 			m_prev  = nullptr;
 		}
@@ -689,17 +671,16 @@ namespace xcore
 
 	void xstring::view::invalidate()
 	{
-		m_alloc = nullptr;
-		m_runes = utf32::runes();
-		m_from  = 0;
-		m_size  = 0;
+		m_data = nullptr;
+		m_from = 0;
+		m_size = 0;
 	}
 
 	utf32::crunes xstring::view::get_runes() const
 	{
-		if (m_runes.is_empty())
+		if (m_data->m_runes.is_empty())
 		{
-			utf32::crunes r(m_runes);
+			utf32::crunes r(m_data->m_runes);
 			r.m_str += m_from;
 			r.m_end = r.m_str + m_size;
 			return r;
@@ -740,104 +721,95 @@ namespace xcore
 	static utf32_runes_allocator s_utf32_runes_allocator;
 	utf32::alloc*				 xstring::s_allocator = &s_utf32_runes_allocator;
 
-	xstring::xstring(void) : m_allocator(s_allocator), m_runes(), m_views(nullptr) {}
+	xstring::xstring(void) : m_data(s_allocator) {}
 
-	xstring::xstring(utf32::alloc* allocator) : m_allocator(allocator), m_runes(), m_views(nullptr) {}
+	xstring::xstring(utf32::alloc* allocator) : m_data(allocator) {}
 
-	xstring::xstring(utf32::alloc* allocator, const char* str) : m_allocator(allocator), m_runes(), m_views(nullptr) 
+	xstring::xstring(utf32::alloc* allocator, const char* str) : m_data(allocator) 
 	{
 		const char* end = nullptr;
 		s32 const   len = ascii_nr_chars(str, end) + 1;
-		m_runes			= m_allocator->allocate(0, len);
-		ascii_to_utf32(str, end, m_runes.m_end, m_runes.m_eos);
+		m_data.m_runes			= m_data.m_alloc->allocate(0, len);
+		ascii_to_utf32(str, end, m_data.m_runes.m_end, m_data.m_runes.m_eos);
 	}
 
-	xstring::xstring(const char* str) : m_allocator(s_allocator), m_runes(), m_views(nullptr)
+	xstring::xstring(const char* str) : m_data(s_allocator)
 	{
 		const char* end = nullptr;
 		s32 const   len = ascii_nr_chars(str, end) + 1;
-		m_runes			= m_allocator->allocate(0, len);
-		ascii_to_utf32(str, end, m_runes.m_end, m_runes.m_eos);
+		m_data.m_runes			= m_data.m_alloc->allocate(0, len);
+		ascii_to_utf32(str, end, m_data.m_runes.m_end, m_data.m_runes.m_eos);
 	}
 
-	xstring::xstring(utf32::alloc* _allocator, s32 _len) : m_allocator(_allocator), m_runes(), m_views(nullptr) { m_runes = m_allocator->allocate(0, _len); }
+	xstring::xstring(utf32::alloc* _allocator, s32 _len) : m_data(_allocator) { m_data.m_runes = m_data.m_alloc->allocate(0, _len); }
 
-	xstring::xstring(const xstring& other) : m_allocator(other.m_allocator), m_runes(), m_views(nullptr)
+	xstring::xstring(const xstring& other) : m_data(other.m_data)
 	{
-		if (m_allocator != nullptr && !other.m_runes.is_empty())
+		if (m_data.m_alloc != nullptr && !other.m_data.m_runes.is_empty())
 		{
-			m_runes = m_allocator->allocate(0, other.m_runes.size() + 1);
-			utf32::copy(other.m_runes, m_runes);
+			m_data.m_runes = m_data.m_alloc->allocate(0, other.m_data.m_runes.size() + 1);
+			utf32::copy(other.m_data.m_runes, m_data.m_runes);
 		}
 	}
 
 	xstring::xstring(const xstring::view& left, const xstring::view& right)
 	{
-		m_allocator = left.m_alloc;
-		if (m_allocator != nullptr)
+		m_data.m_alloc = left.m_data->m_alloc;
+		if (m_data.m_alloc != nullptr)
 		{
 			s32 cap = left.size() + right.size() + 1;
-			m_runes = m_allocator->allocate(0, cap);
-			utf32::concatenate(m_runes, left.get_runes(), right.get_runes(), m_allocator, 16);
+			m_data.m_runes = m_data.m_alloc->allocate(0, cap);
+			utf32::concatenate(m_data.m_runes, left.get_runes(), right.get_runes(), m_data.m_alloc, 16);
 		}
 	}
 
 	xstring::~xstring()
 	{
-		if (m_allocator != nullptr)
+		if (m_data.m_alloc != nullptr)
 		{
-			m_allocator->deallocate(m_runes);
+			m_data.m_alloc->deallocate(m_data.m_runes);
 		}
 	}
 
 	//------------------------------------------------------------------------------
 	//------------------------------------------------------------------------------
 
-	bool xstring::is_empty() const { return m_runes.size() == 0; }
+	bool xstring::is_empty() const { return m_data.m_runes.size() == 0; }
 
-	s32 xstring::size() const { return m_runes.size(); }
+	s32 xstring::size() const { return m_data.m_runes.size(); }
 
-	s32 xstring::cap() const { return m_runes.cap(); }
+	s32 xstring::cap() const { return m_data.m_runes.cap(); }
 
 	void xstring::clear()
 	{
-		m_runes.clear();
+		m_data.m_runes.clear();
 		// TODO: what about the active views ?
 	}
 
 	xstring::view xstring::full()
 	{
-		xstring::view v;
-		v.m_alloc = m_allocator;
-		v.m_runes = m_runes;
-		v.m_const = false;
+		xstring::view v(&m_data);
 		v.m_from  = 0;
-		v.m_size  = m_runes.size();
-		v.add(&m_views);
+		v.m_size  = m_data.m_runes.size();
+		v.add();
 		return v;
 	}
 
 	xstring::view xstring::full() const
 	{
-		xstring::view v;
-		v.m_alloc = m_allocator;
-		v.m_runes = m_runes;
-		v.m_const = true;
+		xstring::view v(&m_data);
 		v.m_from  = 0;
-		v.m_size  = m_runes.size();
-		v.add(&m_views);
+		v.m_size  = m_data.m_runes.size();
+		v.add();
 		return v;
 	}
 
 	xstring::view xstring::operator()(s32 to)
 	{
-		xstring::view v;
-		v.m_alloc = m_allocator;
-		v.m_runes = m_runes;
-		v.m_const = false;
+		xstring::view v(&m_data);
 		v.m_from  = 0;
 		v.m_size  = xmin(size(), to);
-		v.add(&m_views);
+		v.add();
 		return v;
 	}
 
@@ -847,26 +819,20 @@ namespace xcore
 		s32 t = xmax(from, to);
 		from  = xmin(f, size());
 		to	= xmin(t, size());
-		xstring::view v;
-		v.m_alloc = m_allocator;
-		v.m_runes = m_runes;
-		v.m_const = false;
+		xstring::view v(&m_data);
 		v.m_from  = from;
 		v.m_size  = to - from;
-		v.add(&m_views);
+		v.add();
 		return v;
 	}
 
 	xstring::view xstring::operator()(s32 to) const
 	{
 		to = xmin(size(), to);
-		xstring::view v;
-		v.m_alloc = m_allocator;
-		v.m_runes = m_runes;
-		v.m_const = true;
+		xstring::view v(&m_data);
 		v.m_from  = 0;
 		v.m_size  = to;
-		v.add(&m_views);
+		v.add();
 		return v;
 	}
 
@@ -876,21 +842,18 @@ namespace xcore
 		s32 t = xmax(from, to);
 		from  = xmin(f, size());
 		to	= xmin(t, size());
-		xstring::view v;
-		v.m_alloc = m_allocator;
-		v.m_runes = m_runes;
-		v.m_const = true;
+		xstring::view v(&m_data);
 		v.m_from  = from;
 		v.m_size  = to - from;
-		v.add(&m_views);
+		v.add();
 		return v;
 	}
 
 	uchar32 xstring::operator[](s32 index) const
 	{
-		if (index >= m_runes.size())
+		if (index >= m_data.m_runes.size())
 			return '\0';
-		return m_runes.m_str[index];
+		return m_data.m_runes.m_str[index];
 	}
 
 	xstring& xstring::operator=(const xstring& other)
@@ -898,17 +861,17 @@ namespace xcore
 		if (this != &other)
 		{
 			release();
-			clone(other.m_runes, other.m_allocator);
+			clone(other.m_data.m_runes, other.m_data.m_alloc);
 		}
 		return *this;
 	}
 
 	xstring& xstring::operator=(const xstring::view& other)
 	{
-		if (&m_views != other.m_list)
+		if (&m_data != other.m_data)
 		{
 			release();
-			clone(other.m_runes, other.m_alloc);
+			clone(other.m_data->m_runes, other.m_data->m_alloc);
 		}
 		return *this;
 	}
@@ -943,27 +906,27 @@ namespace xcore
 
 	void xstring::release()
 	{
-		if (m_allocator != nullptr)
+		if (m_data.m_alloc != nullptr)
 		{
-			m_allocator->deallocate(m_runes);
+			m_data.m_alloc->deallocate(m_data.m_runes);
 		}
 
 		// Invalidate all views
-		xstring::view* iter = m_views;
+		xstring::view* iter = m_data.m_views;
 		while (iter != nullptr)
 		{
 			iter->invalidate();
 			iter = iter->m_next;
-			if (iter == m_views)
+			if (iter == m_data.m_views)
 				break;
 		}
 	}
 
 	void xstring::clone(utf32::runes const& str, utf32::alloc* allocator)
 	{
-		m_allocator = allocator;
-		m_runes		= m_allocator->allocate(0, str.size() + 1);
-		utf32::copy(str, m_runes);
+		m_data.m_alloc = allocator;
+		m_data.m_runes		= m_data.m_alloc->allocate(0, str.size() + 1);
+		utf32::copy(str, m_data.m_runes);
 	}
 
 	//------------------------------------------------------------------------------
