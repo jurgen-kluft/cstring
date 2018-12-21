@@ -52,6 +52,14 @@ namespace xcore
 	{
 	protected:
 		struct data;
+		struct range
+		{
+			inline range() : from(0), to(0) { }
+			inline range(s32 f, s32 t) : from(f), to(t) { }
+			inline s32 size() const { return to - from; }
+
+			s32 from, to;
+		};
 
 	public:
 		xstring();
@@ -93,9 +101,7 @@ namespace xcore
 			utf32::crunes get_runes() const;
 
 			xstring::data* m_data;
-			s32			   m_from;
-			s32			   m_size;
-
+			range		   m_view;
 			view*		   m_next;
 			view*		   m_prev;
 		};
@@ -185,7 +191,10 @@ namespace xcore
 	xstring::view selectUntilLast(const xstring::view& inStr, uchar32 inFind);
 	xstring::view selectUntilLast(const xstring::view& inStr, const xstring::view& inFind);
 
-	xstring::view selectUntilIncluded(const xstring::view& inStr, const xstring::view& inFind);
+	xstring::view selectUntilIncluded(const xstring::view& str, const xstring::view& selection);
+
+	xstring::view selectUntilEndExcludeSelection(const xstring::view& str, const xstring::view& selection);
+	xstring::view selectUntilEndIncludeSelection(const xstring::view& str, const xstring::view& selection);
 
 	///@name Search/replace
 	xstring::view find(xstring::view& inStr, uchar32 inFind);
@@ -194,7 +203,8 @@ namespace xcore
 	xstring::view findOneOf(xstring::view& inStr, const xstring::view& inFind);
 	xstring::view findOneOfLast(xstring::view& inStr, const xstring::view& inFind);
 
-	void insert(xstring&, xstring::view const& pos, xstring::view const& inString);
+	void insert(xstring&, xstring::view const& pos, xstring::view const& insert);
+	void insert_after(xstring&, xstring::view const& pos, xstring::view const& insert);
 
 	void remove(xstring&, xstring::view const& selection);
 	void find_remove(xstring&, const xstring::view& find);

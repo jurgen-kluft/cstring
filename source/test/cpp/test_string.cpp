@@ -245,8 +245,17 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			insert(str1, v1, xstring(gTestUtf32Allocator, "modified "));
 			CHECK_EQUAL(35 + 9, str1.size());
 
-			CHECK_TRUE(v1.is_empty());
-			CHECK_TRUE(v2.is_empty());
+			CHECK_EQUAL(4, v1.size());
+			CHECK_EQUAL(3, v2.size());
+
+			CHECK_TRUE(v1[0] == 't');
+			CHECK_TRUE(v1[1] == 'e');
+			CHECK_TRUE(v1[2] == 'x');
+			CHECK_TRUE(v1[3] == 't');
+
+			CHECK_TRUE(v2[0] == ' ');
+			CHECK_TRUE(v2[1] == 'i');
+			CHECK_TRUE(v2[2] == 'n');
 
 			xstring str2(gTestUtf32Allocator, "This is modified text to change something in");
 			CHECK_EQUAL(str2.size(), str1.size());
