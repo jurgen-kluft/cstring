@@ -181,7 +181,8 @@ namespace xcore
 
         static void find_remove(xstring& str, const xstring::view& _find)
         {
-            xstring::view sel = find(str.full(), _find);
+            xstring::view strvw = str.full();
+            xstring::view sel = find(strvw, _find);
             if (sel.is_empty() == false)
             {
                 remove(str, sel);
@@ -190,7 +191,8 @@ namespace xcore
 
         static void find_replace(xstring& str, const xstring::view& _find, const xstring::view& replace)
         {
-            xstring::view remove = find(str.full(), _find);
+            xstring::view strvw = str.full();
+            xstring::view remove = find(strvw, _find);
             if (remove.is_empty() == false)
             {
                 s32 const remove_from = remove.m_view.from;
@@ -948,6 +950,11 @@ namespace xcore
     static utf32_runes_allocator s_utf32_runes_allocator;
     utf32::alloc*                xstring::s_allocator = &s_utf32_runes_allocator;
 
+
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+
     xstring::xstring(void) : m_data(s_allocator) {}
 
     xstring::xstring(utf32::alloc* allocator) : m_data(allocator) {}
@@ -1048,7 +1055,7 @@ namespace xcore
     {
 		xsort(from, to);
         to    = xmin(to, size());
-        from  = xmin((s32)0, to);
+        from  = xmin(from, to);
         xstring::view v(&m_data);
         v.m_view.from = from;
         v.m_view.to = to;
@@ -1069,7 +1076,7 @@ namespace xcore
     {
 		xsort(from, to);
         to    = xmin(to, size());
-        from  = xmin((s32)0, to);
+        from  = xmin(from, to);
         xstring::view v(&m_data);
         v.m_view.from = from;
         v.m_view.to = to;
@@ -1338,6 +1345,17 @@ namespace xcore
         return false;
     }
 
+	xstring::view find(xstring& str, uchar32 find)
+    {
+        for (s32 i = 0; i < str.size(); i++)
+        {
+            uchar32 const c = str[i];
+            if (c == find)
+                return str(i, i + 1);
+        }
+        return xview::get_default();
+    }
+
     xstring::view find(xstring::view& str, uchar32 find)
     {
         for (s32 i = 0; i < str.size(); i++)
@@ -1345,6 +1363,23 @@ namespace xcore
             uchar32 const c = str[i];
             if (c == find)
                 return str(i, i + 1);
+        }
+        return xview::get_default();
+    }
+
+    xstring::view find(xstring& str, const xstring::view& find)
+    {
+        xstring::view v = str(0, find.size());
+        while (!v.is_empty())
+        {
+            if (v == find)
+            {
+                // So here we have a view with the size of the @find string on
+                // string @str that matches the string @find.
+                return v;
+            }
+            if (!xview::move_view(v, 1))
+                break;
         }
         return xview::get_default();
     }
@@ -1513,7 +1548,8 @@ namespace xcore
 
     void find_remove(xstring& str, const xstring::view& _find)
     {
-        xstring::view sel = find(str.full(), _find);
+        xstring::view strvw = str.full();
+        xstring::view sel = find(strvw, _find);
         if (sel.is_empty() == false)
         {
             xview::remove(str, sel);
@@ -1819,7 +1855,8 @@ namespace xcore
     {
         xstring str("This is an ascii string that will be converted to UTF-32");
 
-        xstring::view substr = find(str.full(), xstring("ascii"));
+        xstring::view strvw = str.full();
+        xstring::view substr = find(strvw, xstring("ascii"));
         upper(substr);
 
         find_remove(str, xstring("converted "));

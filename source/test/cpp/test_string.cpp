@@ -109,7 +109,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			xstring str(gTestUtf32Allocator, "This is an ASCII string converted to UTF-32");
 			xstring ascii(gTestUtf32Allocator, "ASCII");
 
-			xstring::view c1 = find(str.full(), ascii.full());
+			xstring::view c1 = find(str, ascii.full());
 			CHECK_FALSE(c1.is_empty());
 			CHECK_EQUAL(c1.size(), 5);
 			CHECK_TRUE(c1[0] == 'A');
@@ -224,10 +224,10 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 		{
 			xstring str1(gTestUtf32Allocator, "This is a piece of text to find something in");
 			
-			xstring::view c1 = find(str1.full(), 'p');
+			xstring::view c1 = find(str1, 'p');
 			CHECK_FALSE(c1.is_empty());
-			CHECK_EQUAL(c1.size(), 1);
-			CHECK_EQUAL(c1[0], 'p');
+			CHECK_EQUAL(1, c1.size());
+			CHECK_EQUAL('p', c1[0]);
 		}
 
 		UNITTEST_TEST(test_insert)
@@ -236,8 +236,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(str1.size(), 35);
 
 			// First some views
-			xstring::view v1 = find(str1.full(), xstring(gTestUtf32Allocator, "text"));
-			xstring::view v2 = find(str1.full(), xstring(gTestUtf32Allocator, " in"));
+			xstring::view v1 = find(str1, xstring(gTestUtf32Allocator, "text"));
+			xstring::view v2 = find(str1, xstring(gTestUtf32Allocator, " in"));
 			CHECK_EQUAL(v1.size(), 4);
 			CHECK_EQUAL(v2.size(), 3);
 
@@ -268,8 +268,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(37, str1.size());
 
 			// First some views
-			xstring::view v1 = find(str1.full(), xstring(gTestUtf32Allocator, "remove"));
-			xstring::view v2 = find(str1.full(), xstring(gTestUtf32Allocator, "from"));
+			xstring::view v1 = find(str1, xstring(gTestUtf32Allocator, "remove"));
+			xstring::view v2 = find(str1, xstring(gTestUtf32Allocator, "from"));
 			CHECK_EQUAL(v1.size(), 6);
 			CHECK_EQUAL(v2.size(), 4);
 
@@ -293,8 +293,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 			CHECK_EQUAL(35, str1.size());
 
 			// First some views
-			xstring::view v1 = find(str1.full(), xstring(gTestUtf32Allocator, "change"));
-			xstring::view v2 = find(str1.full(), xstring(gTestUtf32Allocator, "in"));
+			xstring::view v1 = find(str1, xstring(gTestUtf32Allocator, "change"));
+			xstring::view v2 = find(str1, xstring(gTestUtf32Allocator, "in"));
 			CHECK_EQUAL(v1.size(), 6);
 			CHECK_EQUAL(v2.size(), 2);
 

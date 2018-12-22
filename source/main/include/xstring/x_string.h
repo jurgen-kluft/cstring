@@ -197,7 +197,9 @@ namespace xcore
 	xstring::view selectUntilEndIncludeSelection(const xstring::view& str, const xstring::view& selection);
 
 	///@name Search/replace
+	xstring::view find(xstring& inStr, uchar32 inFind);
 	xstring::view find(xstring::view& inStr, uchar32 inFind);
+	xstring::view find(xstring& inStr, const xstring::view& inFind);
 	xstring::view find(xstring::view& inStr, const xstring::view& inFind);
 	xstring::view findLast(xstring::view& inStr, const xstring::view& inFind);
 	xstring::view findOneOf(xstring::view& inStr, const xstring::view& inFind);
