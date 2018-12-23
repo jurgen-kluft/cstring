@@ -10,6 +10,8 @@
 UNITTEST_SUITE_LIST(xStringUnitTest);
 
 UNITTEST_SUITE_DECLARE(xStringUnitTest, test_xstring);
+UNITTEST_SUITE_DECLARE(xStringUnitTest, test_string_reader);
+UNITTEST_SUITE_DECLARE(xStringUnitTest, test_string_writer);
 
 namespace xcore
 {

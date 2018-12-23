@@ -57,7 +57,6 @@ namespace xcore
 			inline range() : from(0), to(0) { }
 			inline range(s32 f, s32 t) : from(f), to(t) { }
 			inline s32 size() const { return to - from; }
-
 			s32 from, to;
 		};
 
