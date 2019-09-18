@@ -18,8 +18,6 @@ namespace xcore
         union runes {
             inline runes() : _ascii() {}
             ascii::runes _ascii;
-            utf8::runes  _utf8;
-            utf16::runes _utf16;
             utf32::runes _utf32;
         };
         runes m_runes;
@@ -27,9 +25,9 @@ namespace xcore
 
     public:
         string_writer();
-        string_writer(char* str, char* end);
-        string_writer(utf32::rune* str, utf32::rune* end);
+        string_writer(ascii::prune str, ascii::prune end);
         string_writer(ascii::runes const&);
+        string_writer(utf32::prune str, utf32::prune end);
         string_writer(utf32::runes const&);
         string_writer(const string_writer& chars);
 
