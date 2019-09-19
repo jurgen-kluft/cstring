@@ -20,9 +20,7 @@ namespace xcore
         static inline void set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_data->m_runes.m_str[i] = c; }
 
         static inline utf32::runes& get_runes(xstring& str) { return str.m_data.m_runes; }
-
         static inline utf32::runes const& get_runes(xstring const& str) { return str.m_data.m_runes; }
-
         static inline utf32::runes const& get_runes(xstring::view const& str) { return str.m_data->m_runes; }
 
         static inline bool str_has_view(xstring const& str, xstring::view const& vw) { return (vw.m_data == &str.m_data); }

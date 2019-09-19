@@ -46,13 +46,11 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 	{
 		UNITTEST_FIXTURE_SETUP() 
 		{
-			xheap heap(gTestAllocator);
-			gTestUtf32Allocator = heap.construct<test_utf32_runes_allocator>(gTestAllocator);
+			gTestUtf32Allocator = gTestAllocator->construct<test_utf32_runes_allocator>(gTestAllocator);
 		}
 		UNITTEST_FIXTURE_TEARDOWN() 
 		{
-			xheap heap(gTestAllocator);
-			heap.destruct<test_utf32_runes_allocator>(gTestUtf32Allocator);
+			gTestAllocator->destruct<test_utf32_runes_allocator>(gTestUtf32Allocator);
 		}
 
 		UNITTEST_TEST(test_index_op)

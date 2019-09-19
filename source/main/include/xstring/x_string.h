@@ -20,34 +20,6 @@ namespace xcore
     class x_va_list;
     class xalloc;
 
-    class xstr8
-    {
-    public:
-		xstr8(utf8::alloc* allocator, utf8::runes  str);
-		~xstr8();
-
-		uchar8 const*	str() const;
-		uchar8 const*	end() const;
-
-	private:
-        utf8::alloc* m_allocator;
-        utf8::runes  m_string;
-	};
-
-    class xstr16
-    {
-    public:
-		xstr16(utf16::alloc* allocator, utf16::runes  str);
-		~xstr16();
-
-		uchar16 const*	str() const;
-		uchar16 const*	end() const;
-
-	private:
-        utf16::alloc* m_allocator;
-        utf16::runes  m_string;
-	};
-
 	class xstring
 	{
 	protected:
@@ -131,9 +103,6 @@ namespace xcore
 		bool operator!=(const xstring& other) const;
 
 		operator view() { return full(); }
-
-		xstr8	to_utf8(utf8::alloc* allocator) const;
-		xstr16	to_utf16(utf16::alloc* allocator) const;
 
 		static utf32::alloc* s_allocator;
 

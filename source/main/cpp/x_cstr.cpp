@@ -1,20 +1,22 @@
-#include "xstr/x_cstr.h"
-
 #include "xbase/x_integer.h"
 #include "xbase/x_memory.h"
 #include "xbase/x_runes.h"
 #include "xbase/x_printf.h"
 
+#include "xstring/x_cstr.h"
+
 namespace xcore
 {
     enum
     {
-        NONE,
-        ASCII,
-        CASCII,
-        UTF32,
-        CUTF32
+        NONE = 0,
+        ASCII = 2,
+        CASCII = 3,
+        UTF32 = 4,
+        CUTF32 = 5
     };
+
+	class xview;
 
     //==============================================================================
     class xview
@@ -37,7 +39,7 @@ namespace xcore
 
         static inline uchar32 get_char_unsafe(xstr const& str, s32 i)
         {
-            if (str.is_valid())
+            //if (str.is_valid())
             {
                 switch (str.m_data.m_type)
                 {
@@ -50,16 +52,26 @@ namespace xcore
             return '\0';
         }
 
-        static inline void set_char_unsafe(xstr& str, s32 i, uchar32 c)
+        static inline bool set_char_unsafe(xstr& str, s32 i, uchar32 c)
         {
-            if (str.is_valid())
+            switch (str.m_data.m_type)
             {
-                switch (str.m_data.m_type)
-                {
-                    case ASCII: str.m_data.m_runes._ascii.m_str[i] = c; break;
-                    case UTF32: str.m_data.m_runes._utf32.m_str[i] = c; break;
-                }
+                case ASCII: 
+					if (i < str.m_data.m_runes._ascii.cap())
+					{
+						str.m_data.m_runes._ascii.m_str[i] = c;
+						return true;
+					}
+					break;
+                case UTF32:
+					if (i < str.m_data.m_runes._utf32.cap())
+					{
+						str.m_data.m_runes._utf32.m_str[i] = c; 
+						return true;
+					}
+					break;
             }
+			return false;
         }
 
         static inline void set_char_unsafe(xstr::view& str, s32 i, uchar32 c)
@@ -76,7 +88,7 @@ namespace xcore
 
         static inline void set_char_end(xstr& str, s32 i)
         {
-            if (str.is_valid())
+            //if (str.is_valid())
             {
                 switch (str.m_data.m_type)
                 {
@@ -93,6 +105,44 @@ namespace xcore
                 }
             }
         }
+
+		static inline s32 get_runes_size(xstr::data* d)
+        {
+            switch (d->m_type)
+            {
+                case ASCII:
+                    return d->m_runes._ascii.size();
+                case CASCII:
+                    return d->m_runes._cascii.size();
+                case UTF32:
+                    return d->m_runes._utf32.size();
+                case CUTF32:
+                    return d->m_runes._cutf32.size();
+				default:
+					return 0;
+            }
+        }
+
+		static inline void clear_runes(xstr::data* d)
+		{
+            switch (d->m_type)
+            {
+                case ASCII:
+                    d->m_runes._ascii.clear();
+					break;
+                case CASCII:
+                    d->m_runes._cascii.clear();
+					break;
+                case UTF32:
+                    d->m_runes._utf32.clear();
+					break;
+                case CUTF32:
+                    d->m_runes._cutf32.clear();
+					break;
+				default:
+					break;
+            }
+		}
 
         static inline void set_char_end(xstr::view& str, s32 i)
         {
@@ -160,7 +210,7 @@ namespace xcore
 
             // Check if the movement doesn't invalidate this view
             s32 const to = v.m_view.to + move;
-            if (to > v.m_data->m_runes.size())
+            if (to > get_runes_size(v.m_data))
                 return false;
 
             // Movement is ok, new view is valid
@@ -207,17 +257,19 @@ namespace xcore
             while (src >= pos)
             {
                 uchar32 c = get_char_unsafe(r, src--);
-                set_char_unsafe(r, dst--);
+                set_char_unsafe(r, dst--, c);
             }
 
-            switch (str.m_data->m_type)
+            switch (r.m_data.m_type)
             {
                 case ASCII:
                     r.m_data.m_runes._ascii.m_end += len;
                     r.m_data.m_runes._ascii.m_end[0] = '\0';
-                    break case UTF32 : r.m_data.m_runes._utf32.m_end += len;
+                    break;
+				case UTF32:
+					r.m_data.m_runes._utf32.m_end += len;
                     r.m_data.m_runes._utf32.m_end[0] = '\0';
-                    break
+                    break;
             }
         }
 
@@ -229,16 +281,18 @@ namespace xcore
             while (src < r.size())
             {
                 uchar32 c = get_char_unsafe(r, src++);
-                set_char_unsafe(r, dst++);
+                set_char_unsafe(r, dst++, c);
             }
-            switch (str.m_data->m_type)
+            switch (r.m_data.m_type)
             {
                 case ASCII:
                     r.m_data.m_runes._ascii.m_end -= len;
                     r.m_data.m_runes._ascii.m_end[0] = '\0';
-                    break case UTF32 : r.m_data.m_runes._utf32.m_end -= len;
+                    break;
+				case UTF32:
+					r.m_data.m_runes._utf32.m_end -= len;
                     r.m_data.m_runes._utf32.m_end[0] = '\0';
-                    break
+                    break;
             }
         }
 
@@ -251,12 +305,12 @@ namespace xcore
 
             xview::resize(str, str.size() + insert.size() + 1);
             // TODO: See how much we can actually insert, since we cannot grow this string
-            insert_newspace(xview::get_runes(str), dst, insert.size());
+            insert_newspace(str, dst, insert.size());
             s32 src = 0;
             while (src < insert.size())
             {
-                uchar32 const c = xview::read_char_unsafe(insert, src);
-                xview::write_char_unsafe(str, dst, c);
+                uchar32 const c = xview::get_char_unsafe(insert, src);
+                xview::set_char_unsafe(str, dst, c);
                 ++src;
                 ++dst;
             }
@@ -268,7 +322,7 @@ namespace xcore
                 return;
             if (xview::str_has_view(str, selection))
             {
-                remove_selspace(str.m_data.m_runes, selection.m_view.from, selection.size());
+                remove_selspace(str, selection.m_view.from, selection.size());
                 // TODO: Decision to shrink the allocated memory of m_runes ?
 
                 xstr::range remove_range(selection.m_view.from, selection.m_view.to);
@@ -366,14 +420,16 @@ namespace xcore
             s32 const l = i - d;
             if (l > 0)
             {
-                switch (str.m_data->m_type)
+                switch (str.m_data.m_type)
                 {
                     case ASCII:
-                        r.m_data.m_runes._ascii.m_end -= l;
-                        r.m_data.m_runes._ascii.m_end[0] = '\0';
-                        break case UTF32 : r.m_data.m_runes._utf32.m_end -= l;
-                        r.m_data.m_runes._utf32.m_end[0] = '\0';
-                        break
+                        str.m_data.m_runes._ascii.m_end -= l;
+                        str.m_data.m_runes._ascii.m_end[0] = '\0';
+                        break;
+					case UTF32 : 
+						str.m_data.m_runes._utf32.m_end -= l;
+                        str.m_data.m_runes._utf32.m_end[0] = '\0';
+                        break;
                 }
             }
         }
@@ -573,6 +629,36 @@ namespace xcore
                 } while (iter != list);
             }
         }
+
+		static s32 vcprintf(xstr& str, xstr::view const& format, const x_va_list& args)
+		{
+			s32 len = 0;
+			if (str.m_data.m_type == format.m_data->m_type)
+			{
+				switch (str.m_data.m_type)
+				{
+					case ASCII:
+					{
+						ascii::crunes formatstr = ascii::crunes(format.m_data->m_runes._ascii);
+						len = ascii::vcprintf(formatstr, args);
+						xview::resize(str, str.size() + len);
+						ascii::vsprintf(str.m_data.m_runes._ascii, formatstr, args);
+						break;
+					}
+					case UTF32:
+					{
+						utf32::crunes formatstr = utf32::crunes(format.m_data->m_runes._utf32);
+						len = utf32::vcprintf(formatstr, args);
+						xview::resize(str, str.size() + len);
+						utf32::vsprintf(str.m_data.m_runes._utf32, formatstr, args);
+						break;
+					}
+					default:
+						break;
+				}
+			}
+			return len;
+		}
     };
 
     //------------------------------------------------------------------------------
@@ -745,7 +831,7 @@ namespace xcore
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    xstr::xstr(void) : m_data(nullptr) {}
+    xstr::xstr(void) : m_data() {}
 
     xstr::xstr(char* str, char* end, char* eos) : m_data()
     {
@@ -782,16 +868,16 @@ namespace xcore
         for (s32 i = 0; i < left.size(); i++, d++)
         {
             uchar32 const lc = xview::get_char_unsafe(left, i);
-            if (xview::set_char_unsafe(*this, d))
+            if (xview::set_char_unsafe(*this, d, lc))
                 break;
         }
         for (s32 i = 0; i < right.size(); i++, d++)
         {
             uchar32 const lc = xview::get_char_unsafe(right, i);
-            if (xview::set_char_unsafe(*this, d))
+            if (xview::set_char_unsafe(*this, d, lc))
                 break;
         }
-        xview::set_char_end(*this, d)
+        xview::set_char_end(*this, d);
     }
 
     xstr::~xstr() { xview::adjust_active_views(*this, xview::CLEARED, xstr::range(0, 0)); }
@@ -809,6 +895,18 @@ namespace xcore
             case CUTF32: return m_data.m_runes._cutf32.size() == 0;
         }
         return true;
+    }
+
+    bool xstr::is_valid() const
+    {
+        switch (m_data.m_type)
+        {
+            case ASCII: return m_data.m_runes._ascii.is_valid();
+            case CASCII: return m_data.m_runes._cascii.is_valid();
+            case UTF32: return m_data.m_runes._utf32.is_valid();
+            case CUTF32: return m_data.m_runes._cutf32.is_valid();
+        }
+        return false;
     }
 
     s32 xstr::size() const
@@ -835,7 +933,7 @@ namespace xcore
 
     void xstr::clear()
     {
-        m_data.m_runes.clear();
+		xview::clear_runes(&m_data);
         xview::adjust_active_views(*this, xview::CLEARED, xstr::range(0, 0));
     }
 
@@ -843,16 +941,7 @@ namespace xcore
     {
         xstr::view v(&m_data);
         v.m_view.from = 0;
-        v.m_view.to   = m_data.m_runes.size();
-        v.add();
-        return v;
-    }
-
-    xstr::view xstr::full() const
-    {
-        xstr::view v(&m_data);
-        v.m_view.from = 0;
-        v.m_view.to   = m_data.m_runes.size();
+        v.m_view.to   = xview::get_runes_size(&m_data);
         v.add();
         return v;
     }
@@ -878,26 +967,6 @@ namespace xcore
         return v;
     }
 
-    xstr::view xstr::operator()(s32 to) const
-    {
-        xstr::view v(&m_data);
-        v.m_view.from = 0;
-        v.m_view.to   = xmin(size(), xmax((s32)0, to));
-        v.add();
-        return v;
-    }
-
-    xstr::view xstr::operator()(s32 from, s32 to) const
-    {
-        xsort(from, to);
-        to   = xmin(to, size());
-        from = xmin(from, to);
-        xstr::view v(&m_data);
-        v.m_view.from = from;
-        v.m_view.to   = to;
-        v.add();
-        return v;
-    }
 
     uchar32 xstr::operator[](s32 index) const
     {
@@ -954,18 +1023,7 @@ namespace xcore
 
     void xstr::release()
     {
-        if (m_data.m_alloc != nullptr)
-        {
-            xview::adjust_active_views(*this, xview::RELEASED, xstr::range(0, 0));
-            m_data.m_alloc->deallocate(m_data.m_runes);
-        }
-    }
-
-    void xstr::clone(utf32::runes const& str, utf32::alloc* allocator)
-    {
-        m_data.m_alloc = allocator;
-        m_data.m_runes = m_data.m_alloc->allocate(0, str.size() + 1);
-        utf32::copy(str, m_data.m_runes);
+     
     }
 
     //------------------------------------------------------------------------------
@@ -1117,19 +1175,6 @@ namespace xcore
         return true;
     }
 
-    bool isQuoted(const xstr::view& str) { return isQuoted(str, '"'); }
-
-    bool isQuoted(const xstr::view& str, uchar32 inQuote) { return isDelimited(str, inQuote, inQuote); }
-
-    bool isDelimited(const xstr::view& str, uchar32 inLeft, uchar32 inRight)
-    {
-        if (str.is_empty())
-            return false;
-        s32 const first = 0;
-        s32 const last  = str.size() - 1;
-        return str[first] == inLeft && str[last] == inRight;
-    }
-
     uchar32 firstChar(const xstr::view& str)
     {
         s32 const first = 0;
@@ -1140,6 +1185,25 @@ namespace xcore
     {
         s32 const last = str.size() - 1;
         return str[last];
+    }
+
+	bool isQuoted(const xstr::view& str, uchar32 inQuote) 
+	{
+		return (firstChar(str)==inQuote && lastChar(str)==inQuote);
+	}
+
+    bool isQuoted(const xstr::view& str) 
+	{
+		return isQuoted(str, '"'); 
+	}
+
+    bool isDelimited(const xstr::view& str, uchar32 inLeft, uchar32 inRight)
+    {
+        if (str.is_empty())
+            return false;
+        s32 const first = 0;
+        s32 const last  = str.size() - 1;
+        return str[first] == inLeft && str[last] == inRight;
     }
 
     bool startsWith(const xstr::view& str, xstr::view const& start)
@@ -1189,7 +1253,7 @@ namespace xcore
             {
                 // So here we have a view with the size of the @find string on
                 // string @str that matches the string @find.
-                return v;
+				return v;
             }
             if (!xview::move_view(v, 1))
                 break;
@@ -1329,18 +1393,12 @@ namespace xcore
     s32 format(xstr& str, xstr::view const& format, const x_va_list& args)
     {
         str.clear();
-        s32 len = utf32::vcprintf(xview::get_runes(format), args);
-        xview::resize(str, len);
-        utf32::vsprintf(xview::get_runes(str), xview::get_runes(format), args);
-        return 0;
+		return xview::vcprintf(str, format, args);
     }
 
     s32 formatAdd(xstr& str, xstr::view const& format, const x_va_list& args)
     {
-        s32 len = utf32::vcprintf(xview::get_runes(format), args);
-        xview::resize(str, len);
-        utf32::vsprintf(xview::get_runes(str), xview::get_runes(format), args);
-        return 0;
+		return xview::vcprintf(str, format, args);
     }
 
     void insert(xstr& str, xstr::view const& pos, xstr::view const& insert) { xview::insert(str, pos, insert); }
@@ -1384,8 +1442,8 @@ namespace xcore
     {
         for (s32 i = 0; i < str.size(); i++)
         {
-            uchar32* cp = xview::get_ptr_unsafe(str, i);
-            *cp         = utf32::to_upper(*cp);
+			uchar const c = xview::get_char_unsafe(str, i);
+			xview::set_char_unsafe(str, i, utf32::to_upper(c));
         }
     }
 
@@ -1393,8 +1451,8 @@ namespace xcore
     {
         for (s32 i = 0; i < str.size(); i++)
         {
-            uchar32* cp = xview::get_ptr_unsafe(str, i);
-            *cp         = utf32::to_lower(*cp);
+			uchar const c = xview::get_char_unsafe(str, i);
+			xview::set_char_unsafe(str, i, utf32::to_lower(c));
         }
     }
 
