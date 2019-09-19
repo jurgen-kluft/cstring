@@ -23,7 +23,7 @@ upper(ascii_substring);    // 'ascii' to 'ASCII'
 ascii_substring = insert_after(str, ascii_substring, xstring(" string"));
 
 // So now @str = "This is an ASCII string converted to UTF-32 when constructed"
-// And @ascii_substring = ""
+// And @ascii_substring = "ASCII"
 ```
 
 One thing to keep in mind is that a view can be invalidated when the actual string is resized

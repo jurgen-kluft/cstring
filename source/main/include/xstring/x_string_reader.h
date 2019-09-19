@@ -19,8 +19,6 @@ namespace xcore
         union crunes {
             inline crunes() : _ascii() {}
             ascii::crunes _ascii;
-            utf8::crunes  _utf8;
-            utf16::crunes _utf16;
             utf32::crunes _utf32;
         };
         crunes m_runes;
@@ -28,8 +26,8 @@ namespace xcore
 
     public:
         string_reader();
-        string_reader(const char* str);
-        string_reader(utf32::pcrune str);
+        string_reader(ascii::pcrune str, ascii::pcrune end);
+        string_reader(utf32::pcrune str, utf32::pcrune end);
         string_reader(const string_writer& chars);
         string_reader(const string_reader& chars);
         string_reader(string_reader const& from, string_reader const& until);
