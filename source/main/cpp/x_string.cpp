@@ -899,16 +899,16 @@ namespace xcore
         m_view.to   = 0;
     }
 
-    utf32::crunes xstring::view::get_runes() const
+    utf32::crunes_t xstring::view::get_runes() const
     {
         if (m_data->m_runes.is_empty())
         {
-            utf32::crunes r(m_data->m_runes);
+            utf32::crunes_t r(m_data->m_runes);
             r.m_str += m_view.from;
             r.m_end = r.m_str + m_view.size();
             return r;
         }
-        return utf32::crunes();
+        return utf32::crunes_t();
     }
 
     //------------------------------------------------------------------------------

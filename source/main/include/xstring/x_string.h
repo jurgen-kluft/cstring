@@ -69,7 +69,7 @@ namespace xcore
 			void		  add();
 			void		  rem();
 			void		  invalidate();
-			utf32::crunes get_runes() const;
+			utf32::crunes_t get_runes() const;
 
 			xstring::data* m_data;
 			range		   m_view;

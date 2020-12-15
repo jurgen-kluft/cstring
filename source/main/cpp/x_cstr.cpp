@@ -639,7 +639,7 @@ namespace xcore
 				{
 					case ASCII:
 					{
-						ascii::crunes formatstr = ascii::crunes(format.m_data->m_runes._ascii);
+						ascii::crunes_t formatstr = ascii::crunes_t(format.m_data->m_runes._ascii);
 						len = ascii::vcprintf(formatstr, args);
 						xview::resize(str, str.size() + len);
 						ascii::vsprintf(str.m_data.m_runes._ascii, formatstr, args);
@@ -647,7 +647,7 @@ namespace xcore
 					}
 					case UTF32:
 					{
-						utf32::crunes formatstr = utf32::crunes(format.m_data->m_runes._utf32);
+						utf32::crunes_t formatstr = utf32::crunes_t(format.m_data->m_runes._utf32);
 						len = utf32::vcprintf(formatstr, args);
 						xview::resize(str, str.size() + len);
 						utf32::vsprintf(str.m_data.m_runes._utf32, formatstr, args);
@@ -842,7 +842,7 @@ namespace xcore
     xstr::xstr(const char* str, const char* end) : m_data()
     {
         m_data.m_type          = CASCII;
-        m_data.m_runes._cascii = ascii::crunes(str, end);
+        m_data.m_runes._cascii = ascii::crunes_t(str, end);
     }
 
     xstr::xstr(utf32::rune* str, utf32::rune* end, utf32::rune* eos) : m_data()
@@ -854,7 +854,7 @@ namespace xcore
     xstr::xstr(const utf32::rune* str, const utf32::rune* end) : m_data()
     {
         m_data.m_type          = CUTF32;
-        m_data.m_runes._cutf32 = utf32::crunes(str, end);
+        m_data.m_runes._cutf32 = utf32::crunes_t(str, end);
     }
 
     xstr::xstr(const xstr& other) : m_data(other.m_data) {}

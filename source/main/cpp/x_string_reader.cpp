@@ -26,7 +26,7 @@ namespace xcore
     {
         if (str != nullptr)
         {
-            m_runes._ascii = ascii::crunes(str);
+            m_runes._ascii = ascii::crunes_t(str);
         }
     }
 
@@ -35,7 +35,7 @@ namespace xcore
     {
         if (str != nullptr)
         {
-            m_runes._utf32 = utf32::crunes(str);
+            m_runes._utf32 = utf32::crunes_t(str);
         }
     }
 

@@ -18,8 +18,8 @@ namespace xcore
 
         union crunes {
             inline crunes() : _ascii() {}
-            ascii::crunes _ascii;
-            utf32::crunes _utf32;
+            ascii::crunes_t _ascii;
+            utf32::crunes_t _utf32;
         };
         crunes m_runes;
         s32    m_type;

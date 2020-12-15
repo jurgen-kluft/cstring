@@ -109,8 +109,8 @@ namespace xcore
     		mutable view* m_views;
             union runes {
                 inline runes() : _ascii() {}
-                ascii::crunes  _cascii;
-                utf32::crunes  _cutf32;
+                ascii::crunes_t  _cascii;
+                utf32::crunes_t  _cutf32;
                 ascii::runes   _ascii;
                 utf32::runes   _utf32;
             };
