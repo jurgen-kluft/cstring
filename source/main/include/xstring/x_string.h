@@ -34,8 +34,8 @@ namespace xcore
 
 	public:
 		xstring();
-		xstring(utf32::alloc* allocator);
-		xstring(utf32::alloc* allocator, const char* str);
+		xstring(runes_alloc_t* allocator);
+		xstring(runes_alloc_t* allocator, const char* str);
 		xstring(const char* str);
 		xstring(xstring const& other);
 		~xstring();
@@ -69,7 +69,7 @@ namespace xcore
 			void		  add();
 			void		  rem();
 			void		  invalidate();
-			utf32::crunes_t get_runes() const;
+			crunes_t get_runes() const;
 
 			xstring::data* m_data;
 			range		   m_view;
@@ -104,24 +104,24 @@ namespace xcore
 
 		operator view() { return full(); }
 
-		static utf32::alloc* s_allocator;
+		static runes_alloc_t* s_allocator;
 
 	protected:
 		friend struct view;
 		friend class xview;
 
-		xstring(utf32::alloc* mem, s32 size);
+		xstring(runes_alloc_t* mem, s32 size);
 
 		void release();
-		void clone(utf32::runes const& str, utf32::alloc* allocator);
+		void clone(runes_t const& str, runes_alloc_t* allocator);
 
 		struct data
 		{
 			inline data() : m_alloc(nullptr), m_runes(), m_views(nullptr) {}
-			inline data(utf32::alloc* a) : m_alloc(a), m_runes(), m_views(nullptr) {}
-			utf32::alloc* m_alloc;
-			utf32::runes  m_runes;
-			mutable view* m_views;
+			inline data(runes_alloc_t* a) : m_alloc(a), m_runes(), m_views(nullptr) {}
+			runes_alloc_t* m_alloc;
+			runes_t        m_runes;
+			mutable view*  m_views;
 		};
 		mutable data m_data;
 	};

@@ -12,16 +12,16 @@ namespace xcore
     class xview
     {
     public:
-        static inline uchar32* get_ptr_unsafe(xstring::view& str, s32 i) { return &str.m_data->m_runes.m_str[i]; }
-        static inline uchar32  get_char_unsafe(xstring::view const& str, s32 i) { return str.m_data->m_runes.m_str[i]; }
-        static inline uchar32  get_char_unsafe(xstring const& str, s32 i) { return str.m_data.m_runes.m_str[i]; }
+        static inline uchar32* get_ptr_unsafe(xstring::view& str, s32 i) { return &str.m_data->m_runes.m_runes.m_utf32.m_str[i]; }
+        static inline uchar32  get_char_unsafe(xstring::view const& str, s32 i) { return str.m_data->m_runes.m_runes.m_utf32.m_str[i]; }
+        static inline uchar32  get_char_unsafe(xstring const& str, s32 i) { return str.m_data.m_runes.m_runes.m_utf32.m_str[i]; }
 
-        static inline void set_char_unsafe(xstring& str, s32 i, uchar32 c) { str.m_data.m_runes.m_str[i] = c; }
-        static inline void set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_data->m_runes.m_str[i] = c; }
+        static inline void set_char_unsafe(xstring& str, s32 i, uchar32 c) { str.m_data.m_runes.m_runes.m_utf32.m_str[i] = c; }
+        static inline void set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_data->m_runes.m_runes.m_utf32.m_str[i] = c; }
 
-        static inline utf32::runes& get_runes(xstring& str) { return str.m_data.m_runes; }
-        static inline utf32::runes const& get_runes(xstring const& str) { return str.m_data.m_runes; }
-        static inline utf32::runes const& get_runes(xstring::view const& str) { return str.m_data->m_runes; }
+        static inline runes_t& get_runes(xstring& str) { return str.m_data.m_runes; }
+        static inline runes_t const& get_runes(xstring const& str) { return str.m_data.m_runes; }
+        static inline runes_t const& get_runes(xstring::view const& str) { return str.m_data->m_runes; }
 
         static inline bool str_has_view(xstring const& str, xstring::view const& vw) { return (vw.m_data == &str.m_data); }
 
@@ -29,8 +29,8 @@ namespace xcore
         {
             if (str.cap() < new_size)
             {
-                utf32::runes nrunes = str.m_data.m_alloc->allocate(0, new_size);
-                utf32::copy(str.m_data.m_runes, nrunes);
+                runes_t nrunes = str.m_data.m_alloc->allocate(0, new_size);
+                copy(str.m_data.m_runes, nrunes);
 				str.m_data.m_alloc->deallocate(str.m_data.m_runes);
                 str.m_data.m_runes = nrunes;
             }
@@ -115,29 +115,29 @@ namespace xcore
             return v;
         }
 
-		static void insert_newspace(utf32::runes& r, s32 pos, s32 len)
+		static void insert_newspace(runes_t& r, s32 pos, s32 len)
         {
             s32 src = r.size() - 1;
             s32 dst = src + len;
             while (src >= pos)
             {
-                r.m_str[dst--] = r.m_str[src--];
+                r.m_runes.m_utf32.m_str[dst--] = r.m_runes.m_utf32.m_str[src--];
             }
-            r.m_end += len;
-            r.m_end[0] = '\0';
+            r.m_runes.m_utf32.m_end += len;
+            r.m_runes.m_utf32.m_end[0] = '\0';
         }
 
-        static void remove_selspace(utf32::runes& r, s32 pos, s32 len)
+        static void remove_selspace(runes_t& r, s32 pos, s32 len)
         {
             s32       src = pos + len;
             s32       dst = pos;
             s32 const end = pos + len;
             while (src < r.size())
             {
-                r.m_str[dst++] = r.m_str[src++];
+                r.m_runes.m_utf32.m_str[dst++] = r.m_runes.m_utf32.m_str[src++];
             }
-            r.m_end -= len;
-            r.m_end[0] = '\0';
+            r.m_runes.m_utf32.m_end -= len;
+            r.m_runes.m_utf32.m_end[0] = '\0';
         }
 
         static void insert(xstring& str, xstring::view const& pos, xstring::view const& insert)
@@ -218,7 +218,7 @@ namespace xcore
                 s32 const end = remove_from + replace.size();
                 while (src < replace.size())
                 {
-                    str.m_data.m_runes.m_str[dst++] = replace[src++];
+                    str.m_data.m_runes.m_runes.m_utf32.m_str[dst++] = replace[src++];
                 }
             }
         }
@@ -262,24 +262,20 @@ namespace xcore
             s32 const l = i - d;
             if (l> 0)
             {
-                str.m_data.m_runes.m_end -= l;
-                str.m_data.m_runes.m_end[0] = '\0';
+                str.m_data.m_runes.m_runes.m_utf32.m_end -= l;
+                str.m_data.m_runes.m_runes.m_utf32.m_end[0] = '\0';
             }
         }
 
         static xstring::view get_default() { return xstring::view(nullptr); }
 
-
-		enum 
-		{
-			NONE     = 0,
-			LEFT     = BU16(0000,1000,0000,0000),
-			RIGHT    = BU16(0000,0000,0001,0000),
-			INSIDE   = BU16(0000,0001,1000,0000),
-			MATCH    = BU16(0000,0011,1100,0000),
-			OVERLAP  = BU16(0000,0111,1110,0000),
-			ENVELOPE = BU16(0011,0111,1110,1100),
-		};
+		static const s32 NONE     = 0;
+		static const s32 LEFT     = 0x0800; // binary(0000,1000,0000,0000);
+		static const s32 RIGHT    = 0x0010; // binary(0000,0000,0001,0000);
+		static const s32 INSIDE   = 0x0180; // binary(0000,0001,1000,0000);
+		static const s32 MATCH    = 0x03C0; // binary(0000,0011,1100,0000);
+		static const s32 OVERLAP  = 0x07E0; // binary(0000,0111,1110,0000);
+		static const s32 ENVELOPE = 0x37EC; // binary(0011,0111,1110,1100);
 
 		static s32 compare(xstring::range const& lhs, xstring::range const& rhs)
 		{
@@ -734,10 +730,10 @@ namespace xcore
     {
         if (m_data->m_alloc != nullptr && !m_data->m_runes.is_empty())
         {
-            utf32::runes dstrunes = m_data->m_alloc->allocate(0, m_view.size());
-            utf32::runes srcrunes = m_data->m_runes;
-            srcrunes.m_str += m_view.from;
-            utf32::copy(srcrunes, dstrunes);
+            runes_t dstrunes = m_data->m_alloc->allocate(0, m_view.size());
+            runes_t srcrunes = m_data->m_runes;
+            srcrunes.m_runes.m_utf32.m_str += m_view.from;
+            copy(srcrunes, dstrunes);
 
             xstring str;
             str.m_data.m_alloc = m_data->m_alloc;
@@ -795,7 +791,7 @@ namespace xcore
     {
         if (index < 0 || index >= m_view.size())
             return '\0';
-        return m_data->m_runes.m_str[m_view.from + index];
+        return m_data->m_runes.m_runes.m_utf32.m_str[m_view.from + index];
     }
 
     xstring::view& xstring::view::operator=(xstring::view const& other)
@@ -811,10 +807,10 @@ namespace xcore
     {
         if (m_view.size() == other.m_view.size())
         {
-            uchar32 const* tsrc = m_data->m_runes.m_str + m_view.from;
-            uchar32 const* tend = m_data->m_runes.m_str + m_view.to;
-            uchar32 const* osrc = other.m_data->m_runes.m_str + other.m_view.from;
-            uchar32 const* oend = other.m_data->m_runes.m_str + other.m_view.to;
+            uchar32 const* tsrc = m_data->m_runes.m_runes.m_utf32.m_str + m_view.from;
+            uchar32 const* tend = m_data->m_runes.m_runes.m_utf32.m_str + m_view.to;
+            uchar32 const* osrc = other.m_data->m_runes.m_runes.m_utf32.m_str + other.m_view.from;
+            uchar32 const* oend = other.m_data->m_runes.m_runes.m_utf32.m_str + other.m_view.to;
             while (tsrc < tend)
             {
                 if (*tsrc++ != *osrc++)
@@ -829,10 +825,10 @@ namespace xcore
     {
         if (m_view.size() == other.m_view.size())
         {
-            uchar32 const* tsrc = m_data->m_runes.m_str + m_view.from;
-            uchar32 const* tend = m_data->m_runes.m_str + m_view.to;
-            uchar32 const* osrc = other.m_data->m_runes.m_str + other.m_view.from;
-            uchar32 const* oend = other.m_data->m_runes.m_str + other.m_view.to;
+            uchar32 const* tsrc = m_data->m_runes.m_runes.m_utf32.m_str + m_view.from;
+            uchar32 const* tend = m_data->m_runes.m_runes.m_utf32.m_str + m_view.to;
+            uchar32 const* osrc = other.m_data->m_runes.m_runes.m_utf32.m_str + other.m_view.from;
+            uchar32 const* oend = other.m_data->m_runes.m_runes.m_utf32.m_str + other.m_view.to;
             while (tsrc < tend)
             {
                 if (*tsrc++ != *osrc++)
@@ -899,50 +895,56 @@ namespace xcore
         m_view.to   = 0;
     }
 
-    utf32::crunes_t xstring::view::get_runes() const
+    crunes_t xstring::view::get_runes() const
     {
         if (m_data->m_runes.is_empty())
         {
-            utf32::crunes_t r(m_data->m_runes);
-            r.m_str += m_view.from;
-            r.m_end = r.m_str + m_view.size();
+            crunes_t r(m_data->m_runes);
+            r.m_runes.m_utf32.m_str += m_view.from;
+            r.m_runes.m_utf32.m_end = r.m_runes.m_utf32.m_str + m_view.size();
             return r;
         }
-        return utf32::crunes_t();
+        return crunes_t();
     }
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
-    class utf32_runes_allocator : public utf32::alloc
+    class runes_allocator : public runes_alloc_t
     {
     public:
-        virtual utf32::runes allocate(s32 len, s32 cap)
+        virtual runes_t allocate(s32 len, s32 cap, s32 type)
         {
             if (len > cap)
                 cap = len;
 
-            utf32::runes r;
-            r.m_str          = (utf32::prune)xalloc::get_system()->allocate(cap * sizeof(utf32::rune), sizeof(void*));
-            r.m_end          = r.m_str + len;
-            r.m_eos          = r.m_str + cap - 1;
-            r.m_end[0]       = '\0';
-            r.m_end[cap - 1] = '\0';
+			ASSERT(type == utf32::TYPE);
+			u32 const runesize = 4;
+			utf32::prune str = (utf32::prune)xalloc::get_system()->allocate(cap * runesize, sizeof(void*));
+
+            runes_t r;
+			r.m_type = utf32::TYPE;
+			r.m_runes.m_utf32.m_bos          = str;
+			r.m_runes.m_utf32.m_str          = str;
+            r.m_runes.m_utf32.m_end          = str + len;
+            r.m_runes.m_utf32.m_eos          = str + cap - 1;
+            r.m_runes.m_utf32.m_end[0]       = '\0';
+            r.m_runes.m_utf32.m_end[cap - 1] = '\0';
             return r;
         }
 
-        virtual void deallocate(utf32::runes& r)
+        virtual void deallocate(runes_t& r)
         {
-            if (r.m_str != nullptr)
+            if (r.m_runes.m_utf32.m_bos != nullptr)
             {
-                xalloc::get_system()->deallocate(r.m_str);
-                r = utf32::runes();
+                xalloc::get_system()->deallocate(r.m_runes.m_utf32.m_bos);
+                r = runes_t();
             }
         }
     };
 
-    static utf32_runes_allocator s_utf32_runes_allocator;
-    utf32::alloc*                xstring::s_allocator = &s_utf32_runes_allocator;
+    static runes_allocator s_utf32_runes_allocator;
+    runes_alloc_t*         xstring::s_allocator = &s_utf32_runes_allocator;
 
 
     //------------------------------------------------------------------------------
@@ -951,14 +953,14 @@ namespace xcore
 
     xstring::xstring(void) : m_data(s_allocator) {}
 
-    xstring::xstring(utf32::alloc* allocator) : m_data(allocator) {}
+    xstring::xstring(runes_alloc_t* allocator) : m_data(allocator) {}
 
-    xstring::xstring(utf32::alloc* allocator, const char* str) : m_data(allocator)
+    xstring::xstring(runes_alloc_t* allocator, const char* str) : m_data(allocator)
     {
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
         m_data.m_runes  = m_data.m_alloc->allocate(0, len);
-        ascii_to_utf32(str, end, m_data.m_runes.m_end, m_data.m_runes.m_eos);
+        ascii_to_utf32(str, end, m_data.m_runes.m_runes.m_utf32.m_end, m_data.m_runes.m_runes.m_utf32.m_eos);
     }
 
     xstring::xstring(const char* str) : m_data(s_allocator)
@@ -966,10 +968,10 @@ namespace xcore
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
         m_data.m_runes  = m_data.m_alloc->allocate(0, len);
-        ascii_to_utf32(str, end, m_data.m_runes.m_end, m_data.m_runes.m_eos);
+        ascii_to_utf32(str, end, m_data.m_runes.m_runes.m_utf32.m_end, m_data.m_runes.m_runes.m_utf32.m_eos);
     }
 
-    xstring::xstring(utf32::alloc* _allocator, s32 _len) : m_data(_allocator)
+    xstring::xstring(runes_alloc_t* _allocator, s32 _len) : m_data(_allocator)
     {
         m_data.m_runes = m_data.m_alloc->allocate(0, _len);
     }
@@ -979,7 +981,7 @@ namespace xcore
         if (m_data.m_alloc != nullptr && !other.m_data.m_runes.is_empty())
         {
             m_data.m_runes = m_data.m_alloc->allocate(0, other.m_data.m_runes.size() + 1);
-            utf32::copy(other.m_data.m_runes, m_data.m_runes);
+            copy(other.m_data.m_runes, m_data.m_runes);
         }
     }
 
@@ -990,7 +992,7 @@ namespace xcore
         {
             s32 cap        = left.size() + right.size() + 1;
             m_data.m_runes = m_data.m_alloc->allocate(0, cap);
-            utf32::concatenate(m_data.m_runes, left.get_runes(), right.get_runes(), m_data.m_alloc, 16);
+            concatenate(m_data.m_runes, left.get_runes(), right.get_runes(), m_data.m_alloc, 16);
         }
     }
 
@@ -1082,7 +1084,7 @@ namespace xcore
     {
         if (index >= m_data.m_runes.size())
             return '\0';
-        return m_data.m_runes.m_str[index];
+        return m_data.m_runes.m_runes.m_utf32.m_str[index];
     }
 
     xstring& xstring::operator=(const xstring& other)
@@ -1142,11 +1144,11 @@ namespace xcore
         }
     }
 
-    void xstring::clone(utf32::runes const& str, utf32::alloc* allocator)
+    void xstring::clone(runes_t const& str, runes_alloc_t* allocator)
     {
         m_data.m_alloc = allocator;
         m_data.m_runes = m_data.m_alloc->allocate(0, str.size() + 1);
-        utf32::copy(str, m_data.m_runes);
+        copy(str, m_data.m_runes);
     }
 
     //------------------------------------------------------------------------------
@@ -1245,7 +1247,7 @@ namespace xcore
         for (s32 i = 0; i < str.size(); i++)
         {
             uchar32 const c = str[i];
-            if (utf32::is_lower(c))
+            if (is_lower(c))
                 return false;
         }
         return true;
@@ -1256,7 +1258,7 @@ namespace xcore
         for (s32 i = 0; i < str.size(); i++)
         {
             uchar32 const c = xview::get_char_unsafe(str, i);
-            if (utf32::is_upper(c))
+            if (is_upper(c))
                 return false;
         }
         return true;
@@ -1271,25 +1273,25 @@ namespace xcore
             while (i < str.size())
             {
                 c = xview::get_char_unsafe(str, i);
-                if (!utf32::is_space(c))
+                if (!is_space(c))
                     break;
                 i += 1;
             }
 
-            if (utf32::is_upper(c))
+            if (is_upper(c))
             {
                 i += 1;
                 while (i < str.size())
                 {
                     c = xview::get_char_unsafe(str, i);
-                    if (utf32::is_space(c))
+                    if (is_space(c))
                         break;
-                    if (utf32::is_upper(c))
+                    if (is_upper(c))
                         return false;
                     i += 1;
                 }
             }
-            else if (utf32::is_alpha(c))
+            else if (is_alpha(c))
             {
                 return false;
             }
@@ -1510,17 +1512,17 @@ namespace xcore
     s32 format(xstring& str, xstring::view const& format, const x_va_list& args)
     {
         str.clear();
-        s32 len = utf32::vcprintf(xview::get_runes(format), args);
+        s32 len = vcprintf(xview::get_runes(format), args);
         xview::resize(str, len);
-        utf32::vsprintf(xview::get_runes(str), xview::get_runes(format), args);
+        vsprintf(xview::get_runes(str), xview::get_runes(format), args);
         return 0;
     }
 
     s32 formatAdd(xstring& str, xstring::view const& format, const x_va_list& args)
     {
-        s32 len = utf32::vcprintf(xview::get_runes(format), args);
+        s32 len = vcprintf(xview::get_runes(format), args);
         xview::resize(str, len);
-        utf32::vsprintf(xview::get_runes(str), xview::get_runes(format), args);
+        vsprintf(xview::get_runes(str), xview::get_runes(format), args);
         return 0;
     }
 
@@ -1578,7 +1580,7 @@ namespace xcore
         for (s32 i = 0; i < str.size(); i++)
         {
             uchar32* cp = xview::get_ptr_unsafe(str, i);
-            *cp         = utf32::to_upper(*cp);
+            *cp         = to_upper(*cp);
         }
     }
 
@@ -1587,7 +1589,7 @@ namespace xcore
         for (s32 i = 0; i < str.size(); i++)
         {
             uchar32* cp = xview::get_ptr_unsafe(str, i);
-            *cp         = utf32::to_lower(*cp);
+            *cp         = to_lower(*cp);
         }
     }
 
@@ -1600,20 +1602,20 @@ namespace xcore
         {
             uchar32 c = xview::get_char_unsafe(str, i);
             uchar32 d = c;
-            if (utf32::is_alpha(c))
+            if (is_alpha(c))
             {
                 if (prev_is_space)
                 {
-                    c = utf32::to_upper(c);
+                    c = to_upper(c);
                 }
                 else
                 {
-                    c = utf32::to_lower(c);
+                    c = to_lower(c);
                 }
             }
             else
             {
-                prev_is_space = utf32::is_space(c);
+                prev_is_space = is_space(c);
             }
 
             if (c != d)
@@ -1632,15 +1634,15 @@ namespace xcore
         {
             uchar32 c = xview::get_char_unsafe(str, i);
             uchar32 d = c;
-            if (utf32::is_alpha(c))
+            if (is_alpha(c))
             {
                 if (prev_is_space)
                 {
-                    c = utf32::to_upper(c);
+                    c = to_upper(c);
                 }
                 else
                 {
-                    c = utf32::to_lower(c);
+                    c = to_lower(c);
                 }
             }
             else
