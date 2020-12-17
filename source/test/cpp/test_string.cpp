@@ -5,11 +5,11 @@
 
 using namespace xcore;
 
-	class test_utf32_runes_allocator : public utf32::alloc
+	class test_utf32_runes_allocator : public runes_alloc_t
 	{
-		xalloc* m_allocator;
+		alloc_t* m_allocator;
 	public:
-		test_utf32_runes_allocator (xalloc* allocator) : m_allocator(allocator) {}
+		test_utf32_runes_allocator (alloc_t* allocator) : m_allocator(allocator) {}
 
 		virtual utf32::runes allocate(s32 len, s32 cap)
 		{
@@ -37,7 +37,7 @@ using namespace xcore;
 		XCORE_CLASS_PLACEMENT_NEW_DELETE
 	};
 
-	extern xcore::xalloc* gTestAllocator;
+	extern xcore::alloc_t* gTestAllocator;
 	test_utf32_runes_allocator* gTestUtf32Allocator = nullptr;
 
 UNITTEST_SUITE_BEGIN(test_xstring)

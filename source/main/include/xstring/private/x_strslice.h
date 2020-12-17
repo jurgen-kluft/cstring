@@ -15,22 +15,22 @@ namespace xcore
 {
 	//==============================================================================
 	// String Slice
-	// A reference counted slice owning an array of runes with a view/window (from,to).
+	// A reference counted slice_t owning an array of runes with a view/window (from,to).
 	//==============================================================================
 	struct strslice
 	{
         struct data;
 						strslice();
-						strslice(xalloc* allocator, s32 _count);
+						strslice(alloc_t* allocator, s32 _count);
 						strslice(data* data, s32 from, s32 to);
 
-		static void		alloc(strslice& slice, xalloc* allocator, s32 _count);
+		static void		alloc(strslice& slice_t, alloc_t* allocator, s32 _count);
 		strslice		construct(s32 _count) const;
 
 		s32				size() const;
 		s32				refcnt() const;
 
-		slice			obtain() const;
+		slice_t			obtain() const;
 		void			release();
 
 		void			resize(s32 count);
@@ -64,7 +64,7 @@ namespace xcore
             data*   		    incref() const;
             data*	    		decref();
 
-            // This function makes a new 'slice_data' with content copied from this
+            // This function makes a new 'slice_data_t' with content copied from this
             data*	    		copy(s32 from, s32 to);
 
             // These functions 'reallocate' this
@@ -72,11 +72,11 @@ namespace xcore
             data*	    		insert(s32 at, s32 count);
             data*	    		remove(s32 at, s32 count);
 
-            static data*	    alloc(xalloc* allocator, s32& to_count);
+            static data*	    alloc(alloc_t* allocator, s32& to_count);
 
             mutable s32			mRefCount;
             s32					mItemCount;					/// Count of total items
-            xalloc*				mAllocator;
+            alloc_t*				mAllocator;
             uchar32*			mData;
         };
 

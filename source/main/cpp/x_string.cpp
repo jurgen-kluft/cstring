@@ -920,7 +920,7 @@ namespace xcore
 
 			ASSERT(type == utf32::TYPE);
 			u32 const runesize = 4;
-			utf32::prune str = (utf32::prune)xalloc::get_system()->allocate(cap * runesize, sizeof(void*));
+			utf32::prune str = (utf32::prune)alloc_t::get_system()->allocate(cap * runesize, sizeof(void*));
 
             runes_t r;
 			r.m_type = utf32::TYPE;
@@ -937,7 +937,7 @@ namespace xcore
         {
             if (r.m_runes.m_utf32.m_bos != nullptr)
             {
-                xalloc::get_system()->deallocate(r.m_runes.m_utf32.m_bos);
+                alloc_t::get_system()->deallocate(r.m_runes.m_utf32.m_bos);
                 r = runes_t();
             }
         }
@@ -1509,7 +1509,7 @@ namespace xcore
         }
     }
 
-    s32 format(xstring& str, xstring::view const& format, const x_va_list& args)
+    s32 format(xstring& str, xstring::view const& format, const va_list_t& args)
     {
         str.clear();
         s32 len = vcprintf(xview::get_runes(format), args);
@@ -1518,7 +1518,7 @@ namespace xcore
         return 0;
     }
 
-    s32 formatAdd(xstring& str, xstring::view const& format, const x_va_list& args)
+    s32 formatAdd(xstring& str, xstring::view const& format, const va_list_t& args)
     {
         s32 len = vcprintf(xview::get_runes(format), args);
         xview::resize(str, len);

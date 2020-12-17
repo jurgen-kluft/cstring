@@ -16,9 +16,9 @@
 //==============================================================================
 namespace xcore
 {
-    class x_va;
-    class x_va_list;
-    class xalloc;
+    class va_t;
+    class va_list_t;
+    class alloc_t;
 
 	class xstring
 	{
@@ -145,8 +145,8 @@ namespace xcore
 	bool contains(const xstring::view& inStr, uchar32 inContains);
 	bool contains(const xstring::view& inStr, const xstring::view& inContains);
 
-	s32 format(xstring&, xstring::view const& formatString, const x_va_list& args);
-	s32 formatAdd(xstring&, xstring::view const& formatString, const x_va_list& args);
+	s32 format(xstring&, xstring::view const& formatString, const va_list_t& args);
+	s32 formatAdd(xstring&, xstring::view const& formatString, const va_list_t& args);
 
 	void upper(xstring::view& inStr);
 	void lower(xstring::view& inStr);
