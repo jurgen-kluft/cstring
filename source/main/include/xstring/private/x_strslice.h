@@ -2,52 +2,50 @@
 #define __XSTRING_STRING_SLICE_H__
 #include "xbase/x_target.h"
 #ifdef USE_PRAGMA_ONCE
-#pragma once
+#    pragma once
 #endif
 
-//==============================================================================
-// INCLUDES
-//==============================================================================
 #include "xbase/x_debug.h"
 #include "xbase/x_allocator.h"
 
 namespace xcore
 {
-	//==============================================================================
-	// String Slice
-	// A reference counted slice_t owning an array of runes with a view/window (from,to).
-	//==============================================================================
-	struct strslice
-	{
+    //==============================================================================
+    // String Slice
+    // A reference counted slice_t owning an array of runes with a view/window (from,to).
+    //==============================================================================
+    struct strslice
+    {
         struct data;
-						strslice();
-						strslice(alloc_t* allocator, s32 _count);
-						strslice(data* data, s32 from, s32 to);
 
-		static void		alloc(strslice& slice_t, alloc_t* allocator, s32 _count);
-		strslice		construct(s32 _count) const;
+        strslice();
+        strslice(alloc_t* allocator, s32 _count);
+        strslice(data* data, s32 from, s32 to);
 
-		s32				size() const;
-		s32				refcnt() const;
+        static void alloc(strslice& slice_t, alloc_t* allocator, s32 _count);
+        strslice    construct(s32 _count) const;
 
-		slice_t			obtain() const;
-		void			release();
+        s32 size() const;
+        s32 refcnt() const;
 
-		void			resize(s32 count);
-		void			insert(s32 count);
-		void			remove(s32 count);
+        slice_t obtain() const;
+        void    release();
 
-		strslice		view(s32 from, s32 to) const;
-		bool			split(s32 mid, strslice& left, strslice& right) const;
+        void resize(s32 count);
+        void insert(s32 count);
+        void remove(s32 count);
 
-		uchar32 *		begin();
-		uchar32 const*	begin() const;
-		uchar32 *		end();
-		uchar32 const*	end() const;
-		uchar32 const*	eos() const;
+        strslice view(s32 from, s32 to) const;
+        bool     split(s32 mid, strslice& left, strslice& right) const;
 
-		uchar32 *		at(s32 index);
-		uchar32 const*	at(s32 index) const;
+        uchar32*       begin();
+        uchar32 const* begin() const;
+        uchar32*       end();
+        uchar32 const* end() const;
+        uchar32 const* eos() const;
+
+        uchar32*       at(s32 index);
+        uchar32 const* at(s32 index) const;
 
         // ----------------------------------------------------------------------------------------
         //   SLICE REFERENCE COUNTED DATA
@@ -58,31 +56,31 @@ namespace xcore
             data(s32 _count);
             data(xbyte* data, s32 _count);
 
-            static data         sNull;
+            static data sNull;
 
-            data*   	    	incref();
-            data*   		    incref() const;
-            data*	    		decref();
+            data* incref();
+            data* incref() const;
+            data* decref();
 
             // This function makes a new 'slice_data_t' with content copied from this
-            data*	    		copy(s32 from, s32 to);
+            data* copy(s32 from, s32 to);
 
             // These functions 'reallocate' this
-            data*	    		resize(s32 from, s32 to);
-            data*	    		insert(s32 at, s32 count);
-            data*	    		remove(s32 at, s32 count);
+            data* resize(s32 from, s32 to);
+            data* insert(s32 at, s32 count);
+            data* remove(s32 at, s32 count);
 
-            static data*	    alloc(alloc_t* allocator, s32& to_count);
+            static data* alloc(alloc_t* allocator, s32& to_count);
 
-            mutable s32			mRefCount;
-            s32					mItemCount;					/// Count of total items
-            alloc_t*				mAllocator;
-            uchar32*			mData;
+            mutable s32 mRefCount;
+            s32         mItemCount; /// Count of total items
+            alloc_t*    mAllocator;
+            uchar32*    mData;
         };
 
-		data*	    	mData;
-        utf32::runes    mRunes
-	};
-}
+        data*        mData;
+        utf32::runes mRunes
+    };
+} // namespace xcore
 
 #endif
