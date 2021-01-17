@@ -29,7 +29,7 @@ namespace xcore
         {
             if (str.cap() < new_size)
             {
-                runes_t nrunes = str.m_data.m_alloc->allocate(0, new_size);
+                runes_t nrunes = str.m_data.m_alloc->allocate(0, new_size, str.m_data.m_runes.m_type);
                 copy(str.m_data.m_runes, nrunes);
                 str.m_data.m_alloc->deallocate(str.m_data.m_runes);
                 str.m_data.m_runes = nrunes;
@@ -710,7 +710,7 @@ namespace xcore
     {
         if (m_data->m_alloc != nullptr && !m_data->m_runes.is_empty())
         {
-            runes_t dstrunes = m_data->m_alloc->allocate(0, m_view.size());
+            runes_t dstrunes = m_data->m_alloc->allocate(0, m_view.size(), m_data->m_runes.m_type);
             runes_t srcrunes = m_data->m_runes;
             srcrunes.m_runes.m_utf32.m_str += m_view.from;
             copy(srcrunes, dstrunes);
@@ -938,7 +938,7 @@ namespace xcore
     {
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
-        m_data.m_runes  = m_data.m_alloc->allocate(0, len);
+        m_data.m_runes  = m_data.m_alloc->allocate(0, len, m_data.m_runes.m_type);
         ascii_to_utf32(str, end, m_data.m_runes.m_runes.m_utf32.m_end, m_data.m_runes.m_runes.m_utf32.m_eos);
     }
 
@@ -946,17 +946,17 @@ namespace xcore
     {
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
-        m_data.m_runes  = m_data.m_alloc->allocate(0, len);
+        m_data.m_runes  = m_data.m_alloc->allocate(0, len, m_data.m_runes.m_type);
         ascii_to_utf32(str, end, m_data.m_runes.m_runes.m_utf32.m_end, m_data.m_runes.m_runes.m_utf32.m_eos);
     }
 
-    xstring::xstring(runes_alloc_t* _allocator, s32 _len) : m_data(_allocator) { m_data.m_runes = m_data.m_alloc->allocate(0, _len); }
+    xstring::xstring(runes_alloc_t* _allocator, s32 _len) : m_data(_allocator) { m_data.m_runes = m_data.m_alloc->allocate(0, _len, utf32::TYPE); }
 
     xstring::xstring(const xstring& other) : m_data(other.m_data)
     {
         if (m_data.m_alloc != nullptr && !other.m_data.m_runes.is_empty())
         {
-            m_data.m_runes = m_data.m_alloc->allocate(0, other.m_data.m_runes.size() + 1);
+            m_data.m_runes = m_data.m_alloc->allocate(0, other.m_data.m_runes.size() + 1, m_data.m_runes.m_type);
             copy(other.m_data.m_runes, m_data.m_runes);
         }
     }
@@ -967,7 +967,7 @@ namespace xcore
         if (m_data.m_alloc != nullptr)
         {
             s32 cap        = left.size() + right.size() + 1;
-            m_data.m_runes = m_data.m_alloc->allocate(0, cap);
+            m_data.m_runes = m_data.m_alloc->allocate(0, cap, left.m_data->m_runes.m_type);
             concatenate(m_data.m_runes, left.get_runes(), right.get_runes(), m_data.m_alloc, 16);
         }
     }
@@ -1123,7 +1123,7 @@ namespace xcore
     void xstring::clone(runes_t const& str, runes_alloc_t* allocator)
     {
         m_data.m_alloc = allocator;
-        m_data.m_runes = m_data.m_alloc->allocate(0, str.size() + 1);
+        m_data.m_runes = m_data.m_alloc->allocate(0, str.size() + 1, str.m_type);
         copy(str, m_data.m_runes);
     }
 
