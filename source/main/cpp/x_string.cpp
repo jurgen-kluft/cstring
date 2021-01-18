@@ -1,4 +1,4 @@
-#include "xstring/x_string.h"
+#include "string_t/x_string.h"
 
 #include "xbase/x_allocator.h"
 #include "xbase/x_integer.h"
@@ -12,20 +12,20 @@ namespace xcore
     class xview
     {
     public:
-        static inline uchar32* get_ptr_unsafe(xstring::view& str, s32 i) { return &str.m_data->m_runes.m_runes.m_utf32.m_str[i]; }
-        static inline uchar32  get_char_unsafe(xstring::view const& str, s32 i) { return str.m_data->m_runes.m_runes.m_utf32.m_str[i]; }
-        static inline uchar32  get_char_unsafe(xstring const& str, s32 i) { return str.m_data.m_runes.m_runes.m_utf32.m_str[i]; }
+        static inline uchar32* get_ptr_unsafe(string_t::view& str, s32 i) { return &str.m_data->m_runes.m_runes.m_utf32.m_str[i]; }
+        static inline uchar32  get_char_unsafe(string_t::view const& str, s32 i) { return str.m_data->m_runes.m_runes.m_utf32.m_str[i]; }
+        static inline uchar32  get_char_unsafe(string_t const& str, s32 i) { return str.m_data.m_runes.m_runes.m_utf32.m_str[i]; }
 
-        static inline void set_char_unsafe(xstring& str, s32 i, uchar32 c) { str.m_data.m_runes.m_runes.m_utf32.m_str[i] = c; }
-        static inline void set_char_unsafe(xstring::view& str, s32 i, uchar32 c) { str.m_data->m_runes.m_runes.m_utf32.m_str[i] = c; }
+        static inline void set_char_unsafe(string_t& str, s32 i, uchar32 c) { str.m_data.m_runes.m_runes.m_utf32.m_str[i] = c; }
+        static inline void set_char_unsafe(string_t::view& str, s32 i, uchar32 c) { str.m_data->m_runes.m_runes.m_utf32.m_str[i] = c; }
 
-        static inline runes_t&       get_runes(xstring& str) { return str.m_data.m_runes; }
-        static inline runes_t const& get_runes(xstring const& str) { return str.m_data.m_runes; }
-        static inline runes_t const& get_runes(xstring::view const& str) { return str.m_data->m_runes; }
+        static inline runes_t&       get_runes(string_t& str) { return str.m_data.m_runes; }
+        static inline runes_t const& get_runes(string_t const& str) { return str.m_data.m_runes; }
+        static inline runes_t const& get_runes(string_t::view const& str) { return str.m_data->m_runes; }
 
-        static inline bool str_has_view(xstring const& str, xstring::view const& vw) { return (vw.m_data == &str.m_data); }
+        static inline bool str_has_view(string_t const& str, string_t::view const& vw) { return (vw.m_data == &str.m_data); }
 
-        static void resize(xstring& str, s32 new_size)
+        static void resize(string_t& str, s32 new_size)
         {
             if (str.cap() < new_size)
             {
@@ -40,7 +40,7 @@ namespace xcore
             }
         }
 
-        static bool narrow_view(xstring::view& v, s32 move)
+        static bool narrow_view(string_t::view& v, s32 move)
         {
             if (v.size() > 0)
             {
@@ -66,7 +66,7 @@ namespace xcore
             return false;
         }
 
-        static bool move_view(xstring::view& v, s32 move)
+        static bool move_view(string_t::view& v, s32 move)
         {
             // Check if the move doesn't result in a negative @from
             s32 const from = v.m_view.from + move;
@@ -84,32 +84,32 @@ namespace xcore
             return true;
         }
 
-        static xstring::view select_before(const xstring::view& str, const xstring::view& selection)
+        static string_t::view select_before(const string_t::view& str, const string_t::view& selection)
         {
-            xstring::view v(selection);
+            string_t::view v(selection);
             v.m_view.to   = v.m_view.from;
             v.m_view.from = 0;
             return v;
         }
-        static xstring::view select_before_included(const xstring::view& str, const xstring::view& selection)
+        static string_t::view select_before_included(const string_t::view& str, const string_t::view& selection)
         {
-            xstring::view v(selection);
+            string_t::view v(selection);
             v.m_view.to   = v.m_view.to;
             v.m_view.from = 0;
             return v;
         }
 
-        static xstring::view select_after(const xstring::view& str, const xstring::view& sel)
+        static string_t::view select_after(const string_t::view& str, const string_t::view& sel)
         {
-            xstring::view v(sel);
+            string_t::view v(sel);
             v.m_view.to   = str.m_view.to;
             v.m_view.from = sel.m_view.from;
             return v;
         }
 
-        static xstring::view select_after_excluded(const xstring::view& str, const xstring::view& sel)
+        static string_t::view select_after_excluded(const string_t::view& str, const string_t::view& sel)
         {
-            xstring::view v(sel);
+            string_t::view v(sel);
             v.m_view.to   = str.m_view.to;
             v.m_view.from = sel.m_view.to;
             return v;
@@ -140,11 +140,11 @@ namespace xcore
             r.m_runes.m_utf32.m_end[0] = '\0';
         }
 
-        static void insert(xstring& str, xstring::view const& pos, xstring::view const& insert)
+        static void insert(string_t& str, string_t::view const& pos, string_t::view const& insert)
         {
             s32 dst = pos.m_view.from;
 
-            xstring::range insert_range(dst, dst + insert.size());
+            string_t::range insert_range(dst, dst + insert.size());
             xview::adjust_active_views(str, xview::INSERTION, insert_range);
 
             xview::resize(str, str.size() + insert.size() + 1);
@@ -159,7 +159,7 @@ namespace xcore
             }
         }
 
-        static void remove(xstring& str, xstring::view const& selection)
+        static void remove(string_t& str, string_t::view const& selection)
         {
             if (selection.is_empty())
                 return;
@@ -168,25 +168,25 @@ namespace xcore
                 remove_selspace(str.m_data.m_runes, selection.m_view.from, selection.size());
                 // TODO: Decision to shrink the allocated memory of m_runes ?
 
-                xstring::range remove_range(selection.m_view.from, selection.m_view.to);
+                string_t::range remove_range(selection.m_view.from, selection.m_view.to);
                 xview::adjust_active_views(str, xview::REMOVAL, remove_range);
             }
         }
 
-        static void find_remove(xstring& str, const xstring::view& _find)
+        static void find_remove(string_t& str, const string_t::view& _find)
         {
-            xstring::view strvw = str.full();
-            xstring::view sel   = find(strvw, _find);
+            string_t::view strvw = str.full();
+            string_t::view sel   = find(strvw, _find);
             if (sel.is_empty() == false)
             {
                 remove(str, sel);
             }
         }
 
-        static void find_replace(xstring& str, const xstring::view& _find, const xstring::view& replace)
+        static void find_replace(string_t& str, const string_t::view& _find, const string_t::view& replace)
         {
-            xstring::view strvw  = str.full();
-            xstring::view remove = find(strvw, _find);
+            string_t::view strvw  = str.full();
+            string_t::view remove = find(strvw, _find);
             if (remove.is_empty() == false)
             {
                 s32 const remove_from = remove.m_view.from;
@@ -199,7 +199,7 @@ namespace xcore
                     remove_selspace(xview::get_runes(str), remove_from, diff);
                     // TODO: Decision to shrink the allocated memory of m_runes ?
 
-                    xstring::range remove_range(remove_from, remove_from + diff);
+                    string_t::range remove_range(remove_from, remove_from + diff);
                     xview::adjust_active_views(str, xview::REMOVAL, remove_range);
                 }
                 else if (diff < 0)
@@ -209,7 +209,7 @@ namespace xcore
                     xview::resize(str, str.size() + (-diff));
                     insert_newspace(xview::get_runes(str), remove_from, -diff);
 
-                    xstring::range insert_range(remove_from, remove_from + -diff);
+                    string_t::range insert_range(remove_from, remove_from + -diff);
                     xview::adjust_active_views(str, xview::INSERTION, insert_range);
                 }
                 // Copy string 'remove' into the (now) same size selection space
@@ -223,7 +223,7 @@ namespace xcore
             }
         }
 
-        static void remove_any(xstring& str, const xstring::view& any)
+        static void remove_any(string_t& str, const string_t::view& any)
         {
             // Remove any of the characters in @charset from @str
             s32       d   = 0;
@@ -245,7 +245,7 @@ namespace xcore
                         // have been adjusted according to the previous range removal. So here we have to adjust
                         // this removal range by shifting it left with 'gap'.
                         s32 const      gap = i - d;
-                        xstring::range removal_range(r, i);
+                        string_t::range removal_range(r, i);
                         xview::shift_range(removal_range, gap);
                         xview::adjust_active_views(str, xview::REMOVAL, removal_range);
                         r = -1;
@@ -267,7 +267,7 @@ namespace xcore
             }
         }
 
-        static xstring::view get_default() { return xstring::view(nullptr); }
+        static string_t::view get_default() { return string_t::view(nullptr); }
 
         static const s32 NONE     = 0;
         static const s32 LEFT     = 0x0800; // binary(0000,1000,0000,0000);
@@ -277,7 +277,7 @@ namespace xcore
         static const s32 OVERLAP  = 0x07E0; // binary(0000,0111,1110,0000);
         static const s32 ENVELOPE = 0x37EC; // binary(0011,0111,1110,1100);
 
-        static s32 compare(xstring::range const& lhs, xstring::range const& rhs)
+        static s32 compare(string_t::range const& lhs, string_t::range const& rhs)
         {
             // Return where 'rhs' is in relation to 'lhs'
             // --------| lhs |--------[ rhs ]--------        RIGHT
@@ -315,7 +315,7 @@ namespace xcore
                 return ENVELOPE;
             return NONE;
         }
-        static inline s32 compute_range_overlap(xstring::range const& lhs, xstring::range const& rhs)
+        static inline s32 compute_range_overlap(string_t::range const& lhs, string_t::range const& rhs)
         {
             if (rhs.from < lhs.from && rhs.to < lhs.to)
                 return rhs.to - lhs.from;
@@ -323,12 +323,12 @@ namespace xcore
                 return lhs.to - rhs.from;
             return 0;
         }
-        static inline void shift_range(xstring::range& v, s32 distance)
+        static inline void shift_range(string_t::range& v, s32 distance)
         {
             v.from += distance;
             v.to += distance;
         }
-        static inline void extend_range(xstring::range& v, s32 distance)
+        static inline void extend_range(string_t::range& v, s32 distance)
         {
             if (distance > 0)
             { // Extend right side
@@ -339,7 +339,7 @@ namespace xcore
                 v.from += distance;
             }
         }
-        static inline void narrow_range(xstring::range& v, s32 distance)
+        static inline void narrow_range(string_t::range& v, s32 distance)
         {
             if (distance > 0)
             { // Narrow right side
@@ -350,7 +350,7 @@ namespace xcore
                 v.from -= distance;
             }
         }
-        static inline void invalidate_range(xstring::range& v)
+        static inline void invalidate_range(string_t::range& v)
         {
             v.from = 0;
             v.to   = 0;
@@ -366,7 +366,7 @@ namespace xcore
         static const s32 INSERTION = 1;
         static const s32 CLEARED   = 2;
         static const s32 RELEASED  = 3;
-        static void      adjust_active_views(xstring::view* v, s32 op_code, xstring::range op_range)
+        static void      adjust_active_views(string_t::view* v, s32 op_code, string_t::range op_range)
         {
             switch (op_code)
             {
@@ -445,12 +445,12 @@ namespace xcore
             }
         }
 
-        static void adjust_active_views(xstring& str, s32 op_code, xstring::range op_range)
+        static void adjust_active_views(string_t& str, s32 op_code, string_t::range op_range)
         {
-            xstring::view* list = str.m_data.m_views;
+            string_t::view* list = str.m_data.m_views;
             if (list != nullptr)
             {
-                xstring::view* iter = list;
+                string_t::view* iter = list;
                 do
                 {
                     adjust_active_views(iter, op_code, op_range);
@@ -696,17 +696,17 @@ namespace xcore
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
-    xstring::view::view(xstring::data* d) : m_data(d), m_next(nullptr), m_prev(nullptr) {}
+    string_t::view::view(string_t::data* d) : m_data(d), m_next(nullptr), m_prev(nullptr) {}
 
-    xstring::view::view(const view& other) : m_data(other.m_data), m_view(other.m_view), m_next(nullptr), m_prev(nullptr) { add(); }
+    string_t::view::view(const view& other) : m_data(other.m_data), m_view(other.m_view), m_next(nullptr), m_prev(nullptr) { add(); }
 
-    xstring::view::~view() { rem(); }
+    string_t::view::~view() { rem(); }
 
-    s32 xstring::view::size() const { return m_view.size(); }
+    s32 string_t::view::size() const { return m_view.size(); }
 
-    bool xstring::view::is_empty() const { return m_view.size() == 0; }
+    bool string_t::view::is_empty() const { return m_view.size() == 0; }
 
-    xstring xstring::view::to_string() const
+    string_t string_t::view::to_string() const
     {
         if (m_data->m_alloc != nullptr && !m_data->m_runes.is_empty())
         {
@@ -715,66 +715,66 @@ namespace xcore
             srcrunes.m_runes.m_utf32.m_str += m_view.from;
             copy(srcrunes, dstrunes);
 
-            xstring str;
+            string_t str;
             str.m_data.m_alloc = m_data->m_alloc;
             str.m_data.m_runes = dstrunes;
             return str;
         }
-        return xstring();
+        return string_t();
     }
 
-    xstring::view xstring::view::operator()(s32 to)
+    string_t::view string_t::view::operator()(s32 to)
     {
         to = xmin(0, m_view.size());
-        xstring::view v(m_data);
+        string_t::view v(m_data);
         v.m_view.from = m_view.from;
         v.m_view.to   = m_view.from + to;
         v.add();
         return v;
     }
 
-    xstring::view xstring::view::operator()(s32 from, s32 to)
+    string_t::view string_t::view::operator()(s32 from, s32 to)
     {
         xsort(from, to);
         to   = xmin(to, m_view.size());
         from = xmin(from, to);
-        xstring::view v(m_data);
+        string_t::view v(m_data);
         v.m_view.from = m_view.from + from;
         v.m_view.to   = m_view.from + to;
         v.add();
         return v;
     }
 
-    xstring::view xstring::view::operator()(s32 to) const
+    string_t::view string_t::view::operator()(s32 to) const
     {
         to = xmin(0, m_view.size());
-        xstring::view v(m_data);
+        string_t::view v(m_data);
         v.m_view.from = m_view.from;
         v.m_view.to   = m_view.from + to;
         v.add();
         return v;
     }
 
-    xstring::view xstring::view::operator()(s32 from, s32 to) const
+    string_t::view string_t::view::operator()(s32 from, s32 to) const
     {
         xsort(from, to);
         to   = xmin(to, m_view.size());
         from = xmin(from, to);
-        xstring::view v(m_data);
+        string_t::view v(m_data);
         v.m_view.from = m_view.from + from;
         v.m_view.to   = m_view.from + to;
         v.add();
         return v;
     }
 
-    uchar32 xstring::view::operator[](s32 index) const
+    uchar32 string_t::view::operator[](s32 index) const
     {
         if (index < 0 || index >= m_view.size())
             return '\0';
         return m_data->m_runes.m_runes.m_utf32.m_str[m_view.from + index];
     }
 
-    xstring::view& xstring::view::operator=(xstring::view const& other)
+    string_t::view& string_t::view::operator=(string_t::view const& other)
     {
         rem();
         m_data = other.m_data;
@@ -783,7 +783,7 @@ namespace xcore
         return *this;
     }
 
-    bool xstring::view::operator==(xstring::view const& other) const
+    bool string_t::view::operator==(string_t::view const& other) const
     {
         if (m_view.size() == other.m_view.size())
         {
@@ -801,7 +801,7 @@ namespace xcore
         return false;
     }
 
-    bool xstring::view::operator!=(xstring::view const& other) const
+    bool string_t::view::operator!=(string_t::view const& other) const
     {
         if (m_view.size() == other.m_view.size())
         {
@@ -819,11 +819,11 @@ namespace xcore
         return true;
     }
 
-    void xstring::view::add()
+    void string_t::view::add()
     {
         if (m_data != nullptr)
         {
-            xstring::view*& list = m_data->m_views;
+            string_t::view*& list = m_data->m_views;
             if (list == nullptr)
             {
                 list   = this;
@@ -832,8 +832,8 @@ namespace xcore
             }
             else
             {
-                xstring::view* prev = list->m_prev;
-                xstring::view* next = list;
+                string_t::view* prev = list->m_prev;
+                string_t::view* next = list;
                 prev->m_next        = this;
                 next->m_prev        = this;
                 m_next              = next;
@@ -843,14 +843,14 @@ namespace xcore
         }
     }
 
-    void xstring::view::rem()
+    void string_t::view::rem()
     {
         if (m_data != nullptr && m_data->m_views != nullptr)
         {
-            xstring::view*& list = m_data->m_views;
+            string_t::view*& list = m_data->m_views;
 
-            xstring::view* prev = m_prev;
-            xstring::view* next = m_next;
+            string_t::view* prev = m_prev;
+            string_t::view* next = m_next;
             prev->m_next        = next;
             next->m_prev        = prev;
 
@@ -868,14 +868,14 @@ namespace xcore
         m_prev = nullptr;
     }
 
-    void xstring::view::invalidate()
+    void string_t::view::invalidate()
     {
         m_data      = nullptr;
         m_view.from = 0;
         m_view.to   = 0;
     }
 
-    crunes_t xstring::view::get_runes() const
+    crunes_t string_t::view::get_runes() const
     {
         if (m_data->m_runes.is_empty())
         {
@@ -924,17 +924,17 @@ namespace xcore
     };
 
     static runes_allocator s_utf32_runes_allocator;
-    runes_alloc_t*         xstring::s_allocator = &s_utf32_runes_allocator;
+    runes_alloc_t*         string_t::s_allocator = &s_utf32_runes_allocator;
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    xstring::xstring(void) : m_data(s_allocator) {}
+    string_t::string_t(void) : m_data(s_allocator) {}
 
-    xstring::xstring(runes_alloc_t* allocator) : m_data(allocator) {}
+    string_t::string_t(runes_alloc_t* allocator) : m_data(allocator) {}
 
-    xstring::xstring(runes_alloc_t* allocator, const char* str) : m_data(allocator)
+    string_t::string_t(runes_alloc_t* allocator, const char* str) : m_data(allocator)
     {
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
@@ -942,7 +942,7 @@ namespace xcore
         ascii_to_utf32(str, end, m_data.m_runes.m_runes.m_utf32.m_end, m_data.m_runes.m_runes.m_utf32.m_eos);
     }
 
-    xstring::xstring(const char* str) : m_data(s_allocator)
+    string_t::string_t(const char* str) : m_data(s_allocator)
     {
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
@@ -950,9 +950,9 @@ namespace xcore
         ascii_to_utf32(str, end, m_data.m_runes.m_runes.m_utf32.m_end, m_data.m_runes.m_runes.m_utf32.m_eos);
     }
 
-    xstring::xstring(runes_alloc_t* _allocator, s32 _len) : m_data(_allocator) { m_data.m_runes = m_data.m_alloc->allocate(0, _len, utf32::TYPE); }
+    string_t::string_t(runes_alloc_t* _allocator, s32 _len) : m_data(_allocator) { m_data.m_runes = m_data.m_alloc->allocate(0, _len, utf32::TYPE); }
 
-    xstring::xstring(const xstring& other) : m_data(other.m_data)
+    string_t::string_t(const string_t& other) : m_data(other.m_data)
     {
         if (m_data.m_alloc != nullptr && !other.m_data.m_runes.is_empty())
         {
@@ -961,7 +961,7 @@ namespace xcore
         }
     }
 
-    xstring::xstring(const xstring::view& left, const xstring::view& right)
+    string_t::string_t(const string_t::view& left, const string_t::view& right)
     {
         m_data.m_alloc = left.m_data->m_alloc;
         if (m_data.m_alloc != nullptr)
@@ -972,11 +972,11 @@ namespace xcore
         }
     }
 
-    xstring::~xstring()
+    string_t::~string_t()
     {
         if (m_data.m_alloc != nullptr)
         {
-            xview::adjust_active_views(*this, xview::CLEARED, xstring::range(0, 0));
+            xview::adjust_active_views(*this, xview::CLEARED, string_t::range(0, 0));
             m_data.m_alloc->deallocate(m_data.m_runes);
         }
     }
@@ -984,86 +984,86 @@ namespace xcore
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    bool xstring::is_empty() const { return m_data.m_runes.size() == 0; }
+    bool string_t::is_empty() const { return m_data.m_runes.size() == 0; }
 
-    s32 xstring::size() const { return m_data.m_runes.size(); }
+    s32 string_t::size() const { return m_data.m_runes.size(); }
 
-    s32 xstring::cap() const { return m_data.m_runes.cap(); }
+    s32 string_t::cap() const { return m_data.m_runes.cap(); }
 
-    void xstring::clear()
+    void string_t::clear()
     {
         m_data.m_runes.clear();
-        xview::adjust_active_views(*this, xview::CLEARED, xstring::range(0, 0));
+        xview::adjust_active_views(*this, xview::CLEARED, string_t::range(0, 0));
     }
 
-    xstring::view xstring::full()
+    string_t::view string_t::full()
     {
-        xstring::view v(&m_data);
+        string_t::view v(&m_data);
         v.m_view.from = 0;
         v.m_view.to   = m_data.m_runes.size();
         v.add();
         return v;
     }
 
-    xstring::view xstring::full() const
+    string_t::view string_t::full() const
     {
-        xstring::view v(&m_data);
+        string_t::view v(&m_data);
         v.m_view.from = 0;
         v.m_view.to   = m_data.m_runes.size();
         v.add();
         return v;
     }
 
-    xstring::view xstring::operator()(s32 to)
+    string_t::view string_t::operator()(s32 to)
     {
-        xstring::view v(&m_data);
+        string_t::view v(&m_data);
         v.m_view.from = 0;
         v.m_view.to   = xmin(size(), xmax((s32)0, to));
         v.add();
         return v;
     }
 
-    xstring::view xstring::operator()(s32 from, s32 to)
+    string_t::view string_t::operator()(s32 from, s32 to)
     {
         xsort(from, to);
         to   = xmin(to, size());
         from = xmin(from, to);
-        xstring::view v(&m_data);
+        string_t::view v(&m_data);
         v.m_view.from = from;
         v.m_view.to   = to;
         v.add();
         return v;
     }
 
-    xstring::view xstring::operator()(s32 to) const
+    string_t::view string_t::operator()(s32 to) const
     {
-        xstring::view v(&m_data);
+        string_t::view v(&m_data);
         v.m_view.from = 0;
         v.m_view.to   = xmin(size(), xmax((s32)0, to));
         v.add();
         return v;
     }
 
-    xstring::view xstring::operator()(s32 from, s32 to) const
+    string_t::view string_t::operator()(s32 from, s32 to) const
     {
         xsort(from, to);
         to   = xmin(to, size());
         from = xmin(from, to);
-        xstring::view v(&m_data);
+        string_t::view v(&m_data);
         v.m_view.from = from;
         v.m_view.to   = to;
         v.add();
         return v;
     }
 
-    uchar32 xstring::operator[](s32 index) const
+    uchar32 string_t::operator[](s32 index) const
     {
         if (index >= m_data.m_runes.size())
             return '\0';
         return m_data.m_runes.m_runes.m_utf32.m_str[index];
     }
 
-    xstring& xstring::operator=(const xstring& other)
+    string_t& string_t::operator=(const string_t& other)
     {
         if (this != &other)
         {
@@ -1073,7 +1073,7 @@ namespace xcore
         return *this;
     }
 
-    xstring& xstring::operator=(const xstring::view& other)
+    string_t& string_t::operator=(const string_t::view& other)
     {
         if (&m_data != other.m_data)
         {
@@ -1083,7 +1083,7 @@ namespace xcore
         return *this;
     }
 
-    bool xstring::operator==(const xstring& other) const
+    bool string_t::operator==(const string_t& other) const
     {
         if (size() != other.size())
             return false;
@@ -1097,7 +1097,7 @@ namespace xcore
         return true;
     }
 
-    bool xstring::operator!=(const xstring& other) const
+    bool string_t::operator!=(const string_t& other) const
     {
         if (size() != other.size())
             return true;
@@ -1111,16 +1111,16 @@ namespace xcore
         return false;
     }
 
-    void xstring::release()
+    void string_t::release()
     {
         if (m_data.m_alloc != nullptr)
         {
-            xview::adjust_active_views(*this, xview::RELEASED, xstring::range(0, 0));
+            xview::adjust_active_views(*this, xview::RELEASED, string_t::range(0, 0));
             m_data.m_alloc->deallocate(m_data.m_runes);
         }
     }
 
-    void xstring::clone(runes_t const& str, runes_alloc_t* allocator)
+    void string_t::clone(runes_t const& str, runes_alloc_t* allocator)
     {
         m_data.m_alloc = allocator;
         m_data.m_runes = m_data.m_alloc->allocate(0, str.size() + 1, str.m_type);
@@ -1128,7 +1128,7 @@ namespace xcore
     }
 
     //------------------------------------------------------------------------------
-    xstring::view selectUntil(const xstring::view& str, uchar32 find)
+    string_t::view selectUntil(const string_t::view& str, uchar32 find)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1141,9 +1141,9 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view selectUntil(const xstring::view& str, const xstring::view& find)
+    string_t::view selectUntil(const string_t::view& str, const string_t::view& find)
     {
-        xstring::view v = str(0, find.size());
+        string_t::view v = str(0, find.size());
         while (!v.is_empty())
         {
             if (v == find)
@@ -1159,7 +1159,7 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view selectUntilLast(const xstring::view& str, uchar32 find)
+    string_t::view selectUntilLast(const string_t::view& str, uchar32 find)
     {
         for (s32 i = str.size() - 1; i >= 0; --i)
         {
@@ -1172,9 +1172,9 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view selectUntilLast(const xstring::view& str, const xstring::view& find)
+    string_t::view selectUntilLast(const string_t::view& str, const string_t::view& find)
     {
-        xstring::view v = str(str.size() - find.size(), str.size());
+        string_t::view v = str(str.size() - find.size(), str.size());
         while (!v.is_empty())
         {
             if (v == find)
@@ -1190,9 +1190,9 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view selectUntilIncluded(const xstring::view& str, const xstring::view& find)
+    string_t::view selectUntilIncluded(const string_t::view& str, const string_t::view& find)
     {
-        xstring::view v = str(0, find.size());
+        string_t::view v = str(0, find.size());
         while (!v.is_empty())
         {
             if (v == find)
@@ -1208,11 +1208,11 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view selectUntilEndExcludeSelection(const xstring::view& str, const xstring::view& selection) { return xview::select_after_excluded(str, selection); }
+    string_t::view selectUntilEndExcludeSelection(const string_t::view& str, const string_t::view& selection) { return xview::select_after_excluded(str, selection); }
 
-    xstring::view selectUntilEndIncludeSelection(const xstring::view& str, const xstring::view& selection) { return xview::select_after(str, selection); }
+    string_t::view selectUntilEndIncludeSelection(const string_t::view& str, const string_t::view& selection) { return xview::select_after(str, selection); }
 
-    bool isUpper(const xstring::view& str)
+    bool isUpper(const string_t::view& str)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1223,7 +1223,7 @@ namespace xcore
         return true;
     }
 
-    bool isLower(const xstring::view& str)
+    bool isLower(const string_t::view& str)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1234,7 +1234,7 @@ namespace xcore
         return true;
     }
 
-    bool isCapitalized(const xstring::view& str)
+    bool isCapitalized(const string_t::view& str)
     {
         s32 i = 0;
         while (i < str.size())
@@ -1270,11 +1270,11 @@ namespace xcore
         return true;
     }
 
-    bool isQuoted(const xstring::view& str) { return isQuoted(str, '"'); }
+    bool isQuoted(const string_t::view& str) { return isQuoted(str, '"'); }
 
-    bool isQuoted(const xstring::view& str, uchar32 inQuote) { return isDelimited(str, inQuote, inQuote); }
+    bool isQuoted(const string_t::view& str, uchar32 inQuote) { return isDelimited(str, inQuote, inQuote); }
 
-    bool isDelimited(const xstring::view& str, uchar32 inLeft, uchar32 inRight)
+    bool isDelimited(const string_t::view& str, uchar32 inLeft, uchar32 inRight)
     {
         if (str.is_empty())
             return false;
@@ -1283,35 +1283,35 @@ namespace xcore
         return str[first] == inLeft && str[last] == inRight;
     }
 
-    uchar32 firstChar(const xstring::view& str)
+    uchar32 firstChar(const string_t::view& str)
     {
         s32 const first = 0;
         return str[first];
     }
 
-    uchar32 lastChar(const xstring::view& str)
+    uchar32 lastChar(const string_t::view& str)
     {
         s32 const last = str.size() - 1;
         return str[last];
     }
 
-    bool startsWith(const xstring::view& str, xstring::view const& start)
+    bool startsWith(const string_t::view& str, string_t::view const& start)
     {
-        xstring::view v = str(0, start.size());
+        string_t::view v = str(0, start.size());
         if (!v.is_empty())
             return (v == start);
         return false;
     }
 
-    bool endsWith(const xstring::view& str, xstring::view const& end)
+    bool endsWith(const string_t::view& str, string_t::view const& end)
     {
-        xstring::view v = str(str.size() - end.size(), str.size());
+        string_t::view v = str(str.size() - end.size(), str.size());
         if (!v.is_empty())
             return (v == end);
         return false;
     }
 
-    xstring::view find(xstring& str, uchar32 find)
+    string_t::view find(string_t& str, uchar32 find)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1322,7 +1322,7 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view find(xstring::view& str, uchar32 find)
+    string_t::view find(string_t::view& str, uchar32 find)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1333,9 +1333,9 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view find(xstring& str, const xstring::view& find)
+    string_t::view find(string_t& str, const string_t::view& find)
     {
-        xstring::view v = str(0, find.size());
+        string_t::view v = str(0, find.size());
         while (!v.is_empty())
         {
             if (v == find)
@@ -1350,9 +1350,9 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view find(xstring::view& str, const xstring::view& find)
+    string_t::view find(string_t::view& str, const string_t::view& find)
     {
-        xstring::view v = str(0, find.size());
+        string_t::view v = str(0, find.size());
         while (!v.is_empty())
         {
             if (v == find)
@@ -1367,9 +1367,9 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view findLast(const xstring::view& str, const xstring::view& find)
+    string_t::view findLast(const string_t::view& str, const string_t::view& find)
     {
-        xstring::view v = str(str.size() - find.size(), str.size());
+        string_t::view v = str(str.size() - find.size(), str.size());
         while (!v.is_empty())
         {
             if (v == find)
@@ -1384,7 +1384,7 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view findOneOf(const xstring::view& str, const xstring::view& charset)
+    string_t::view findOneOf(const string_t::view& str, const string_t::view& charset)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1401,7 +1401,7 @@ namespace xcore
         return xview::get_default();
     }
 
-    xstring::view findOneOfLast(const xstring::view& str, const xstring::view& charset)
+    string_t::view findOneOfLast(const string_t::view& str, const string_t::view& charset)
     {
         for (s32 i = str.size() - 1; i >= 0; i--)
         {
@@ -1418,7 +1418,7 @@ namespace xcore
         return xview::get_default();
     }
 
-    s32 compare(const xstring::view& lhs, const xstring::view& rhs)
+    s32 compare(const string_t::view& lhs, const string_t::view& rhs)
     {
         if (lhs.size() < rhs.size())
             return -1;
@@ -1437,11 +1437,11 @@ namespace xcore
         return 0;
     }
 
-    bool isEqual(const xstring::view& lhs, const xstring::view& rhs) { return compare(lhs, rhs) == 0; }
+    bool isEqual(const string_t::view& lhs, const string_t::view& rhs) { return compare(lhs, rhs) == 0; }
 
-    bool contains(const xstring::view& str, const xstring::view& contains)
+    bool contains(const string_t::view& str, const string_t::view& contains)
     {
-        xstring::view v = str(0, contains.size());
+        string_t::view v = str(0, contains.size());
         while (!v.is_empty())
         {
             if (v == contains)
@@ -1456,7 +1456,7 @@ namespace xcore
         return false;
     }
 
-    bool contains(const xstring::view& str, uchar32 contains)
+    bool contains(const string_t::view& str, uchar32 contains)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1469,7 +1469,7 @@ namespace xcore
         return false;
     }
 
-    void concatenate_repeat(xstring& str, xstring::view const& con, s32 ntimes)
+    void concatenate_repeat(string_t& str, string_t::view const& con, s32 ntimes)
     {
         s32 const len = str.size() + (con.size() * ntimes) + 1;
         xview::resize(str, len);
@@ -1479,7 +1479,7 @@ namespace xcore
         }
     }
 
-    s32 format(xstring& str, xstring::view const& format, const va_list_t& args)
+    s32 format(string_t& str, string_t::view const& format, const va_list_t& args)
     {
         str.clear();
         s32 len = vcprintf(xview::get_runes(format), args);
@@ -1488,7 +1488,7 @@ namespace xcore
         return 0;
     }
 
-    s32 formatAdd(xstring& str, xstring::view const& format, const va_list_t& args)
+    s32 formatAdd(string_t& str, string_t::view const& format, const va_list_t& args)
     {
         s32 len = vcprintf(xview::get_runes(format), args);
         xview::resize(str, len);
@@ -1496,31 +1496,31 @@ namespace xcore
         return 0;
     }
 
-    void insert(xstring& str, xstring::view const& pos, xstring::view const& insert) { xview::insert(str, pos, insert); }
+    void insert(string_t& str, string_t::view const& pos, string_t::view const& insert) { xview::insert(str, pos, insert); }
 
-    void insert_after(xstring& str, xstring::view const& pos, xstring::view const& insert)
+    void insert_after(string_t& str, string_t::view const& pos, string_t::view const& insert)
     {
-        xstring::view after = xview::select_after_excluded(str.full(), pos);
+        string_t::view after = xview::select_after_excluded(str.full(), pos);
         xview::insert(str, after, insert);
     }
 
-    void remove(xstring& str, xstring::view const& selection) { xview::remove(str, selection); }
+    void remove(string_t& str, string_t::view const& selection) { xview::remove(str, selection); }
 
-    void find_remove(xstring& str, const xstring::view& _find)
+    void find_remove(string_t& str, const string_t::view& _find)
     {
-        xstring::view strvw = str.full();
-        xstring::view sel   = find(strvw, _find);
+        string_t::view strvw = str.full();
+        string_t::view sel   = find(strvw, _find);
         if (sel.is_empty() == false)
         {
             xview::remove(str, sel);
         }
     }
 
-    void find_replace(xstring& str, const xstring::view& find, const xstring::view& replace) { xview::find_replace(str, find, replace); }
+    void find_replace(string_t& str, const string_t::view& find, const string_t::view& replace) { xview::find_replace(str, find, replace); }
 
-    void remove_any(xstring& str, const xstring::view& any) { xview::remove_any(str, any); }
+    void remove_any(string_t& str, const string_t::view& any) { xview::remove_any(str, any); }
 
-    void replace_any(xstring::view& str, const xstring::view& any, uchar32 with)
+    void replace_any(string_t::view& str, const string_t::view& any, uchar32 with)
     {
         // Replace any of the characters in @charset from @str with character @with
         for (s32 i = 0; i < str.size(); ++i)
@@ -1533,7 +1533,7 @@ namespace xcore
         }
     }
 
-    void upper(xstring::view& str)
+    void upper(string_t::view& str)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1542,7 +1542,7 @@ namespace xcore
         }
     }
 
-    void lower(xstring::view& str)
+    void lower(string_t::view& str)
     {
         for (s32 i = 0; i < str.size(); i++)
         {
@@ -1551,7 +1551,7 @@ namespace xcore
         }
     }
 
-    void capitalize(xstring::view& str)
+    void capitalize(string_t::view& str)
     {
         // Standard separator is ' '
         bool prev_is_space = true;
@@ -1584,7 +1584,7 @@ namespace xcore
         }
     }
 
-    void capitalize(xstring::view& str, xstring::view const& separators)
+    void capitalize(string_t::view& str, string_t::view const& separators)
     {
         bool prev_is_space = false;
         s32  i             = 0;
@@ -1625,13 +1625,13 @@ namespace xcore
 
     // Trim does nothing more than narrowing the <from, to>, nothing is actually removed
     // from the actual underlying string data.
-    void trim(xstring::view& str)
+    void trim(string_t::view& str)
     {
         trimLeft(str);
         trimRight(str);
     }
 
-    void trimLeft(xstring::view& str)
+    void trimLeft(string_t::view& str)
     {
         for (s32 i = 0; i < str.size(); ++i)
         {
@@ -1647,7 +1647,7 @@ namespace xcore
         }
     }
 
-    void trimRight(xstring::view& str)
+    void trimRight(string_t::view& str)
     {
         s32 const last = str.size() - 1;
         for (s32 i = 0; i < str.size(); ++i)
@@ -1664,13 +1664,13 @@ namespace xcore
         }
     }
 
-    void trim(xstring::view& str, uchar32 r)
+    void trim(string_t::view& str, uchar32 r)
     {
         trimLeft(str, r);
         trimRight(str, r);
     }
 
-    void trimLeft(xstring::view& str, uchar32 r)
+    void trimLeft(string_t::view& str, uchar32 r)
     {
         for (s32 i = 0; i < str.size(); ++i)
         {
@@ -1686,7 +1686,7 @@ namespace xcore
         }
     }
 
-    void trimRight(xstring::view& str, uchar32 r)
+    void trimRight(string_t::view& str, uchar32 r)
     {
         s32 const last = str.size() - 1;
         for (s32 i = 0; i < str.size(); ++i)
@@ -1703,13 +1703,13 @@ namespace xcore
         }
     }
 
-    void trim(xstring::view& str, xstring::view const& set)
+    void trim(string_t::view& str, string_t::view const& set)
     {
         trimLeft(str, set);
         trimRight(str, set);
     }
 
-    void trimLeft(xstring::view& str, xstring::view const& set)
+    void trimLeft(string_t::view& str, string_t::view const& set)
     {
         for (s32 i = 0; i < str.size(); ++i)
         {
@@ -1725,7 +1725,7 @@ namespace xcore
         }
     }
 
-    void trimRight(xstring::view& str, xstring::view const& set)
+    void trimRight(string_t::view& str, string_t::view const& set)
     {
         s32 const last = str.size() - 1;
         for (s32 i = 0; i < str.size(); ++i)
@@ -1742,17 +1742,17 @@ namespace xcore
         }
     }
 
-    void trimQuotes(xstring::view& str) { trimDelimiters(str, '"', '"'); }
+    void trimQuotes(string_t::view& str) { trimDelimiters(str, '"', '"'); }
 
-    void trimQuotes(xstring::view& str, uchar32 quote) { trimDelimiters(str, quote, quote); }
+    void trimQuotes(string_t::view& str, uchar32 quote) { trimDelimiters(str, quote, quote); }
 
-    void trimDelimiters(xstring::view& str, uchar32 left, uchar32 right)
+    void trimDelimiters(string_t::view& str, uchar32 left, uchar32 right)
     {
         trimLeft(str, left);
         trimRight(str, right);
     }
 
-    void reverse(xstring::view& str)
+    void reverse(string_t::view& str)
     {
         s32 const last = str.size() - 1;
         for (s32 i = 0; i < (last - i); ++i)
@@ -1764,7 +1764,7 @@ namespace xcore
         }
     }
 
-    bool splitOn(xstring::view& str, uchar32 inChar, xstring::view& outLeft, xstring::view& outRight)
+    bool splitOn(string_t::view& str, uchar32 inChar, string_t::view& outLeft, string_t::view& outRight)
     {
         outLeft = selectUntil(str, inChar);
         if (outLeft.is_empty())
@@ -1774,7 +1774,7 @@ namespace xcore
         return true;
     }
 
-    bool splitOn(xstring::view& str, xstring::view& inStr, xstring::view& outLeft, xstring::view& outRight)
+    bool splitOn(string_t::view& str, string_t::view& inStr, string_t::view& outLeft, string_t::view& outRight)
     {
         outLeft = selectUntil(str, inStr);
         if (outLeft.is_empty())
@@ -1783,7 +1783,7 @@ namespace xcore
         return true;
     }
 
-    bool splitOnLast(xstring::view& str, uchar32 inChar, xstring::view& outLeft, xstring::view& outRight)
+    bool splitOnLast(string_t::view& str, uchar32 inChar, string_t::view& outLeft, string_t::view& outRight)
     {
         outLeft = selectUntilLast(str, inChar);
         if (outLeft.is_empty())
@@ -1793,7 +1793,7 @@ namespace xcore
         return true;
     }
 
-    bool splitOnLast(xstring::view& str, xstring::view& inStr, xstring::view& outLeft, xstring::view& outRight)
+    bool splitOnLast(string_t::view& str, string_t::view& inStr, string_t::view& outLeft, string_t::view& outRight)
     {
         outLeft = selectUntilLast(str, inStr);
         if (outLeft.is_empty())
@@ -1802,18 +1802,18 @@ namespace xcore
         return true;
     }
 
-    void concatenate(xstring& str, const xstring::view& con) { xview::resize(str, str.size() + con.size() + 1); }
+    void concatenate(string_t& str, const string_t::view& con) { xview::resize(str, str.size() + con.size() + 1); }
 
     //------------------------------------------------------------------------------
     static void user_case_for_string()
     {
-        xstring str("This is an ascii string that will be converted to UTF-32");
+        string_t str("This is an ascii string that will be converted to UTF-32");
 
-        xstring::view strvw  = str.full();
-        xstring::view substr = find(strvw, xstring("ascii"));
+        string_t::view strvw  = str.full();
+        string_t::view substr = find(strvw, string_t("ascii"));
         upper(substr);
 
-        find_remove(str, xstring("converted "));
+        find_remove(str, string_t("converted "));
     }
 
 } // namespace xcore

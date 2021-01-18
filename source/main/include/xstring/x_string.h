@@ -12,7 +12,7 @@
 #include "xbase/x_runes.h"
 
 //==============================================================================
-// xstring, a UTF32 string class
+// string_t, a UTF32 string class
 //==============================================================================
 namespace xcore
 {
@@ -20,7 +20,7 @@ namespace xcore
     class va_list_t;
     class alloc_t;
 
-    class xstring
+    class string_t
     {
     protected:
         struct data;
@@ -33,12 +33,12 @@ namespace xcore
         };
 
     public:
-        xstring();
-        xstring(runes_alloc_t* allocator);
-        xstring(runes_alloc_t* allocator, const char* str);
-        xstring(const char* str);
-        xstring(xstring const& other);
-        ~xstring();
+        string_t();
+        string_t(runes_alloc_t* allocator);
+        string_t(runes_alloc_t* allocator, const char* str);
+        string_t(const char* str);
+        string_t(string_t const& other);
+        ~string_t();
 
         struct view
         {
@@ -47,7 +47,7 @@ namespace xcore
 
             s32     size() const;
             bool    is_empty() const;
-            xstring to_string() const;
+            string_t to_string() const;
 
             view operator()(s32 to);
             view operator()(s32 from, s32 to);
@@ -62,22 +62,22 @@ namespace xcore
             bool operator!=(view const& other) const;
 
         protected:
-            friend class xstring;
+            friend class string_t;
             friend class xview;
-            view(xstring::data*);
+            view(string_t::data*);
 
             void     add();
             void     rem();
             void     invalidate();
             crunes_t get_runes() const;
 
-            xstring::data* m_data;
+            string_t::data* m_data;
             range          m_view;
             view*          m_next;
             view*          m_prev;
         };
 
-        xstring(xstring::view const& left, xstring::view const& right);
+        string_t(string_t::view const& left, string_t::view const& right);
 
         bool is_empty() const;
         s32  cap() const;
@@ -96,11 +96,11 @@ namespace xcore
 
         uchar32 operator[](s32 index) const;
 
-        xstring& operator=(const xstring& other);
-        xstring& operator=(const xstring::view& other);
+        string_t& operator=(const string_t& other);
+        string_t& operator=(const string_t::view& other);
 
-        bool operator==(const xstring& other) const;
-        bool operator!=(const xstring& other) const;
+        bool operator==(const string_t& other) const;
+        bool operator!=(const string_t& other) const;
 
         operator view() { return full(); }
 
@@ -110,7 +110,7 @@ namespace xcore
         friend struct view;
         friend class xview;
 
-        xstring(runes_alloc_t* mem, s32 size);
+        string_t(runes_alloc_t* mem, s32 size);
 
         void release();
         void clone(runes_t const& str, runes_alloc_t* allocator);
@@ -126,88 +126,88 @@ namespace xcore
         mutable data m_data;
     };
 
-    bool isUpper(const xstring::view&);
-    bool isLower(const xstring::view&);
-    bool isCapitalized(const xstring::view&);
-    bool isQuoted(const xstring::view&);
-    bool isQuoted(const xstring::view&, uchar32 inQuote);
-    bool isDelimited(const xstring::view&, uchar32 inLeft, uchar32 inRight);
+    bool isUpper(const string_t::view&);
+    bool isLower(const string_t::view&);
+    bool isCapitalized(const string_t::view&);
+    bool isQuoted(const string_t::view&);
+    bool isQuoted(const string_t::view&, uchar32 inQuote);
+    bool isDelimited(const string_t::view&, uchar32 inLeft, uchar32 inRight);
 
-    uchar32 firstChar(const xstring::view&);
-    uchar32 lastChar(const xstring::view&);
+    uchar32 firstChar(const string_t::view&);
+    uchar32 lastChar(const string_t::view&);
 
-    bool startsWith(const xstring::view&, xstring::view const& inStartStr);
-    bool endsWith(const xstring::view&, xstring::view const& inEndStr);
+    bool startsWith(const string_t::view&, string_t::view const& inStartStr);
+    bool endsWith(const string_t::view&, string_t::view const& inEndStr);
 
     ///@name Comparison
-    s32  compare(const xstring::view& inLHS, const xstring::view& inRHS);
-    bool isEqual(const xstring::view& inLHS, const xstring::view& inRHS);
-    bool contains(const xstring::view& inStr, uchar32 inContains);
-    bool contains(const xstring::view& inStr, const xstring::view& inContains);
+    s32  compare(const string_t::view& inLHS, const string_t::view& inRHS);
+    bool isEqual(const string_t::view& inLHS, const string_t::view& inRHS);
+    bool contains(const string_t::view& inStr, uchar32 inContains);
+    bool contains(const string_t::view& inStr, const string_t::view& inContains);
 
-    s32 format(xstring&, xstring::view const& formatString, const va_list_t& args);
-    s32 formatAdd(xstring&, xstring::view const& formatString, const va_list_t& args);
+    s32 format(string_t&, string_t::view const& formatString, const va_list_t& args);
+    s32 formatAdd(string_t&, string_t::view const& formatString, const va_list_t& args);
 
-    void upper(xstring::view& inStr);
-    void lower(xstring::view& inStr);
-    void capitalize(xstring::view& inStr);
-    void capitalize(xstring::view& inStr, xstring::view const& inSeperators);
+    void upper(string_t::view& inStr);
+    void lower(string_t::view& inStr);
+    void capitalize(string_t::view& inStr);
+    void capitalize(string_t::view& inStr, string_t::view const& inSeperators);
 
-    xstring::view selectUntil(const xstring::view& inStr, uchar32 inFind);
-    xstring::view selectUntil(const xstring::view& inStr, const xstring::view& inFind);
+    string_t::view selectUntil(const string_t::view& inStr, uchar32 inFind);
+    string_t::view selectUntil(const string_t::view& inStr, const string_t::view& inFind);
 
-    xstring::view selectUntilLast(const xstring::view& inStr, uchar32 inFind);
-    xstring::view selectUntilLast(const xstring::view& inStr, const xstring::view& inFind);
+    string_t::view selectUntilLast(const string_t::view& inStr, uchar32 inFind);
+    string_t::view selectUntilLast(const string_t::view& inStr, const string_t::view& inFind);
 
-    xstring::view selectUntilIncluded(const xstring::view& str, const xstring::view& selection);
+    string_t::view selectUntilIncluded(const string_t::view& str, const string_t::view& selection);
 
-    xstring::view selectUntilEndExcludeSelection(const xstring::view& str, const xstring::view& selection);
-    xstring::view selectUntilEndIncludeSelection(const xstring::view& str, const xstring::view& selection);
+    string_t::view selectUntilEndExcludeSelection(const string_t::view& str, const string_t::view& selection);
+    string_t::view selectUntilEndIncludeSelection(const string_t::view& str, const string_t::view& selection);
 
     ///@name Search/replace
-    xstring::view find(xstring& inStr, uchar32 inFind);
-    xstring::view find(xstring::view& inStr, uchar32 inFind);
-    xstring::view find(xstring& inStr, const xstring::view& inFind);
-    xstring::view find(xstring::view& inStr, const xstring::view& inFind);
-    xstring::view findLast(xstring::view& inStr, const xstring::view& inFind);
-    xstring::view findOneOf(xstring::view& inStr, const xstring::view& inFind);
-    xstring::view findOneOfLast(xstring::view& inStr, const xstring::view& inFind);
+    string_t::view find(string_t& inStr, uchar32 inFind);
+    string_t::view find(string_t::view& inStr, uchar32 inFind);
+    string_t::view find(string_t& inStr, const string_t::view& inFind);
+    string_t::view find(string_t::view& inStr, const string_t::view& inFind);
+    string_t::view findLast(string_t::view& inStr, const string_t::view& inFind);
+    string_t::view findOneOf(string_t::view& inStr, const string_t::view& inFind);
+    string_t::view findOneOfLast(string_t::view& inStr, const string_t::view& inFind);
 
-    void insert(xstring&, xstring::view const& pos, xstring::view const& insert);
-    void insert_after(xstring&, xstring::view const& pos, xstring::view const& insert);
+    void insert(string_t&, string_t::view const& pos, string_t::view const& insert);
+    void insert_after(string_t&, string_t::view const& pos, string_t::view const& insert);
 
-    void remove(xstring&, xstring::view const& selection);
-    void find_remove(xstring&, const xstring::view& find);
-    void find_replace(xstring&, xstring::view const& find, xstring::view const& replace);
-    void remove_any(xstring&, const xstring::view& inAny);
-    void replace_any(xstring::view&, xstring::view const& inAny, uchar32 inWith);
+    void remove(string_t&, string_t::view const& selection);
+    void find_remove(string_t&, const string_t::view& find);
+    void find_replace(string_t&, string_t::view const& find, string_t::view const& replace);
+    void remove_any(string_t&, const string_t::view& inAny);
+    void replace_any(string_t::view&, string_t::view const& inAny, uchar32 inWith);
 
-    void trim(xstring::view&);
-    void trimLeft(xstring::view&);
-    void trimRight(xstring::view&);
-    void trim(xstring::view&, uchar32 inChar);
-    void trimLeft(xstring::view&, uchar32 inChar);
-    void trimRight(xstring::view&, uchar32 inChar);
-    void trim(xstring::view&, xstring::view const& inCharSet);
-    void trimLeft(xstring::view&, xstring::view const& inCharSet);
-    void trimRight(xstring::view&, xstring::view const& inCharSet);
-    void trimQuotes(xstring::view&);
-    void trimQuotes(xstring::view&, uchar32 quote);
-    void trimDelimiters(xstring::view&, uchar32 inLeft, uchar32 inRight);
+    void trim(string_t::view&);
+    void trimLeft(string_t::view&);
+    void trimRight(string_t::view&);
+    void trim(string_t::view&, uchar32 inChar);
+    void trimLeft(string_t::view&, uchar32 inChar);
+    void trimRight(string_t::view&, uchar32 inChar);
+    void trim(string_t::view&, string_t::view const& inCharSet);
+    void trimLeft(string_t::view&, string_t::view const& inCharSet);
+    void trimRight(string_t::view&, string_t::view const& inCharSet);
+    void trimQuotes(string_t::view&);
+    void trimQuotes(string_t::view&, uchar32 quote);
+    void trimDelimiters(string_t::view&, uchar32 inLeft, uchar32 inRight);
 
-    void reverse(xstring::view&);
+    void reverse(string_t::view&);
 
-    bool splitOn(xstring::view&, uchar32 inChar, xstring::view& outLeft, xstring::view& outRight);
-    bool splitOn(xstring::view&, xstring::view& inStr, xstring::view& outLeft, xstring::view& outRight);
-    bool splitOnLast(xstring::view&, uchar32 inChar, xstring::view& outLeft, xstring::view& outRight);
-    bool splitOnLast(xstring::view&, xstring::view& inStr, xstring::view& outLeft, xstring::view& outRight);
+    bool splitOn(string_t::view&, uchar32 inChar, string_t::view& outLeft, string_t::view& outRight);
+    bool splitOn(string_t::view&, string_t::view& inStr, string_t::view& outLeft, string_t::view& outRight);
+    bool splitOnLast(string_t::view&, uchar32 inChar, string_t::view& outLeft, string_t::view& outRight);
+    bool splitOnLast(string_t::view&, string_t::view& inStr, string_t::view& outLeft, string_t::view& outRight);
 
-    void concatenate(xstring& str, const xstring::view& con);
-    void concatenate_repeat(xstring&, xstring::view const& con, s32 ntimes);
+    void concatenate(string_t& str, const string_t::view& con);
+    void concatenate_repeat(string_t&, string_t::view const& con, s32 ntimes);
 
-    // Global xstring operators
+    // Global string_t operators
 
-    inline xstring operator+(const xstring& left, const xstring& right) { return xstring(left.full(), right.full()); }
+    inline string_t operator+(const string_t& left, const string_t& right) { return string_t(left.full(), right.full()); }
 } // namespace xcore
 
 #endif ///< __XSTRING_STRING_H__
