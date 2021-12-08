@@ -14,29 +14,28 @@ namespace xcore
     // String Slice
     // A reference counted slice_t owning an array of runes with a view/window (from,to).
     //==============================================================================
-    struct strslice
+    struct strslice_t
     {
         struct data;
 
-        strslice();
-        strslice(alloc_t* allocator, s32 _count);
-        strslice(data* data, s32 from, s32 to);
+        strslice_t();
+        strslice_t(alloc_t* allocator, s32 _count);
+        strslice_t(data* data, s32 from, s32 to);
 
-        static void alloc(strslice& slice_t, alloc_t* allocator, s32 _count);
-        strslice    construct(s32 _count) const;
+        static void alloc(strslice_t& slice_t, alloc_t* allocator, s32 _count);
+        strslice_t  construct(s32 _count) const;
 
-        s32 size() const;
-        s32 refcnt() const;
-
-        strslice obtain() const;
-        void    release();
+        s32        size() const;
+        s32        refcnt() const;
+        strslice_t obtain() const;
+        void       release();
 
         void resize(s32 count);
         void insert(s32 count);
         void remove(s32 count);
 
-        strslice view(s32 from, s32 to) const;
-        bool     split(s32 mid, strslice& left, strslice& right) const;
+        strslice_t view(s32 from, s32 to) const;
+        bool       split(s32 mid, strslice_t& left, strslice_t& right) const;
 
         uchar32*       begin();
         uchar32 const* begin() const;
@@ -78,7 +77,7 @@ namespace xcore
             uchar32*    mData;
         };
 
-        data*        mData;
+        data* mData;
     };
 } // namespace xcore
 

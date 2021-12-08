@@ -12,7 +12,7 @@
 #include "xbase/x_runes.h"
 
 //==============================================================================
-// xstring, a UTF32 string class
+// string_t, a UTF32 string class
 //==============================================================================
 namespace xcore
 {
@@ -20,7 +20,7 @@ namespace xcore
     class va_list_t;
     class alloc_t;
 
-    class xstring
+    class string_t
     {
     public:
         xstring();
@@ -48,8 +48,8 @@ namespace xcore
         xstring& operator=(const xstring& other);
         xstring& operator+=(const xstring& other);
 
-        bool operator==(const xstring& other) const;
-        bool operator!=(const xstring& other) const;
+        bool operator==(const string_t& other) const;
+        bool operator!=(const string_t& other) const;
 
         xstring clone() const;
 

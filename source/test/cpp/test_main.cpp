@@ -2,7 +2,7 @@
 #include "xbase/x_allocator.h"
 #include "xbase/x_console.h"
 
-#include "xstring/x_string.h"
+#include "string_t/x_string.h"
 
 #include "xunittest/xunittest.h"
 #include "xunittest/private/ut_ReportAssert.h"
