@@ -15,7 +15,7 @@ Instead we can do things like this:
 ``` c++
 xstring str("This is an ascii converted to UTF-32 when constructed");
 
-xstring::view ascii_substring = find(str, "ascii");
+xstring ascii_substring = find(str, "ascii");
 upper(ascii_substring);    // 'ascii' to 'ASCII'
 
 // This inserts " string" into the main string at the location indicated by @ascii_substring
@@ -35,12 +35,12 @@ You can clone a string (string data is copied):
 
 ``` c++
 xstring a_copy(str);
-xstring::view to_remove = find(a_copy, xstring(" when constructed"));
+xstring to_remove = find(a_copy, xstring(" when constructed"));
 remove(a_copy, to_remove);  // This removes the substring from the main string
 // So now @a_copy = "This is an ASCII string converted to UTF-32"
 // @to_remove is invalidated since that part does not exist anymore.
 
 // If you want to lower-case the first letter of 'This'
-xstring::view to_lower = a_copy(1);
+xstring to_lower = a_copy(1);
 lower(to_lower);
 ```

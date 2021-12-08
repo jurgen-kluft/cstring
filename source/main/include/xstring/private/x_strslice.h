@@ -28,7 +28,7 @@ namespace xcore
         s32 size() const;
         s32 refcnt() const;
 
-        slice_t obtain() const;
+        strslice obtain() const;
         void    release();
 
         void resize(s32 count);
@@ -79,7 +79,6 @@ namespace xcore
         };
 
         data*        mData;
-        utf32::runes mRunes
     };
 } // namespace xcore
 
