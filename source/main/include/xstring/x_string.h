@@ -12,7 +12,7 @@
 #include "xbase/x_runes.h"
 
 //==============================================================================
-// string_t, a UTF32 string class
+// xstring, a UTF32 string class
 //==============================================================================
 namespace xcore
 {
@@ -20,7 +20,7 @@ namespace xcore
     class va_list_t;
     class alloc_t;
 
-    class string_t
+    class xstring
     {
     public:
         xstring();
@@ -48,8 +48,8 @@ namespace xcore
         xstring& operator=(const xstring& other);
         xstring& operator+=(const xstring& other);
 
-        bool operator==(const string_t& other) const;
-        bool operator!=(const string_t& other) const;
+        bool operator==(const xstring& other) const;
+        bool operator!=(const xstring& other) const;
 
         xstring clone() const;
 
@@ -67,6 +67,7 @@ namespace xcore
 
         struct range
         {
+            inline range(s32 _from, s32 _to) : from(_from), to(_to) {}
             s32 size() const { return to - from; }
             s32 from;
             s32 to;
@@ -74,25 +75,26 @@ namespace xcore
 
         struct view
         {
-            inline view() : m_str(), m_next(nullptr), m_prev(nullptr) {}
-            s32 size() const { return m_str.size(); }
-            runes_t m_str;
-            view* m_next;
-            view* m_prev;
+            inline view() : from(0), to(0) {}
+            s32 size() const { return to-from; }
+            s32 from;
+            s32 to;
         };
 
         struct data
         {
-            inline data() : m_stralloc(nullptr), m_alloc(nullptr), m_str(), m_refs(0), m_view(nullptr) {}
-            inline data(runes_alloc_t* sa, alloc_t* a) : m_stralloc(sa), m_alloc(a), m_str(), m_refs(0), m_view(nullptr) {}
+            inline data() : m_stralloc(nullptr), m_alloc(nullptr), m_str(), m_refs(0), m_list(nullptr) {}
+            inline data(runes_alloc_t* sa, alloc_t* a) : m_stralloc(sa), m_alloc(a), m_str(), m_refs(0), m_list(nullptr) {}
             runes_alloc_t* m_stralloc;
             alloc_t* m_alloc;
             runes_t m_str;
+            xstring* m_list;
             s32 m_refs;
-            view* m_view;
         };
-        data* m_data;
-        view m_view;
+        data*    m_data;
+        xstring* m_next;
+        xstring* m_prev;
+        view     m_view;
     };
 
     bool isUpper(const xstring&);

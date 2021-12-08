@@ -1,10 +1,9 @@
-#include "string_t/x_string.h"
-
 #include "xbase/x_allocator.h"
 #include "xbase/x_integer.h"
 #include "xbase/x_memory.h"
 #include "xbase/x_runes.h"
 #include "xbase/x_printf.h"
+#include "xstring/x_string.h"
 
 namespace xcore
 {
@@ -12,18 +11,34 @@ namespace xcore
     class xview
     {
     public:
-        static inline uchar32* get_ptr_unsafe(xstring& str, s32 i) { return &str.m_view.m_str.m_runes.m_utf32.m_str[i]; }
-        static inline uchar32  get_char_unsafe(xstring const& str, s32 i) { return str.m_view.m_str.m_runes.m_utf32.m_str[i]; }
-        static inline void set_char_unsafe(xstring& str, s32 i, uchar32 c) { str.m_view.m_str.m_runes.m_utf32.m_str[i] = c; }
+        static inline uchar32* get_ptr_unsafe(xstring& str, s32 i) { return &str.m_data->m_str.m_runes.m_utf32.m_str[i]; }
+        static inline uchar32  get_char_unsafe(xstring const& str, s32 i) { return str.m_data->m_str.m_runes.m_utf32.m_str[i]; }
+        static inline void set_char_unsafe(xstring& str, s32 i, uchar32 c) { str.m_data->m_str.m_runes.m_utf32.m_str[i] = c; }
 
-        static void resize(string_t& str, s32 new_size)
+        static inline runes_t get_runes(xstring& str) 
+        { 
+            runes_t r(str.m_data->m_str);
+            switch(r.m_type) {
+                case ascii::TYPE: 
+                    r.m_runes.m_ascii.m_str = r.m_runes.m_ascii.m_str + str.m_view.from; 
+                    r.m_runes.m_ascii.m_end = r.m_runes.m_ascii.m_str + str.m_view.to; 
+                    break;
+                case utf32::TYPE: 
+                    r.m_runes.m_utf32.m_str = r.m_runes.m_utf32.m_str + str.m_view.from; 
+                    r.m_runes.m_utf32.m_end = r.m_runes.m_utf32.m_str + str.m_view.to; 
+                    break;
+            }
+            return r; 
+        }
+
+        static void resize(xstring& str, s32 new_size)
         {
             if (str.cap() < new_size)
             {
-                runes_t nrunes = str.m_data->m_alloc->allocate(0, new_size, utf32::TYPE);
+                runes_t nrunes = str.m_data->m_stralloc->allocate(0, new_size, utf32::TYPE);
                 runes_t trunes(str.m_data->m_str);
                 copy(trunes, nrunes);
-                str.m_data->m_alloc->deallocate(trunes);
+                str.m_data->m_stralloc->deallocate(trunes);
                 str.m_data->m_str = nrunes;
 
                 // Fix all views
@@ -37,13 +52,17 @@ namespace xcore
         static bool is_part_of(xstring const& str, xstring const& part)
         {
             if (str.m_data == part.m_data) {
-                if (part.m_view.m_str.m_runes.m_ascii.m_str >= str.m_view.m_str.m_runes.m_ascii.m_str) {
-                    if (part.m_view.m_str.m_runes.m_ascii.m_end <= str.m_view.m_str.m_runes.m_ascii.m_end) {
+                if (part.m_view.from >= str.m_view.from) {
+                    if (part.m_view.to <= str.m_view.to) {
                         return true;
                     }
                 }
             }
             return false;
+        }
+        static bool str_has_view(xstring const& str, xstring const& part)
+        {
+            return is_part_of(str, part);
         }
 
         static bool narrow_view(xstring& v, s32 move)
@@ -54,24 +73,24 @@ namespace xcore
                 if (move < 0)
                 {
                     move = -move;
-                    if (move <= v.m_view.m_str.size())
+                    if (move <= v.m_view.size())
                     {
-                        switch (v.m_view.m_str.m_type)
+                        switch (v.m_data->m_str.m_type)
                         {
-                        case ascii::TYPE: v.m_view.m_str.m_runes.m_ascii.m_str += move; break;
-                        case utf32::TYPE: v.m_view.m_str.m_runes.m_utf32.m_str += move; break;
+                        case ascii::TYPE: v.m_view.from += move; break;
+                        case utf32::TYPE: v.m_view.from += move; break;
                         }
                         return true;
                     }
                 }
                 else
                 {
-                    if (move <= v.m_view.m_str.size())
+                    if (move <= v.m_view.size())
                     {
-                        switch (v.m_view.m_str.m_type)
+                        switch (v.m_data->m_str.m_type)
                         {
-                        case ascii::TYPE: v.m_view.m_str.m_runes.m_ascii.m_end -= move; break;
-                        case utf32::TYPE: v.m_view.m_str.m_runes.m_utf32.m_end -= move; break;
+                        case ascii::TYPE: v.m_view.to -= move; break;
+                        case utf32::TYPE: v.m_view.to -= move; break;
                         }
                         return true;
                     }
@@ -83,18 +102,18 @@ namespace xcore
         static bool move_view(xstring& v, s32 move)
         {
             // Check if the move doesn't result in a out-of-bounds
-            ascii::prune from = v.m_view.m_str.m_runes.m_ascii.m_str + move;
-            if (from < v.m_view.m_str.m_runes.m_ascii.m_bos)
+            s32 from = v.m_view.from + move;
+            if (from < v.m_view.to)
                 return false;
 
             // Check if the movement doesn't invalidate this view
-            ascii::prune to = v.m_view.m_str.m_runes.m_ascii.m_end + move;
-            if (to > v.m_data->m_str.m_runes.m_ascii.m_end)
+            s32 to = v.m_view.to + move;
+            if (to > v.m_view.??)
                 return false;
 
             // Movement is ok, new view is valid
-            v.m_view.m_str.m_runes.m_ascii.m_str = from;
-            v.m_view.m_str.m_runes.m_ascii.m_end = to;
+            v.m_view.from = from;
+            v.m_view.to = to;
             return true;
         }
 
@@ -166,11 +185,11 @@ namespace xcore
         {
             s32 dst = pos.m_view.from;
 
-            string_t::range insert_range(dst, dst + insert.size());
+            xstring::range insert_range(dst, dst + insert.size());
             xview::adjust_active_views(str, xview::INSERTION, insert_range);
 
             xview::resize(str, str.size() + insert.size() + 1);
-            insert_newspace(xview::get_runes(str), dst, insert.size());
+            insert_newspace(get_runes(str), dst, insert.size());
             s32 src = 0;
             while (src < insert.size())
             {
@@ -190,7 +209,7 @@ namespace xcore
                 remove_selspace(str.m_data.m_runes, selection.m_view.from, selection.size());
                 // TODO: Decision to shrink the allocated memory of m_runes ?
 
-                string_t::range remove_range(selection.m_view.from, selection.m_view.to);
+                xstring::range remove_range(selection.m_view.from, selection.m_view.to);
                 xview::adjust_active_views(str, xview::REMOVAL, remove_range);
             }
         }
@@ -221,7 +240,7 @@ namespace xcore
                     remove_selspace(xview::get_runes(str), remove_from, diff);
                     // TODO: Decision to shrink the allocated memory of m_runes ?
 
-                    string_t::range remove_range(remove_from, remove_from + diff);
+                    xstring::range remove_range(remove_from, remove_from + diff);
                     xview::adjust_active_views(str, xview::REMOVAL, remove_range);
                 }
                 else if (diff < 0)
@@ -231,7 +250,7 @@ namespace xcore
                     xview::resize(str, str.size() + (-diff));
                     insert_newspace(xview::get_runes(str), remove_from, -diff);
 
-                    string_t::range insert_range(remove_from, remove_from + -diff);
+                    xstring::range insert_range(remove_from, remove_from + -diff);
                     xview::adjust_active_views(str, xview::INSERTION, insert_range);
                 }
                 // Copy string 'remove' into the (now) same size selection space
@@ -267,7 +286,7 @@ namespace xcore
                         // have been adjusted according to the previous range removal. So here we have to adjust
                         // this removal range by shifting it left with 'gap'.
                         s32 const      gap = i - d;
-                        string_t::range removal_range(r, i);
+                        xstring::range removal_range(r, i);
                         xview::shift_range(removal_range, gap);
                         xview::adjust_active_views(str, xview::REMOVAL, removal_range);
                         r = -1;
@@ -299,7 +318,7 @@ namespace xcore
         static const s32 OVERLAP  = 0x07E0; // binary(0000,0111,1110,0000);
         static const s32 ENVELOPE = 0x37EC; // binary(0011,0111,1110,1100);
 
-        static s32 compare(string_t::range const& lhs, string_t::range const& rhs)
+        static s32 compare(xstring::range const& lhs, xstring::range const& rhs)
         {
             // Return where 'rhs' is in relation to 'lhs'
             // --------| lhs |--------[ rhs ]--------        RIGHT
@@ -337,7 +356,7 @@ namespace xcore
                 return ENVELOPE;
             return NONE;
         }
-        static inline s32 compute_range_overlap(string_t::range const& lhs, string_t::range const& rhs)
+        static inline s32 compute_range_overlap(xstring::range const& lhs, xstring::range const& rhs)
         {
             if (rhs.from < lhs.from && rhs.to < lhs.to)
                 return rhs.to - lhs.from;
@@ -345,12 +364,12 @@ namespace xcore
                 return lhs.to - rhs.from;
             return 0;
         }
-        static inline void shift_range(string_t::range& v, s32 distance)
+        static inline void shift_range(xstring::range& v, s32 distance)
         {
             v.from += distance;
             v.to += distance;
         }
-        static inline void extend_range(string_t::range& v, s32 distance)
+        static inline void extend_range(xstring::range& v, s32 distance)
         {
             if (distance > 0)
             { // Extend right side
@@ -361,7 +380,7 @@ namespace xcore
                 v.from += distance;
             }
         }
-        static inline void narrow_range(string_t::range& v, s32 distance)
+        static inline void narrow_range(xstring::range& v, s32 distance)
         {
             if (distance > 0)
             { // Narrow right side
@@ -372,7 +391,7 @@ namespace xcore
                 v.from -= distance;
             }
         }
-        static inline void invalidate_range(string_t::range& v)
+        static inline void invalidate_range(xstring::range& v)
         {
             v.from = 0;
             v.to   = 0;
@@ -467,7 +486,7 @@ namespace xcore
             }
         }
 
-        static void adjust_active_views(string_t& str, s32 op_code, string_t::range op_range)
+        static void adjust_active_views(xstring& str, s32 op_code, xstring::range op_range)
         {
             xstring* list = str.m_data.m_views;
             if (list != nullptr)
@@ -722,7 +741,7 @@ namespace xcore
 
     xstring::xstring(const xstring& other) : m_data(other.m_data) 
     {
-        m_view.m_str = other.m_view.m_str;
+        m_view = other.m_view;
         add(); 
     }
 
@@ -752,7 +771,7 @@ namespace xcore
             str.m_view.m_str = dstrunes;
             return str;
         }
-        return string_t();
+        return xstring();
     }
 
     xstring xstring::operator()(s32 to)
@@ -956,17 +975,17 @@ namespace xcore
     };
 
     static runes_allocator s_utf32_runes_allocator;
-    runes_alloc_t*         string_t::s_allocator = &s_utf32_runes_allocator;
+    runes_alloc_t*         xstring::s_allocator = &s_utf32_runes_allocator;
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    string_t::string_t(void) : m_data(s_allocator) {}
+    xstring::xstring(void) : m_data(s_allocator) {}
 
-    string_t::string_t(runes_alloc_t* allocator) : m_data(allocator) {}
+    xstring::xstring(runes_alloc_t* allocator) : m_data(allocator) {}
 
-    string_t::string_t(runes_alloc_t* allocator, const char* str) : m_data(allocator)
+    xstring::xstring(runes_alloc_t* allocator, const char* str) : m_data(allocator)
     {
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
@@ -974,7 +993,7 @@ namespace xcore
         ascii_to_utf32(str, end, m_data.m_runes.m_runes.m_utf32.m_end, m_data.m_runes.m_runes.m_utf32.m_eos);
     }
 
-    string_t::string_t(const char* str) : m_data(s_allocator)
+    xstring::xstring(const char* str) : m_data(s_allocator)
     {
         const char* end = nullptr;
         s32 const   len = ascii_nr_chars(str, end) + 1;
@@ -984,7 +1003,7 @@ namespace xcore
 
     xstring::xstring(runes_alloc_t* _allocator, s32 _len) : m_data(_allocator) { m_data.m_runes = m_data.m_alloc->allocate(0, _len, m_data.m_runes.m_type); }
 
-    string_t::string_t(const string_t& other) : m_data(other.m_data)
+    xstring::xstring(const xstring& other) : m_data(other.m_data)
     {
         if (m_data.m_alloc != nullptr && !other.m_data.m_runes.is_empty())
         {
@@ -1004,11 +1023,11 @@ namespace xcore
         }
     }
 
-    string_t::~string_t()
+    xstring::~xstring()
     {
         if (m_data.m_alloc != nullptr)
         {
-            xview::adjust_active_views(*this, xview::CLEARED, string_t::range(0, 0));
+            xview::adjust_active_views(*this, xview::CLEARED, xstring::range(0, 0));
             m_data.m_alloc->deallocate(m_data.m_runes);
         }
     }
@@ -1016,16 +1035,16 @@ namespace xcore
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    bool string_t::is_empty() const { return m_data.m_runes.size() == 0; }
+    bool xstring::is_empty() const { return m_data.m_runes.size() == 0; }
 
-    s32 string_t::size() const { return m_data.m_runes.size(); }
+    s32 xstring::size() const { return m_data.m_runes.size(); }
 
-    s32 string_t::cap() const { return m_data.m_runes.cap(); }
+    s32 xstring::cap() const { return m_data.m_runes.cap(); }
 
-    void string_t::clear()
+    void xstring::clear()
     {
         m_data.m_runes.clear();
-        xview::adjust_active_views(*this, xview::CLEARED, string_t::range(0, 0));
+        xview::adjust_active_views(*this, xview::CLEARED, xstring::range(0, 0));
     }
 
     xstring xstring::full()
@@ -1088,14 +1107,14 @@ namespace xcore
         return v;
     }
 
-    uchar32 string_t::operator[](s32 index) const
+    uchar32 xstring::operator[](s32 index) const
     {
         if (index >= m_data.m_runes.size())
             return '\0';
         return m_data.m_runes.m_runes.m_utf32.m_str[index];
     }
 
-    string_t& string_t::operator=(const string_t& other)
+    xstring& xstring::operator=(const xstring& other)
     {
         if (this != &other)
         {
@@ -1115,7 +1134,7 @@ namespace xcore
         return *this;
     }
 
-    bool string_t::operator==(const string_t& other) const
+    bool xstring::operator==(const xstring& other) const
     {
         if (size() != other.size())
             return false;
@@ -1129,7 +1148,7 @@ namespace xcore
         return true;
     }
 
-    bool string_t::operator!=(const string_t& other) const
+    bool xstring::operator!=(const xstring& other) const
     {
         if (size() != other.size())
             return true;
@@ -1143,16 +1162,16 @@ namespace xcore
         return false;
     }
 
-    void string_t::release()
+    void xstring::release()
     {
         if (m_data.m_alloc != nullptr)
         {
-            xview::adjust_active_views(*this, xview::RELEASED, string_t::range(0, 0));
+            xview::adjust_active_views(*this, xview::RELEASED, xstring::range(0, 0));
             m_data.m_alloc->deallocate(m_data.m_runes);
         }
     }
 
-    void string_t::clone(runes_t const& str, runes_alloc_t* allocator)
+    void xstring::clone(runes_t const& str, runes_alloc_t* allocator)
     {
         m_data.m_alloc = allocator;
         m_data.m_runes = m_data.m_alloc->allocate(0, str.size() + 1, m_data.m_runes.m_type);
@@ -1839,13 +1858,13 @@ namespace xcore
     //------------------------------------------------------------------------------
     static void user_case_for_string()
     {
-        string_t str("This is an ascii string that will be converted to UTF-32");
+        xstring str("This is an ascii string that will be converted to UTF-32");
 
         xstring strvw  = str;
         xstring substr = find(strvw, xstring("ascii"));
         upper(substr);
 
-        find_remove(str, string_t("converted "));
+        find_remove(str, xstring("converted "));
     }
 
 } // namespace xcore
