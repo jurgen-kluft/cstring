@@ -24,9 +24,10 @@ namespace xcore
     {
     public:
         xstring();
-        xstring(runes_alloc_t* allocator);
-        xstring(runes_alloc_t* allocator, const char* str);
+        //@TODO: We should also add wchar_t (utf16)
         xstring(const char* str);
+        xstring(alloc_t* _alloc, runes_alloc_t* _stralloc, s32 _len, s32 _type);
+        xstring(alloc_t* alloc, runes_alloc_t* stralloc, const char* str);
         xstring(xstring const& other);
         xstring(xstring const& other, xstring const& concat);
         ~xstring();
@@ -36,6 +37,10 @@ namespace xcore
         s32  size() const;
 
         void clear();
+        void invalidate();
+
+        s32 format(xstring const& format, const va_list_t& args);
+        s32 formatAdd(xstring const& format, const va_list_t& args);
 
         xstring operator()(s32 to);
         xstring operator()(s32 from, s32 to);
@@ -53,48 +58,30 @@ namespace xcore
 
         xstring clone() const;
 
-        static runes_alloc_t* s_allocator;
-
     protected:
-        friend class xview;
+        friend class ustring;
         struct data;
 
-        xstring(data*);
-        xstring(runes_alloc_t* mem, s32 size);
-
+        void attach(xstring& str);
         void release();
-        void clone(runes_t const& str, runes_alloc_t* allocator);
+        void clone(xstring const& str);
+
+        void     add_to_list(xstring const* node);
+        void     rem_from_list();
 
         struct range
         {
+            inline range() : from(0), to(0) {}
             inline range(s32 _from, s32 _to) : from(_from), to(_to) {}
             s32 size() const { return to - from; }
             s32 from;
             s32 to;
         };
 
-        struct view
-        {
-            inline view() : from(0), to(0) {}
-            s32 size() const { return to-from; }
-            s32 from;
-            s32 to;
-        };
-
-        struct data
-        {
-            inline data() : m_stralloc(nullptr), m_alloc(nullptr), m_str(), m_refs(0), m_list(nullptr) {}
-            inline data(runes_alloc_t* sa, alloc_t* a) : m_stralloc(sa), m_alloc(a), m_str(), m_refs(0), m_list(nullptr) {}
-            runes_alloc_t* m_stralloc;
-            alloc_t* m_alloc;
-            runes_t m_str;
-            xstring* m_list;
-            s32 m_refs;
-        };
-        data*    m_data;
-        xstring* m_next;
-        xstring* m_prev;
-        view     m_view;
+        data*        m_data;
+        xstring*     m_next;
+        xstring*     m_prev;
+        range        m_view;
     };
 
     bool isUpper(const xstring&);
