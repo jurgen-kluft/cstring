@@ -2,7 +2,7 @@
 #include "xbase/x_allocator.h"
 #include "xbase/x_console.h"
 
-#include "string_t/x_string.h"
+#include "xstring/x_string.h"
 
 #include "xunittest/xunittest.h"
 #include "xunittest/private/ut_ReportAssert.h"
@@ -10,8 +10,8 @@
 UNITTEST_SUITE_LIST(xStringUnitTest);
 
 UNITTEST_SUITE_DECLARE(xStringUnitTest, test_xstring);
-UNITTEST_SUITE_DECLARE(xStringUnitTest, test_string_reader);
-UNITTEST_SUITE_DECLARE(xStringUnitTest, test_string_writer);
+//UNITTEST_SUITE_DECLARE(xStringUnitTest, test_string_reader);
+//UNITTEST_SUITE_DECLARE(xStringUnitTest, test_string_writer);
 
 namespace xcore
 {
@@ -70,21 +70,20 @@ namespace xcore
 	};
 }
 
-xcore::alloc_t* gTestAllocator = NULL;
 xcore::UnitTestAssertHandler gAssertHandler;
-
 
 bool gRunUnitTest(UnitTest::TestReporter& reporter)
 {
 	xbase::x_Init();
+	
 #ifdef TARGET_DEBUG
 	xcore::asserthandler_t::sRegisterHandler(&gAssertHandler);
 #endif
 
 	xcore::TestAllocator testAllocator(xcore::alloc_t::get_system());
-	gTestAllocator = &testAllocator;
+	xcore::alloc_t::set_main(&testAllocator);
 
-	xcore::UnitTestAllocator unittestAllocator(gTestAllocator);
+	xcore::UnitTestAllocator unittestAllocator(&testAllocator);
 	UnitTest::SetAllocator(&unittestAllocator);
 
 	xcore::console->write("Configuration: ");
@@ -92,9 +91,8 @@ bool gRunUnitTest(UnitTest::TestReporter& reporter)
 
 	int r = UNITTEST_SUITE_RUN(reporter, xStringUnitTest);
 
-	gTestAllocator->release();
-
 	UnitTest::SetAllocator(NULL);
+	xcore::alloc_t::set_main(xcore::alloc_t::get_system());
 
 	xbase::x_Exit();
 	return r==0;

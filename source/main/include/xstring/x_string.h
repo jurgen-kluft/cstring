@@ -26,7 +26,7 @@ namespace xcore
         xstring();
         //@TODO: We should also add wchar_t (utf16)
         xstring(const char* str);
-        xstring(alloc_t* _alloc, runes_alloc_t* _stralloc, s32 _len, s32 _type);
+        xstring(alloc_t* alloc, runes_alloc_t* stralloc, s32 _len, s32 _type);
         xstring(alloc_t* alloc, runes_alloc_t* stralloc, const char* str);
         xstring(xstring const& other);
         xstring(xstring const& other, xstring const& concat);
@@ -38,6 +38,8 @@ namespace xcore
 
         void clear();
         void invalidate();
+
+        xstring clone() const;
 
         s32 format(xstring const& format, const va_list_t& args);
         s32 formatAdd(xstring const& format, const va_list_t& args);
@@ -56,8 +58,6 @@ namespace xcore
         bool operator==(const xstring& other) const;
         bool operator!=(const xstring& other) const;
 
-        xstring clone() const;
-
     protected:
         friend class ustring;
         struct data;
@@ -66,22 +66,27 @@ namespace xcore
         void release();
         void clone(xstring const& str);
 
-        void     add_to_list(xstring const* node);
-        void     rem_from_list();
+        void add_to_list(xstring const* node);
+        void rem_from_list();
 
         struct range
         {
             inline range() : from(0), to(0) {}
             inline range(s32 _from, s32 _to) : from(_from), to(_to) {}
-            s32 size() const { return to - from; }
+            s32  size() const { return to - from; }
+            void reset()
+            {
+                from = 0;
+                to   = 0;
+            }
             s32 from;
             s32 to;
         };
 
-        data*        m_data;
-        xstring*     m_next;
-        xstring*     m_prev;
-        range        m_view;
+        data*    m_data;
+        xstring* m_next;
+        xstring* m_prev;
+        range    m_view;
     };
 
     bool isUpper(const xstring&);
