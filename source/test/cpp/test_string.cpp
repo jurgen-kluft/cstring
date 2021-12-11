@@ -252,24 +252,38 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
         UNITTEST_TEST(test_find_replace)
         {
-            string_t str1("This is text to change something in");
-            CHECK_EQUAL(35, str1.size());
+            string_t thestr("This is text to change something in");
+            CHECK_EQUAL(35, thestr.size());
 
             // First some views
-            string_t v1 = find(str1, string_t("change"));
-            string_t v2 = find(str1, string_t("in"));
+            string_t v1 = find(thestr, string_t("change"));
+            string_t v2 = find(thestr, string_t("in"));
             CHECK_EQUAL(v1.size(), 6);
             CHECK_EQUAL(v2.size(), 2);
 
-            // Now change the string so that it will resize
+            // Now change the string so that it will resize (smaller)
             string_t strr("fix");
             CHECK_EQUAL(3, strr.size());
-            find_replace(str1, v1, strr);
-            CHECK_EQUAL(35 - 3, str1.size());
+            find_replace(thestr, v1, strr);
+            CHECK_EQUAL(35 + (3-6), thestr.size());
 
-            string_t str2("This is text to fix something in");
-            CHECK_EQUAL(str2.size(), str1.size());
-            CHECK_TRUE(str1 == str2);
+            CHECK_EQUAL(v2.size(), 2);
+
+            string_t result("This is text to fix something in");
+            CHECK_EQUAL(result.size(), thestr.size());
+            CHECK_TRUE(thestr == result);
+
+            // Now change the string so that it will resize (larger)
+            string_t strr2("rectify");
+            CHECK_EQUAL(7, strr2.size());
+            find_replace(thestr, strr, strr2);
+            CHECK_EQUAL(32 + (7-3), thestr.size());
+
+            result = ("This is text to rectify something in");
+            CHECK_EQUAL(result.size(), thestr.size());
+            CHECK_TRUE(thestr == result);
+
+            CHECK_EQUAL(v2.size(), 2);
         }
 
         UNITTEST_TEST(test_remove_any)
@@ -277,11 +291,21 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             string_t str1("This is text to #change $something &in");
             CHECK_EQUAL(38, str1.size());
 
+            string_t thing = find(str1, "thing");
+            CHECK_EQUAL(5, thing.size());
+
             // Now change the string so that it will resize
             string_t strr("#$&");
             CHECK_EQUAL(3, strr.size());
             remove_any(str1, strr);
             CHECK_EQUAL(38 - 3, str1.size());
+
+            CHECK_EQUAL(5, thing.size());
+            CHECK_EQUAL('t', thing[0]);
+            CHECK_EQUAL('h', thing[1]);
+            CHECK_EQUAL('i', thing[2]);
+            CHECK_EQUAL('n', thing[3]);
+            CHECK_EQUAL('g', thing[4]);
 
             string_t str2("This is text to change something in");
             CHECK_EQUAL(str2.size(), str1.size());

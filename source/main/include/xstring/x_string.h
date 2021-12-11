@@ -52,6 +52,7 @@ namespace xcore
 
         uchar32 operator[](s32 index) const;
 
+        xstring& operator=(const char* other);
         xstring& operator=(const xstring& other);
         xstring& operator+=(const xstring& other);
 
