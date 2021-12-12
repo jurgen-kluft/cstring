@@ -5,8 +5,6 @@
 
 using namespace xcore;
 
-using string_t = xstring;
-
 UNITTEST_SUITE_BEGIN(test_xstring)
 {
     UNITTEST_FIXTURE(main)
@@ -195,8 +193,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             CHECK_EQUAL(str1.size(), 35);
 
             // First some views
-            string_t v1 = find(str1, string_t("text"));
-            string_t v2 = find(str1, string_t(" in"));
+            string_t v1 = find(str1, "text");
+            string_t v2 = find(str1, " in");
             CHECK_EQUAL(v1.size(), 4);
             CHECK_EQUAL(v2.size(), 3);
 
@@ -227,8 +225,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             CHECK_EQUAL(37, str1.size());
 
             // First some views
-            string_t v1 = find(str1, string_t("remove"));
-            string_t v2 = find(str1, string_t("from"));
+            string_t v1 = find(str1, "remove");
+            string_t v2 = find(str1, "from");
             CHECK_EQUAL(v1.size(), 6);
             CHECK_EQUAL(v2.size(), 4);
 
@@ -256,8 +254,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             CHECK_EQUAL(35, thestr.size());
 
             // First some views
-            string_t v1 = find(thestr, string_t("change"));
-            string_t v2 = find(thestr, string_t("in"));
+            string_t v1 = find(thestr, "change");
+            string_t v2 = find(thestr, "in");
             CHECK_EQUAL(v1.size(), 6);
             CHECK_EQUAL(v2.size(), 2);
 
@@ -311,6 +309,35 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             CHECK_EQUAL(str2.size(), str1.size());
             CHECK_TRUE(str1 == str2);
         }
+
+        UNITTEST_TEST(test_remove_any2)
+        {
+            string_t str1("This is text to ##change $$something &&in");
+            CHECK_EQUAL(41, str1.size());
+
+            string_t thing = find(str1, "thing");
+            CHECK_EQUAL(5, thing.size());
+
+            // Now change the string so that it will resize
+            string_t strr("#$&");
+            CHECK_EQUAL(3, strr.size());
+            remove_any(str1, strr);
+            CHECK_EQUAL(41 - 6, str1.size());
+
+            CHECK_EQUAL(5, thing.size());
+            CHECK_EQUAL('t', thing[0]);
+            CHECK_EQUAL('h', thing[1]);
+            CHECK_EQUAL('i', thing[2]);
+            CHECK_EQUAL('n', thing[3]);
+            CHECK_EQUAL('g', thing[4]);
+
+            string_t str2("This is text to change something in");
+            CHECK_EQUAL(str2.size(), str1.size());
+            CHECK_TRUE(str1 == str2);
+        }
+
+
+
     }
 }
 UNITTEST_SUITE_END

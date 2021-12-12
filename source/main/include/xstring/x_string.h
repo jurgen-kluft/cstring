@@ -12,7 +12,7 @@
 #include "xbase/x_runes.h"
 
 //==============================================================================
-// xstring, a UTF32 string class
+// string_t, a UTF32 string class
 //==============================================================================
 namespace xcore
 {
@@ -20,17 +20,17 @@ namespace xcore
     class va_list_t;
     class alloc_t;
 
-    class xstring
+    class string_t
     {
     public:
-        xstring();
+        string_t();
         //@TODO: We should also add wchar_t (utf16)
-        xstring(const char* str);
-        xstring(alloc_t* alloc, runes_alloc_t* stralloc, s32 _len, s32 _type);
-        xstring(alloc_t* alloc, runes_alloc_t* stralloc, const char* str);
-        xstring(xstring const& other);
-        xstring(xstring const& other, xstring const& concat);
-        ~xstring();
+        string_t(const char* str);
+        string_t(alloc_t* alloc, runes_alloc_t* stralloc, s32 _len, s32 _type);
+        string_t(alloc_t* alloc, runes_alloc_t* stralloc, const char* str);
+        string_t(string_t const& other);
+        string_t(string_t const& other, string_t const& concat);
+        ~string_t();
 
         bool is_empty() const;
         s32  cap() const;
@@ -39,35 +39,35 @@ namespace xcore
         void clear();
         void invalidate();
 
-        xstring clone() const;
+        string_t clone() const;
 
-        s32 format(xstring const& format, const va_list_t& args);
-        s32 formatAdd(xstring const& format, const va_list_t& args);
+        s32 format(string_t const& format, const va_list_t& args);
+        s32 formatAdd(string_t const& format, const va_list_t& args);
 
-        xstring operator()(s32 to);
-        xstring operator()(s32 from, s32 to);
+        string_t operator()(s32 to);
+        string_t operator()(s32 from, s32 to);
 
-        xstring operator()(s32 to) const;
-        xstring operator()(s32 from, s32 to) const;
+        string_t operator()(s32 to) const;
+        string_t operator()(s32 from, s32 to) const;
 
         uchar32 operator[](s32 index) const;
 
-        xstring& operator=(const char* other);
-        xstring& operator=(const xstring& other);
-        xstring& operator+=(const xstring& other);
+        string_t& operator=(const char* other);
+        string_t& operator=(const string_t& other);
+        string_t& operator+=(const string_t& other);
 
-        bool operator==(const xstring& other) const;
-        bool operator!=(const xstring& other) const;
+        bool operator==(const string_t& other) const;
+        bool operator!=(const string_t& other) const;
 
     protected:
         friend class ustring;
         struct data;
 
-        void attach(xstring& str);
+        void attach(string_t& str);
         void release();
-        void clone(xstring const& str);
+        void clone(string_t const& str);
 
-        void add_to_list(xstring const* node);
+        void add_to_list(string_t const* node);
         void rem_from_list();
 
         struct range
@@ -85,91 +85,92 @@ namespace xcore
         };
 
         data*    m_data;
-        xstring* m_next;
-        xstring* m_prev;
+        string_t* m_next;
+        string_t* m_prev;
         range    m_view;
     };
 
-    bool isUpper(const xstring&);
-    bool isLower(const xstring&);
-    bool isCapitalized(const xstring&);
-    bool isQuoted(const xstring&);
-    bool isQuoted(const xstring&, uchar32 inQuote);
-    bool isDelimited(const xstring&, uchar32 inLeft, uchar32 inRight);
+    bool isUpper(const string_t&);
+    bool isLower(const string_t&);
+    bool isCapitalized(const string_t&);
+    bool isQuoted(const string_t&);
+    bool isQuoted(const string_t&, uchar32 inQuote);
+    bool isDelimited(const string_t&, uchar32 inLeft, uchar32 inRight);
 
-    uchar32 firstChar(const xstring&);
-    uchar32 lastChar(const xstring&);
+    uchar32 firstChar(const string_t&);
+    uchar32 lastChar(const string_t&);
 
-    bool startsWith(const xstring&, xstring const& inStartStr);
-    bool endsWith(const xstring&, xstring const& inEndStr);
+    bool startsWith(const string_t&, string_t const& inStartStr);
+    bool endsWith(const string_t&, string_t const& inEndStr);
 
     ///@name Comparison
-    s32  compare(const xstring& inLHS, const xstring& inRHS);
-    bool isEqual(const xstring& inLHS, const xstring& inRHS);
-    bool contains(const xstring& inStr, uchar32 inContains);
-    bool contains(const xstring& inStr, const xstring& inContains);
+    s32  compare(const string_t& inLHS, const string_t& inRHS);
+    bool isEqual(const string_t& inLHS, const string_t& inRHS);
+    bool contains(const string_t& inStr, uchar32 inContains);
+    bool contains(const string_t& inStr, const string_t& inContains);
 
-    s32 format(xstring&, xstring const& formatString, const va_list_t& args);
-    s32 formatAdd(xstring&, xstring const& formatString, const va_list_t& args);
+    s32 format(string_t&, string_t const& formatString, const va_list_t& args);
+    s32 formatAdd(string_t&, string_t const& formatString, const va_list_t& args);
 
-    void upper(xstring& inStr);
-    void lower(xstring& inStr);
-    void capitalize(xstring& inStr);
-    void capitalize(xstring& inStr, xstring const& inSeperators);
+    void upper(string_t& inStr);
+    void lower(string_t& inStr);
+    void capitalize(string_t& inStr);
+    void capitalize(string_t& inStr, string_t const& inSeperators);
 
-    xstring selectUntil(const xstring& inStr, uchar32 inFind);
-    xstring selectUntil(const xstring& inStr, const xstring& inFind);
+    string_t selectUntil(const string_t& inStr, uchar32 inFind);
+    string_t selectUntil(const string_t& inStr, const string_t& inFind);
 
-    xstring selectUntilLast(const xstring& inStr, uchar32 inFind);
-    xstring selectUntilLast(const xstring& inStr, const xstring& inFind);
+    string_t selectUntilLast(const string_t& inStr, uchar32 inFind);
+    string_t selectUntilLast(const string_t& inStr, const string_t& inFind);
 
-    xstring selectUntilIncluded(const xstring& str, const xstring& selection);
+    string_t selectUntilIncluded(const string_t& str, const string_t& selection);
 
-    xstring selectUntilEndExcludeSelection(const xstring& str, const xstring& selection);
-    xstring selectUntilEndIncludeSelection(const xstring& str, const xstring& selection);
+    string_t selectUntilEndExcludeSelection(const string_t& str, const string_t& selection);
+    string_t selectUntilEndIncludeSelection(const string_t& str, const string_t& selection);
 
     ///@name Search/replace
-    xstring find(xstring& inStr, uchar32 inFind);
-    xstring find(xstring& inStr, const xstring& inFind);
-    xstring findLast(xstring& inStr, const xstring& inFind);
-    xstring findOneOf(xstring& inStr, const xstring& inFind);
-    xstring findOneOfLast(xstring& inStr, const xstring& inFind);
+    string_t find(string_t& inStr, uchar32 inFind);
+    string_t find(string_t& inStr, const char* inFind);
+    string_t find(string_t& inStr, const string_t& inFind);
+    string_t findLast(string_t& inStr, const string_t& inFind);
+    string_t findOneOf(string_t& inStr, const string_t& inFind);
+    string_t findOneOfLast(string_t& inStr, const string_t& inFind);
 
-    void insert(xstring&, xstring const& pos, xstring const& insert);
-    void insert_after(xstring&, xstring const& pos, xstring const& insert);
+    void insert(string_t&, string_t const& pos, string_t const& insert);
+    void insert_after(string_t&, string_t const& pos, string_t const& insert);
 
-    void remove(xstring&, xstring const& selection);
-    void find_remove(xstring&, const xstring& find);
-    void find_replace(xstring&, xstring const& find, xstring const& replace);
-    void remove_any(xstring&, const xstring& inAny);
-    void replace_any(xstring&, xstring const& inAny, uchar32 inWith);
+    void remove(string_t&, string_t const& selection);
+    void find_remove(string_t&, const string_t& find);
+    void find_replace(string_t&, string_t const& find, string_t const& replace);
+    void remove_any(string_t&, const string_t& inAny);
+    void replace_any(string_t&, string_t const& inAny, uchar32 inWith);
 
-    void trim(xstring&);
-    void trimLeft(xstring&);
-    void trimRight(xstring&);
-    void trim(xstring&, uchar32 inChar);
-    void trimLeft(xstring&, uchar32 inChar);
-    void trimRight(xstring&, uchar32 inChar);
-    void trim(xstring&, xstring const& inCharSet);
-    void trimLeft(xstring&, xstring const& inCharSet);
-    void trimRight(xstring&, xstring const& inCharSet);
-    void trimQuotes(xstring&);
-    void trimQuotes(xstring&, uchar32 quote);
-    void trimDelimiters(xstring&, uchar32 inLeft, uchar32 inRight);
+    void trim(string_t&);
+    void trimLeft(string_t&);
+    void trimRight(string_t&);
+    void trim(string_t&, uchar32 inChar);
+    void trimLeft(string_t&, uchar32 inChar);
+    void trimRight(string_t&, uchar32 inChar);
+    void trim(string_t&, string_t const& inCharSet);
+    void trimLeft(string_t&, string_t const& inCharSet);
+    void trimRight(string_t&, string_t const& inCharSet);
+    void trimQuotes(string_t&);
+    void trimQuotes(string_t&, uchar32 quote);
+    void trimDelimiters(string_t&, uchar32 inLeft, uchar32 inRight);
 
-    void reverse(xstring&);
+    void reverse(string_t&);
 
-    bool splitOn(xstring&, uchar32 inChar, xstring& outLeft, xstring& outRight);
-    bool splitOn(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);
-    bool splitOnLast(xstring&, uchar32 inChar, xstring& outLeft, xstring& outRight);
-    bool splitOnLast(xstring&, xstring& inStr, xstring& outLeft, xstring& outRight);
+    bool splitOn(string_t&, uchar32 inChar, string_t& outLeft, string_t& outRight);
+    bool splitOn(string_t&, string_t& inStr, string_t& outLeft, string_t& outRight);
+    bool splitOnLast(string_t&, uchar32 inChar, string_t& outLeft, string_t& outRight);
+    bool splitOnLast(string_t&, string_t& inStr, string_t& outLeft, string_t& outRight);
 
-    void concatenate(xstring& str, const xstring& con);
-    void concatenate_repeat(xstring&, xstring const& con, s32 ntimes);
+    void concatenate(string_t& str, const string_t& con);
+    void concatenate_repeat(string_t&, string_t const& con, s32 ntimes);
 
-    // Global xstring operators
+    // Global string_t operators
 
-    inline xstring operator+(const xstring& left, const xstring& right) { return xstring(left, right); }
+    inline string_t operator+(const string_t& left, const string_t& right) { return string_t(left, right); }
 } // namespace xcore
 
 #endif ///< __XSTRING_STRING_H__

@@ -1,14 +1,14 @@
 #ignore all files
-*.*
+*
+!*/
+
 vendor/
-source/main/builddir/
-source/test/builddir/
-tags
+t2-output/
 target/
+tags
 
 #except the following files
 !.gitignore
-
 !*.cpp
 !*.hpp
 !*.c
@@ -18,6 +18,7 @@ target/
 !*.build
 
 !*.go
+!*.lua
 
 !*.cs
 !*.csproj
@@ -26,9 +27,10 @@ target/
 !*.hlsl
 !*.fragment
 
-!*.mold
-!*.sc
-!*.diagram
+!*.md
+!*.jpg
+!*.txt
+!*.html
 
 !*.ini
 !*.bat
