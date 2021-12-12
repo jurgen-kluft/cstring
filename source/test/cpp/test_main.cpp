@@ -1,6 +1,7 @@
 #include "xbase/x_base.h"
 #include "xbase/x_allocator.h"
 #include "xbase/x_console.h"
+#include "xbase/x_context.h"
 
 #include "xstring/x_string.h"
 
@@ -74,14 +75,15 @@ xcore::UnitTestAssertHandler gAssertHandler;
 
 bool gRunUnitTest(UnitTest::TestReporter& reporter)
 {
-	xbase::x_Init();
+	xbase::init();
 	
 #ifdef TARGET_DEBUG
-	xcore::asserthandler_t::sRegisterHandler(&gAssertHandler);
+	xcore::context_t::set_assert_handler(&gAssertHandler);
 #endif
 
-	xcore::TestAllocator testAllocator(xcore::alloc_t::get_system());
-	xcore::alloc_t::set_main(&testAllocator);
+	xcore::alloc_t* system_alloc = xcore::alloc_t::get_system();
+	xcore::TestAllocator testAllocator(system_alloc);
+	xcore::context_t::set_system_alloc(&testAllocator);
 
 	xcore::UnitTestAllocator unittestAllocator(&testAllocator);
 	UnitTest::SetAllocator(&unittestAllocator);
@@ -92,9 +94,9 @@ bool gRunUnitTest(UnitTest::TestReporter& reporter)
 	int r = UNITTEST_SUITE_RUN(reporter, xStringUnitTest);
 
 	UnitTest::SetAllocator(NULL);
-	xcore::alloc_t::set_main(xcore::alloc_t::get_system());
+	xcore::context_t::set_system_alloc(system_alloc);
 
-	xbase::x_Exit();
+	xbase::exit();
 	return r==0;
 }
 
