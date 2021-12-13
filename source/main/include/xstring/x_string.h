@@ -26,8 +26,7 @@ namespace xcore
         string_t();
         //@TODO: We should also add wchar_t (utf16)
         string_t(const char* str);
-        string_t(alloc_t* alloc, runes_alloc_t* stralloc, s32 _len, s32 _type);
-        string_t(alloc_t* alloc, runes_alloc_t* stralloc, const char* str);
+        string_t(s32 _len, s32 _type);
         string_t(string_t const& other);
         string_t(string_t const& other, string_t const& concat);
         ~string_t();

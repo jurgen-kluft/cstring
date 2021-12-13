@@ -1,18 +1,16 @@
 #include "xbase/x_allocator.h"
+#include "xbase/x_context.h"
 #include "xbase/x_integer.h"
 #include "xbase/x_memory.h"
-#include "xbase/x_runes.h"
 #include "xbase/x_printf.h"
+#include "xbase/x_runes.h"
 #include "xstring/x_string.h"
 
 namespace xcore
 {
     struct string_t::data
     {
-        inline data() : m_alloc(nullptr), m_str_alloc(nullptr), m_str_ptr(), m_str_type(ascii::TYPE), m_str_len(0) {}
-        inline data(alloc_t* a, runes_alloc_t* sa) : m_alloc(a), m_str_alloc(sa), m_str_ptr(), m_str_type(ascii::TYPE), m_str_len(0) {}
-        alloc_t*       m_alloc;
-        runes_alloc_t* m_str_alloc;
+        inline data() : m_str_ptr(), m_str_type(ascii::TYPE), m_str_len(0) {}
         runes_t::ptr_t m_str_ptr;
         s32            m_str_type;
         s32            m_str_len;
@@ -201,39 +199,38 @@ namespace xcore
             return r;
         }
 
-        static string_t::data* allocdata(alloc_t* _alloc, runes_alloc_t* _stralloc, s32 _strlen, s32 _strtype)
+        static string_t::data* allocdata(s32 _strlen, s32 _strtype)
         {
-            string_t::data* data = _alloc->construct<string_t::data>();
-            data->m_alloc       = _alloc;
-            data->m_str_alloc   = _stralloc;
+
+            string_t::data* data = context_t::system_alloc()->construct<string_t::data>();
             data->m_str_type    = _strtype;
             data->m_str_len     = _strlen;
 
-            runes_t strdata               = _stralloc->allocate(_strlen, _strlen, _strtype);
+            runes_t strdata               = context_t::string_alloc()->allocate(_strlen, _strlen, _strtype);
             data->m_str_ptr.m_ptr.m_ascii = strdata.m_runes.m_ascii.m_bos;
 
             return data;
         }
 
-        static void deallocdata(string_t::data* data, alloc_t* _alloc, runes_alloc_t* _stralloc)
+        static void deallocdata(string_t::data* data)
         {
             runes_t runes = get_runes(data, string_t::range());
-            _stralloc->deallocate(runes);
-            _alloc->deallocate(data);
+            context_t::string_alloc()->deallocate(runes);
+            context_t::system_alloc()->deallocate(data);
         }
 
         static void resize(string_t& str, s32 new_size)
         {
             if (new_size > str.cap())
             {
-                string_t::data* data = allocdata(str.m_data->m_alloc, str.m_data->m_str_alloc, new_size, str.m_data->m_str_type);
+                string_t::data* data = allocdata(new_size, str.m_data->m_str_type);
 
                 runes_t trunes = get_runes(str.m_data, string_t::range(0, str.m_data->m_str_len));
                 runes_t nrunes = get_runes(data, string_t::range(0, data->m_str_len));
                 copy(trunes, nrunes);
 
                 // deallocate old data and string
-                deallocdata(str.m_data, str.m_data->m_alloc, str.m_data->m_str_alloc);
+                deallocdata(str.m_data);
 
                 // need to update the new data pointer for each view
                 string_t* list = &str;
@@ -752,8 +749,6 @@ namespace xcore
             if (s_default_data_ptr == nullptr)
             {
                 s_default_data_ptr                          = &s_default_data;
-                s_default_data_ptr->m_alloc                 = alloc_t::get_main();
-                s_default_data_ptr->m_str_alloc             = runes_alloc_t::get_main();
                 s_default_data_ptr->m_str_len               = 0;
                 s_default_data_ptr->m_str_ptr.m_ptr.m_ascii = "\0\0\0\0";
                 s_default_data_ptr->m_str_type              = ascii::TYPE;
@@ -817,16 +812,14 @@ namespace xcore
 
     string_t string_t::clone() const
     {
-        if (m_data->m_str_alloc != nullptr && m_data->m_str_len > 0)
+        if (m_data->m_str_len > 0)
         {
-            runes_t  dstrunes = m_data->m_str_alloc->allocate(0, m_view.size(), m_data->m_str_type);
+            runes_t  dstrunes = context_t::string_alloc()->allocate(0, m_view.size(), m_data->m_str_type);
             crunes_t srcrunes = ustring::get_crunes(this->m_data, this->m_view);
             copy(srcrunes, dstrunes);
 
             string_t str;
-            str.m_data                          = m_data->m_alloc->construct<string_t::data>();
-            str.m_data->m_str_alloc             = m_data->m_str_alloc;
-            str.m_data->m_alloc                 = m_data->m_alloc;
+            str.m_data                          = context_t::system_alloc()->construct<string_t::data>();
             str.m_data->m_str_ptr.m_ptr.m_ascii = dstrunes.m_runes.m_ascii.m_bos;
             str.m_data->m_str_len               = m_view.size();
             str.m_data->m_str_type              = m_data->m_str_type;
@@ -859,7 +852,7 @@ namespace xcore
 
         if (strlen > 0)
         {
-            m_data        = ustring::allocdata(alloc_t::get_main(), runes_alloc_t::get_main(), strlen, ascii::TYPE);
+            m_data        = ustring::allocdata(strlen, ascii::TYPE);
             runes_t runes = ustring::get_runes(m_data, m_view);
             copy(srcrunes, runes);
         }
@@ -872,38 +865,14 @@ namespace xcore
         add_to_list(nullptr);
     }
 
-    string_t::string_t(alloc_t* _alloc, runes_alloc_t* _stralloc, const char* str) : m_data(nullptr), m_view()
-    {
-        crunes_t srcrunes(str);
-
-        s32 strlen  = srcrunes.size();
-        s32 strtype = ascii::TYPE;
-
-        if (strlen > 0)
-        {
-            m_data        = ustring::allocdata(_alloc, _stralloc, strlen, srcrunes.m_type);
-            runes_t runes = ustring::get_runes(m_data, m_view);
-            copy(srcrunes, runes);
-        }
-        else
-        {
-            m_data = ustring::get_default_string_data();
-        }
-
-        m_view.from = 0;
-        m_view.to   = strlen;
-
-        add_to_list(nullptr);
-    }
-
-    string_t::string_t(alloc_t* _alloc, runes_alloc_t* _stralloc, s32 _len, s32 _type) : m_data(nullptr), m_view()
+    string_t::string_t(s32 _len, s32 _type) : m_data(nullptr), m_view()
     {
         s32 strlen  = _len;
         s32 strtype = _type;
 
         if (strlen > 0)
         {
-            m_data = ustring::allocdata(_alloc, _stralloc, _len, _type);
+            m_data = ustring::allocdata(_len, _type);
         }
         else
         {
@@ -923,16 +892,14 @@ namespace xcore
         s32 strlen  = left.size() + right.size();
         s32 strtype = xmax(left.m_data->m_str_type, right.m_data->m_str_type);
 
-        m_data              = left.m_data->m_alloc->construct<string_t::data>();
-        m_data->m_alloc     = left.m_data->m_alloc;
-        m_data->m_str_alloc = left.m_data->m_str_alloc;
+        m_data              = context_t::system_alloc()->construct<string_t::data>();
         m_data->m_str_type  = left.m_data->m_str_type;
 
         crunes_t leftrunes  = ustring::get_crunes(left.m_data, left.m_view);
         crunes_t rightrunes = ustring::get_crunes(right.m_data, right.m_view);
 
         runes_t strdata;
-        concatenate(strdata, leftrunes, rightrunes, m_data->m_str_alloc, 16);
+        concatenate(strdata, leftrunes, rightrunes, context_t::string_alloc(), 16);
 
         m_data->m_str_len               = strdata.cap();
         m_data->m_str_ptr.m_ptr.m_ascii = strdata.m_runes.m_ascii.m_bos;
@@ -1019,7 +986,7 @@ namespace xcore
 
         if (strlen > 0)
         {
-            m_data        = ustring::allocdata(alloc_t::get_main(), runes_alloc_t::get_main(), strlen, ascii::TYPE);
+            m_data        = ustring::allocdata(strlen, ascii::TYPE);
             runes_t runes = ustring::get_runes(m_data, m_view);
             copy(srcrunes, runes);
         }
@@ -1095,14 +1062,11 @@ namespace xcore
         // If we are the only one in the list then it means we can deallocate 'string_data'
         if (m_next == this && m_prev == this)
         {
-            if (m_data->m_alloc != nullptr)
+            if (!ustring::is_default_string_data(m_data))
             {
-                if (!ustring::is_default_string_data(m_data))
-                {
-                    runes_t str = ustring::get_runes(this->m_data, this->m_view);
-                    m_data->m_str_alloc->deallocate(str);
-                    m_data->m_alloc->deallocate(m_data);
-                }
+                runes_t str = ustring::get_runes(this->m_data, this->m_view);
+                context_t::string_alloc()->deallocate(str);
+                context_t::system_alloc()->deallocate(m_data);
             }
         }
         rem_from_list();
@@ -1115,7 +1079,7 @@ namespace xcore
 
         crunes_t srcrunes = ustring::get_crunes(str.m_data, str.m_view);
 
-        m_data           = ustring::allocdata(str.m_data->m_alloc, str.m_data->m_str_alloc, srcrunes.size(), str.m_data->m_str_type);
+        m_data           = ustring::allocdata(srcrunes.size(), str.m_data->m_str_type);
         runes_t dstrunes = ustring::get_runes(m_data, m_view);
         copy(srcrunes, dstrunes);
 
@@ -1468,7 +1432,7 @@ namespace xcore
 
         s32 len = vcprintf(ustring::get_crunes(format.m_data, format.m_view), args);
 
-        data* ndata = ustring::allocdata(format.m_data->m_alloc, format.m_data->m_str_alloc, len, format.m_data->m_str_type);
+        data* ndata = ustring::allocdata(len, format.m_data->m_str_type);
         m_next      = this;
         m_prev      = this;
 
