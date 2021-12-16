@@ -65,7 +65,6 @@ namespace xcore
 
 		virtual void		v_release()
 		{
-			mAllocator->release();
 			mAllocator = NULL;
 		}
 	};
