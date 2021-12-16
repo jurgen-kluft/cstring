@@ -46,42 +46,42 @@ namespace xcore
 
                 runes_t r;
                 r.m_type                = type;
-                r.m_runes.m_ascii.m_bos = (ascii::prune)str;
-                r.m_runes.m_ascii.m_str = (ascii::prune)str;
+                r.m_ascii.m_bos = (ascii::prune)str;
+                r.m_ascii.m_str = (ascii::prune)str;
                 switch (type)
                 {
                     case ascii::TYPE:
-                        r.m_runes.m_ascii.m_end = (ascii::prune)str + len;
-                        r.m_runes.m_ascii.m_eos = (ascii::prune)str + cap;
+                        r.m_ascii.m_end = (ascii::prune)str + len;
+                        r.m_ascii.m_eos = (ascii::prune)str + cap;
                         break;
                     case utf32::TYPE:
-                        r.m_runes.m_utf32.m_end = (utf32::prune)str + len;
-                        r.m_runes.m_utf32.m_eos = (utf32::prune)str + cap;
+                        r.m_utf32.m_end = (utf32::prune)str + len;
+                        r.m_utf32.m_eos = (utf32::prune)str + cap;
                         break;
                 }
 
                 switch (type)
                 {
                     case ascii::TYPE:
-                        r.m_runes.m_ascii.m_end[0]       = '\0';
-                        r.m_runes.m_ascii.m_end[cap - 1] = '\0';
+                        r.m_ascii.m_end[0]       = '\0';
+                        r.m_ascii.m_end[cap - 1] = '\0';
                         break;
                     case utf32::TYPE:
-                        r.m_runes.m_utf32.m_end[0]       = '\0';
-                        r.m_runes.m_utf32.m_end[cap - 1] = '\0';
+                        r.m_utf32.m_end[0]       = '\0';
+                        r.m_utf32.m_end[cap - 1] = '\0';
                         break;
                 }
 
-                r.m_runes.m_utf32.m_end[0]       = '\0';
-                r.m_runes.m_utf32.m_end[cap - 1] = '\0';
+                r.m_utf32.m_end[0]       = '\0';
+                r.m_utf32.m_end[cap - 1] = '\0';
                 return r;
             }
 
             virtual void deallocate(runes_t& r)
             {
-                if (r.m_runes.m_utf32.m_bos != nullptr)
+                if (r.m_utf32.m_bos != nullptr)
                 {
-                    alloc_t::get_system()->deallocate(r.m_runes.m_utf32.m_bos);
+                    alloc_t::get_system()->deallocate(r.m_utf32.m_bos);
                     r = runes_t();
                 }
             }
@@ -138,14 +138,14 @@ namespace xcore
             {
                 case ascii::TYPE:
                 {
-                    from = runes.m_runes.m_ascii.m_str - runes.m_runes.m_ascii.m_bos;
-                    to = runes.m_runes.m_ascii.m_end - runes.m_runes.m_ascii.m_bos;
+                    from = runes.m_ascii.m_str - runes.m_ascii.m_bos;
+                    to = runes.m_ascii.m_end - runes.m_ascii.m_bos;
                 }
                 break;
                 case utf32::TYPE:
                 {
-                    from = runes.m_runes.m_utf32.m_str - runes.m_runes.m_utf32.m_bos;
-                    to = runes.m_runes.m_utf32.m_end - runes.m_runes.m_utf32.m_bos;
+                    from = runes.m_utf32.m_str - runes.m_utf32.m_bos;
+                    to = runes.m_utf32.m_end - runes.m_utf32.m_bos;
                 }
                 break;
             }
@@ -158,16 +158,16 @@ namespace xcore
             switch (data->m_str_type)
             {
                 case ascii::TYPE:
-                    r.m_runes.m_ascii.m_bos = data->m_str_ptr.m_ptr.m_ascii;
-                    r.m_runes.m_ascii.m_eos = r.m_runes.m_ascii.m_bos + data->m_str_len;
-                    r.m_runes.m_ascii.m_str = r.m_runes.m_ascii.m_bos + view.from;
-                    r.m_runes.m_ascii.m_end = r.m_runes.m_ascii.m_bos + view.to;
+                    r.m_ascii.m_bos = data->m_str_ptr.m_ptr.m_ascii;
+                    r.m_ascii.m_eos = r.m_ascii.m_bos + data->m_str_len;
+                    r.m_ascii.m_str = r.m_ascii.m_bos + view.from;
+                    r.m_ascii.m_end = r.m_ascii.m_bos + view.to;
                     break;
                 case utf32::TYPE:
-                    r.m_runes.m_utf32.m_bos = data->m_str_ptr.m_ptr.m_utf32;
-                    r.m_runes.m_utf32.m_eos = r.m_runes.m_utf32.m_bos + data->m_str_len;
-                    r.m_runes.m_utf32.m_str = r.m_runes.m_utf32.m_bos + view.from;
-                    r.m_runes.m_utf32.m_end = r.m_runes.m_utf32.m_bos + view.to;
+                    r.m_utf32.m_bos = data->m_str_ptr.m_ptr.m_utf32;
+                    r.m_utf32.m_eos = r.m_utf32.m_bos + data->m_str_len;
+                    r.m_utf32.m_str = r.m_utf32.m_bos + view.from;
+                    r.m_utf32.m_end = r.m_utf32.m_bos + view.to;
                     break;
             }
             return r;
@@ -184,16 +184,16 @@ namespace xcore
             switch (data->m_str_type)
             {
                 case ascii::TYPE:
-                    r.m_runes.m_ascii.m_bos = data->m_str_ptr.m_ptr.m_ascii;
-                    r.m_runes.m_ascii.m_eos = r.m_runes.m_ascii.m_bos + data->m_str_len;
-                    r.m_runes.m_ascii.m_str = r.m_runes.m_ascii.m_bos + view.from;
-                    r.m_runes.m_ascii.m_end = r.m_runes.m_ascii.m_bos + view.to;
+                    r.m_ascii.m_bos = data->m_str_ptr.m_ptr.m_ascii;
+                    r.m_ascii.m_eos = r.m_ascii.m_bos + data->m_str_len;
+                    r.m_ascii.m_str = r.m_ascii.m_bos + view.from;
+                    r.m_ascii.m_end = r.m_ascii.m_bos + view.to;
                     break;
                 case utf32::TYPE:
-                    r.m_runes.m_utf32.m_bos = data->m_str_ptr.m_ptr.m_utf32;
-                    r.m_runes.m_utf32.m_eos = r.m_runes.m_utf32.m_bos + data->m_str_len;
-                    r.m_runes.m_utf32.m_str = r.m_runes.m_utf32.m_bos + view.from;
-                    r.m_runes.m_utf32.m_end = r.m_runes.m_utf32.m_bos + view.to;
+                    r.m_utf32.m_bos = data->m_str_ptr.m_ptr.m_utf32;
+                    r.m_utf32.m_eos = r.m_utf32.m_bos + data->m_str_len;
+                    r.m_utf32.m_str = r.m_utf32.m_bos + view.from;
+                    r.m_utf32.m_end = r.m_utf32.m_bos + view.to;
                     break;
             }
             return r;
@@ -207,7 +207,7 @@ namespace xcore
             data->m_str_len     = _strlen;
 
             runes_t strdata               = context_t::string_alloc()->allocate(_strlen, _strlen, _strtype);
-            data->m_str_ptr.m_ptr.m_ascii = strdata.m_runes.m_ascii.m_bos;
+            data->m_str_ptr.m_ptr.m_ascii = strdata.m_ascii.m_bos;
 
             return data;
         }
@@ -347,18 +347,18 @@ namespace xcore
                 case ascii::TYPE:
                     while (src >= pos)
                     {
-                        r.m_runes.m_ascii.m_str[dst--] = r.m_runes.m_ascii.m_str[src--];
+                        r.m_ascii.m_str[dst--] = r.m_ascii.m_str[src--];
                     }
-                    r.m_runes.m_ascii.m_end += len;
-                    r.m_runes.m_ascii.m_end[0] = '\0';
+                    r.m_ascii.m_end += len;
+                    r.m_ascii.m_end[0] = '\0';
                     break;
                 case utf32::TYPE:
                     while (src >= pos)
                     {
-                        r.m_runes.m_utf32.m_str[dst--] = r.m_runes.m_utf32.m_str[src--];
+                        r.m_utf32.m_str[dst--] = r.m_utf32.m_str[src--];
                     }
-                    r.m_runes.m_utf32.m_end += len;
-                    r.m_runes.m_utf32.m_end[0] = '\0';
+                    r.m_utf32.m_end += len;
+                    r.m_utf32.m_end[0] = '\0';
                     break;
             }
         }
@@ -373,18 +373,18 @@ namespace xcore
                 case ascii::TYPE:
                     while (src < r.size())
                     {
-                        r.m_runes.m_ascii.m_str[dst++] = r.m_runes.m_ascii.m_str[src++];
+                        r.m_ascii.m_str[dst++] = r.m_ascii.m_str[src++];
                     }
-                    r.m_runes.m_ascii.m_end -= len;
-                    r.m_runes.m_ascii.m_end[0] = '\0';
+                    r.m_ascii.m_end -= len;
+                    r.m_ascii.m_end[0] = '\0';
                     break;
                 case utf32::TYPE:
                     while (src < r.size())
                     {
-                        r.m_runes.m_utf32.m_str[dst++] = r.m_runes.m_utf32.m_str[src++];
+                        r.m_utf32.m_str[dst++] = r.m_utf32.m_str[src++];
                     }
-                    r.m_runes.m_utf32.m_end -= len;
-                    r.m_runes.m_utf32.m_end[0] = '\0';
+                    r.m_utf32.m_end -= len;
+                    r.m_utf32.m_end[0] = '\0';
                     break;
             }
         }
@@ -820,7 +820,7 @@ namespace xcore
 
             string_t str;
             str.m_data                          = context_t::system_alloc()->construct<string_t::data>();
-            str.m_data->m_str_ptr.m_ptr.m_ascii = dstrunes.m_runes.m_ascii.m_bos;
+            str.m_data->m_str_ptr.m_ptr.m_ascii = dstrunes.m_ascii.m_bos;
             str.m_data->m_str_len               = m_view.size();
             str.m_data->m_str_type              = m_data->m_str_type;
             str.m_view                          = m_view;
@@ -902,7 +902,7 @@ namespace xcore
         concatenate(strdata, leftrunes, rightrunes, context_t::string_alloc(), 16);
 
         m_data->m_str_len               = strdata.cap();
-        m_data->m_str_ptr.m_ptr.m_ascii = strdata.m_runes.m_ascii.m_bos;
+        m_data->m_str_ptr.m_ptr.m_ascii = strdata.m_ascii.m_bos;
 
         m_view.from = 0;
         m_view.to   = m_data->m_str_len;
@@ -1440,8 +1440,8 @@ namespace xcore
         vsprintf(str, ustring::get_crunes(format.m_data, format.m_view), args);
         switch (m_data->m_str_type)
         {
-            case ascii::TYPE: m_view.to = str.m_runes.m_ascii.m_end - str.m_runes.m_ascii.m_bos; break;
-            case utf32::TYPE: m_view.to = str.m_runes.m_utf32.m_end - str.m_runes.m_utf32.m_bos; break;
+            case ascii::TYPE: m_view.to = str.m_ascii.m_end - str.m_ascii.m_bos; break;
+            case utf32::TYPE: m_view.to = str.m_utf32.m_end - str.m_utf32.m_bos; break;
         }
         return len;
     }
@@ -1451,12 +1451,12 @@ namespace xcore
         s32 len = vcprintf(ustring::get_crunes(format.m_data, format.m_view), args);
         ustring::resize(*this, len);
         runes_t str               = ustring::get_runes(m_data, m_view);
-        str.m_runes.m_ascii.m_str = str.m_runes.m_ascii.m_end;
+        str.m_ascii.m_str = str.m_ascii.m_end;
         vsprintf(str, ustring::get_crunes(format.m_data, format.m_view), args);
         switch (m_data->m_str_type)
         {
-            case ascii::TYPE: m_view.to = str.m_runes.m_ascii.m_end - str.m_runes.m_ascii.m_bos; break;
-            case utf32::TYPE: m_view.to = str.m_runes.m_utf32.m_end - str.m_runes.m_utf32.m_bos; break;
+            case ascii::TYPE: m_view.to = str.m_ascii.m_end - str.m_ascii.m_bos; break;
+            case utf32::TYPE: m_view.to = str.m_utf32.m_end - str.m_utf32.m_bos; break;
         }
         return len;
     }
