@@ -95,13 +95,13 @@ namespace xcore
             {
                 case ascii::TYPE:
                 {
-                    ascii::pcrune s = data->m_str_ptr.m_ptr.m_ascii + view.from + i;
+                    ascii::pcrune s = data->m_str_ptr.m_ascii + view.from + i;
                     return *s;
                 }
                 break;
                 case utf32::TYPE:
                 {
-                    utf32::pcrune s = data->m_str_ptr.m_ptr.m_utf32 + view.from + i;
+                    utf32::pcrune s = data->m_str_ptr.m_utf32 + view.from + i;
                     return *s;
                 }
                 break;
@@ -117,13 +117,13 @@ namespace xcore
             {
                 case ascii::TYPE:
                 {
-                    ascii::prune s = data->m_str_ptr.m_ptr.m_ascii + view.from + i;
+                    ascii::prune s = data->m_str_ptr.m_ascii + view.from + i;
                     *s             = (ascii::rune)c;
                 }
                 break;
                 case utf32::TYPE:
                 {
-                    utf32::prune s = data->m_str_ptr.m_ptr.m_utf32 + view.from + i;
+                    utf32::prune s = data->m_str_ptr.m_utf32 + view.from + i;
                     *s             = c;
                 }
                 break;
@@ -158,13 +158,13 @@ namespace xcore
             switch (data->m_str_type)
             {
                 case ascii::TYPE:
-                    r.m_ascii.m_bos = data->m_str_ptr.m_ptr.m_ascii;
+                    r.m_ascii.m_bos = data->m_str_ptr.m_ascii;
                     r.m_ascii.m_eos = r.m_ascii.m_bos + data->m_str_len;
                     r.m_ascii.m_str = r.m_ascii.m_bos + view.from;
                     r.m_ascii.m_end = r.m_ascii.m_bos + view.to;
                     break;
                 case utf32::TYPE:
-                    r.m_utf32.m_bos = data->m_str_ptr.m_ptr.m_utf32;
+                    r.m_utf32.m_bos = data->m_str_ptr.m_utf32;
                     r.m_utf32.m_eos = r.m_utf32.m_bos + data->m_str_len;
                     r.m_utf32.m_str = r.m_utf32.m_bos + view.from;
                     r.m_utf32.m_end = r.m_utf32.m_bos + view.to;
@@ -184,13 +184,13 @@ namespace xcore
             switch (data->m_str_type)
             {
                 case ascii::TYPE:
-                    r.m_ascii.m_bos = data->m_str_ptr.m_ptr.m_ascii;
+                    r.m_ascii.m_bos = data->m_str_ptr.m_ascii;
                     r.m_ascii.m_eos = r.m_ascii.m_bos + data->m_str_len;
                     r.m_ascii.m_str = r.m_ascii.m_bos + view.from;
                     r.m_ascii.m_end = r.m_ascii.m_bos + view.to;
                     break;
                 case utf32::TYPE:
-                    r.m_utf32.m_bos = data->m_str_ptr.m_ptr.m_utf32;
+                    r.m_utf32.m_bos = data->m_str_ptr.m_utf32;
                     r.m_utf32.m_eos = r.m_utf32.m_bos + data->m_str_len;
                     r.m_utf32.m_str = r.m_utf32.m_bos + view.from;
                     r.m_utf32.m_end = r.m_utf32.m_bos + view.to;
@@ -207,7 +207,7 @@ namespace xcore
             data->m_str_len     = _strlen;
 
             runes_t strdata               = context_t::string_alloc()->allocate(_strlen, _strlen, _strtype);
-            data->m_str_ptr.m_ptr.m_ascii = strdata.m_ascii.m_bos;
+            data->m_str_ptr.m_ascii = strdata.m_ascii.m_bos;
 
             return data;
         }
@@ -486,7 +486,7 @@ namespace xcore
                 {
                     case ascii::TYPE:
                     {
-                        ascii::prune pdst = str.m_data->m_str_ptr.m_ptr.m_ascii;
+                        ascii::prune pdst = str.m_data->m_str_ptr.m_ascii;
                         while (src < replace.size())
                         {
                             pdst[dst++] = replace[src++];
@@ -494,7 +494,7 @@ namespace xcore
                     }
                     case utf32::TYPE:
                     {
-                        utf32::prune pdst = str.m_data->m_str_ptr.m_ptr.m_utf32;
+                        utf32::prune pdst = str.m_data->m_str_ptr.m_utf32;
                         while (src < replace.size())
                         {
                             pdst[dst++] = replace[src++];
@@ -562,12 +562,12 @@ namespace xcore
                 {
                     case ascii::TYPE:
                     {
-                        ascii::prune pdst           = str.m_data->m_str_ptr.m_ptr.m_ascii;
+                        ascii::prune pdst           = str.m_data->m_str_ptr.m_ascii;
                         pdst[str.m_data->m_str_len] = '\0';
                     }
                     case utf32::TYPE:
                     {
-                        utf32::prune pdst           = str.m_data->m_str_ptr.m_ptr.m_utf32;
+                        utf32::prune pdst           = str.m_data->m_str_ptr.m_utf32;
                         pdst[str.m_data->m_str_len] = '\0';
                     }
                 }
@@ -750,7 +750,7 @@ namespace xcore
             {
                 s_default_data_ptr                          = &s_default_data;
                 s_default_data_ptr->m_str_len               = 0;
-                s_default_data_ptr->m_str_ptr.m_ptr.m_ascii = "\0\0\0\0";
+                s_default_data_ptr->m_str_ptr.m_ascii = "\0\0\0\0";
                 s_default_data_ptr->m_str_type              = ascii::TYPE;
             }
             return s_default_data_ptr;
@@ -820,7 +820,7 @@ namespace xcore
 
             string_t str;
             str.m_data                          = context_t::system_alloc()->construct<string_t::data>();
-            str.m_data->m_str_ptr.m_ptr.m_ascii = dstrunes.m_ascii.m_bos;
+            str.m_data->m_str_ptr.m_ascii = dstrunes.m_ascii.m_bos;
             str.m_data->m_str_len               = m_view.size();
             str.m_data->m_str_type              = m_data->m_str_type;
             str.m_view                          = m_view;
@@ -902,7 +902,7 @@ namespace xcore
         concatenate(strdata, leftrunes, rightrunes, context_t::string_alloc(), 16);
 
         m_data->m_str_len               = strdata.cap();
-        m_data->m_str_ptr.m_ptr.m_ascii = strdata.m_ascii.m_bos;
+        m_data->m_str_ptr.m_ascii = strdata.m_ascii.m_bos;
 
         m_view.from = 0;
         m_view.to   = m_data->m_str_len;
