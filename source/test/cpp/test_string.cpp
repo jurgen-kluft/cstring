@@ -61,6 +61,22 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             CHECK_TRUE(c1[0] == '\0');
         }
 
+        UNITTEST_TEST(test_construct_1_from_ascii_string_destruct)
+        {
+            string_t str("This is an ASCII string converted to UTF-32");
+        }
+
+        UNITTEST_TEST(test_construct_2_from_ascii_string_destruct)
+        {
+            string_t str("ASCII");
+        }
+
+        UNITTEST_TEST(test_construct_3_from_ascii_string_destruct)
+        {
+            string_t str("This is an ASCII string converted to UTF-32");
+            string_t ascii("ASCII");
+        }
+
         UNITTEST_TEST(test_select)
         {
             string_t str("This is an ASCII string converted to UTF-32");
@@ -89,9 +105,10 @@ UNITTEST_SUITE_BEGIN(test_xstring)
 
         UNITTEST_TEST(test_selectUntilIncluded)
         {
-            string_t str( "This is an ASCII string converted to UTF-32");
+            string_t str("This is an ASCII string converted to UTF-32");
+            string_t ascii("ASCII");
 
-            string_t c1 = selectUntilIncluded(str, string_t( "ASCII"));
+            string_t c1 = selectUntilIncluded(str, ascii);
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 16);
             CHECK_TRUE(c1[11] == 'A');
@@ -173,8 +190,10 @@ UNITTEST_SUITE_BEGIN(test_xstring)
         UNITTEST_TEST(test_endsWith)
         {
             string_t str1("Last character");
-            CHECK_TRUE(endsWith(str1, string_t("character")));
-            CHECK_FALSE(endsWith(str1, string_t("first")));
+            bool t1=endsWith(str1, string_t("character"));
+            CHECK_TRUE(t1);
+            string_t f("first");
+            CHECK_FALSE(endsWith(str1, f));
         }
 
         UNITTEST_TEST(test_find)
@@ -199,7 +218,8 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             CHECK_EQUAL(v2.size(), 3);
 
             // Now change the string so that it will resize
-            insert(str1, v1, string_t("modified "));
+            string_t m("modified ");
+            insert(str1, v1, m);
             CHECK_EQUAL(35 + 9, str1.size());
 
             CHECK_EQUAL(4, v1.size());

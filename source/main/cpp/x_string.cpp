@@ -10,85 +10,17 @@ namespace xcore
 {
     struct string_t::data
     {
-        inline data() : m_str_ptr(), m_str_type(ascii::TYPE), m_str_len(0) {}
         runes_t::ptr_t m_str_ptr;
         s32            m_str_type;
         s32            m_str_len;
-
-        XCORE_CLASS_PLACEMENT_NEW_DELETE
     };
 
     //==============================================================================
-    //We use a (static) class here so that we can access protected members of string_t
-    //since are defined as a friend class.
+    // We use a (static) class here so that we can access protected members of string_t
+    // since we are defined as a friend class.
     class ustring
     {
     public:
-        //------------------------------------------------------------------------------
-        //------------------------------------------------------------------------------
-        class runes_allocator : public runes_alloc_t
-        {
-        public:
-            virtual runes_t allocate(s32 len, s32 cap, s32 type)
-            {
-                if (len > cap)
-                    cap = len;
-
-                ASSERT(type == utf32::TYPE);
-                u32 runesize = 4;
-                switch (type)
-                {
-                    case ascii::TYPE: runesize = 1; break;
-                    case utf32::TYPE: runesize = 1; break;
-                }
-
-                void* str = alloc_t::get_system()->allocate((cap + 1) * runesize, sizeof(void*));
-
-                runes_t r;
-                r.m_type                = type;
-                r.m_ascii.m_bos = (ascii::prune)str;
-                r.m_ascii.m_str = (ascii::prune)str;
-                switch (type)
-                {
-                    case ascii::TYPE:
-                        r.m_ascii.m_end = (ascii::prune)str + len;
-                        r.m_ascii.m_eos = (ascii::prune)str + cap;
-                        break;
-                    case utf32::TYPE:
-                        r.m_utf32.m_end = (utf32::prune)str + len;
-                        r.m_utf32.m_eos = (utf32::prune)str + cap;
-                        break;
-                }
-
-                switch (type)
-                {
-                    case ascii::TYPE:
-                        r.m_ascii.m_end[0]       = '\0';
-                        r.m_ascii.m_end[cap - 1] = '\0';
-                        break;
-                    case utf32::TYPE:
-                        r.m_utf32.m_end[0]       = '\0';
-                        r.m_utf32.m_end[cap - 1] = '\0';
-                        break;
-                }
-
-                r.m_utf32.m_end[0]       = '\0';
-                r.m_utf32.m_end[cap - 1] = '\0';
-                return r;
-            }
-
-            virtual void deallocate(runes_t& r)
-            {
-                if (r.m_utf32.m_bos != nullptr)
-                {
-                    alloc_t::get_system()->deallocate(r.m_utf32.m_bos);
-                    r = runes_t();
-                }
-            }
-        };
-
-        static runes_allocator s_default_stralloc;
-
         static inline uchar32 get_char_unsafe(string_t::data const* data, string_t::range const& view, s32 i)
         {
             switch (data->m_str_type)
@@ -138,14 +70,14 @@ namespace xcore
             {
                 case ascii::TYPE:
                 {
-                    from = runes.m_ascii.m_str - runes.m_ascii.m_bos;
-                    to = runes.m_ascii.m_end - runes.m_ascii.m_bos;
+                    from = (s32)(runes.m_ascii.m_str - runes.m_ascii.m_bos);
+                    to   = (s32)(runes.m_ascii.m_end - runes.m_ascii.m_bos);
                 }
                 break;
                 case utf32::TYPE:
                 {
-                    from = runes.m_utf32.m_str - runes.m_utf32.m_bos;
-                    to = runes.m_utf32.m_end - runes.m_utf32.m_bos;
+                    from = (s32)(runes.m_utf32.m_str - runes.m_utf32.m_bos);
+                    to   = (s32)(runes.m_utf32.m_end - runes.m_utf32.m_bos);
                 }
                 break;
             }
@@ -172,10 +104,7 @@ namespace xcore
             }
             return r;
         }
-        static inline crunes_t get_crunes(string_t const& str)
-        {
-            return get_crunes(str.m_data, str.m_view);
-        }
+        static inline crunes_t get_crunes(string_t const& str) { return get_crunes(str.m_data, str.m_view); }
 
         static inline runes_t get_runes(string_t::data* data, string_t::range view)
         {
@@ -201,12 +130,11 @@ namespace xcore
 
         static string_t::data* allocdata(s32 _strlen, s32 _strtype)
         {
+            string_t::data* data = (string_t::data*)context_t::system_alloc()->allocate(sizeof(string_t::data), sizeof(void*));
+            data->m_str_type     = _strtype;
+            data->m_str_len      = _strlen;
 
-            string_t::data* data = context_t::system_alloc()->construct<string_t::data>();
-            data->m_str_type    = _strtype;
-            data->m_str_len     = _strlen;
-
-            runes_t strdata               = context_t::string_alloc()->allocate(_strlen, _strlen, _strtype);
+            runes_t strdata         = context_t::string_alloc()->allocate(_strlen, _strlen, _strtype);
             data->m_str_ptr.m_ascii = strdata.m_ascii.m_bos;
 
             return data;
@@ -508,7 +436,7 @@ namespace xcore
         {
             // Remove any of the characters in @charset from @str
             string_t::range const strview = str.m_view;
-            s32 const            strsize = strview.size();
+            s32 const             strsize = strview.size();
 
             s32 d = 0;
             s32 i = 0;
@@ -529,7 +457,7 @@ namespace xcore
                         // This might not be the first character(s)/range removed, if not then the views already
                         // have been adjusted according to the previous range removal. So here we have to adjust
                         // this removal range by shifting it left with 'gap'.
-                        s32 const      gap = r - d;
+                        s32 const       gap = r - d;
                         string_t::range removal_range(r - gap, i - gap);
                         ustring::adjust_active_views(&str, ustring::REMOVAL, removal_range);
                         r = -1;
@@ -748,10 +676,10 @@ namespace xcore
             static string_t::data* s_default_data_ptr = nullptr;
             if (s_default_data_ptr == nullptr)
             {
-                s_default_data_ptr                          = &s_default_data;
-                s_default_data_ptr->m_str_len               = 0;
+                s_default_data_ptr                    = &s_default_data;
+                s_default_data_ptr->m_str_len         = 0;
                 s_default_data_ptr->m_str_ptr.m_ascii = "\0\0\0\0";
-                s_default_data_ptr->m_str_type              = ascii::TYPE;
+                s_default_data_ptr->m_str_type        = ascii::TYPE;
             }
             return s_default_data_ptr;
         }
@@ -772,10 +700,10 @@ namespace xcore
         {
             string_t* prev = node->m_next;
             string_t* next = prev->m_next;
-            prev->m_next  = this;
-            next->m_prev  = this;
-            this->m_prev  = prev;
-            this->m_next  = next;
+            prev->m_next   = this;
+            next->m_prev   = this;
+            this->m_prev   = prev;
+            this->m_next   = next;
         }
         else
         {
@@ -786,16 +714,10 @@ namespace xcore
 
     void string_t::rem_from_list()
     {
-        if (m_next != this)
-        {
-            m_prev->m_next = m_next;
-            m_next->m_prev = m_prev;
-        }
-        else
-        {
-            m_next = nullptr;
-            m_prev = nullptr;
-        }
+        m_prev->m_next = m_next;
+        m_next->m_prev = m_prev;
+        m_next = this;
+        m_prev = this;
     }
 
     void string_t::invalidate()
@@ -819,40 +741,37 @@ namespace xcore
             copy(srcrunes, dstrunes);
 
             string_t str;
-            str.m_data                          = context_t::system_alloc()->construct<string_t::data>();
+            str.m_data                    = (string_t::data*)context_t::system_alloc()->allocate(sizeof(string_t::data), sizeof(void*));
             str.m_data->m_str_ptr.m_ascii = dstrunes.m_ascii.m_bos;
-            str.m_data->m_str_len               = m_view.size();
-            str.m_data->m_str_type              = m_data->m_str_type;
-            str.m_view                          = m_view;
-            str.m_next                          = &str;
-            str.m_prev                          = &str;
+            str.m_data->m_str_len         = m_view.size();
+            str.m_data->m_str_type        = m_data->m_str_type;
+            str.m_view                    = m_view;
+            str.m_next                    = &str;
+            str.m_prev                    = &str;
             return str;
         }
         return string_t();
     }
 
-    string_t::string_t() : m_data(nullptr), m_view()
+    string_t::string_t()
     {
-        s32 strlen  = 0;
-        s32 strtype = ascii::TYPE;
-
         m_data = ustring::get_default_string_data();
-        m_view = range(0, strlen);
+        m_view = range(0, 0);
         add_to_list(nullptr);
     }
 
     string_t::~string_t() { release(); }
 
-    string_t::string_t(const char* str) : m_data(nullptr), m_view()
+    string_t::string_t(const char* str)
     {
         crunes_t srcrunes(str);
 
-        s32 strlen  = srcrunes.size();
-        s32 strtype = ascii::TYPE;
+        s32 const strlen  = srcrunes.size();
+        s32 const strtype = ascii::TYPE;
 
         if (strlen > 0)
         {
-            m_data        = ustring::allocdata(strlen, ascii::TYPE);
+            m_data        = ustring::allocdata(strlen, strtype);
             runes_t runes = ustring::get_runes(m_data, m_view);
             copy(srcrunes, runes);
         }
@@ -865,7 +784,9 @@ namespace xcore
         add_to_list(nullptr);
     }
 
-    string_t::string_t(s32 _len, s32 _type) : m_data(nullptr), m_view()
+    string_t::string_t(s32 _len, s32 _type)
+        : m_data(nullptr)
+        , m_view()
     {
         s32 strlen  = _len;
         s32 strtype = _type;
@@ -885,15 +806,17 @@ namespace xcore
         add_to_list(nullptr);
     }
 
-    string_t::string_t(const string_t& other) : m_data(other.m_data), m_view(other.m_view) { add_to_list(&other); }
+    string_t::string_t(const string_t& other)
+        : m_data(other.m_data)
+        , m_view(other.m_view)
+    {
+        add_to_list(&other);
+    }
 
     string_t::string_t(const string_t& left, const string_t& right)
     {
         s32 strlen  = left.size() + right.size();
         s32 strtype = xmax(left.m_data->m_str_type, right.m_data->m_str_type);
-
-        m_data              = context_t::system_alloc()->construct<string_t::data>();
-        m_data->m_str_type  = left.m_data->m_str_type;
 
         crunes_t leftrunes  = ustring::get_crunes(left.m_data, left.m_view);
         crunes_t rightrunes = ustring::get_crunes(right.m_data, right.m_view);
@@ -901,7 +824,9 @@ namespace xcore
         runes_t strdata;
         concatenate(strdata, leftrunes, rightrunes, context_t::string_alloc(), 16);
 
-        m_data->m_str_len               = strdata.cap();
+        m_data                    = (string_t::data*)context_t::system_alloc()->allocate(sizeof(string_t::data), sizeof(void*));
+        m_data->m_str_type        = left.m_data->m_str_type;
+        m_data->m_str_len         = strdata.cap();
         m_data->m_str_ptr.m_ascii = strdata.m_ascii.m_bos;
 
         m_view.from = 0;
@@ -1048,25 +973,21 @@ namespace xcore
     void string_t::attach(string_t& str)
     {
         string_t* next = str.m_next;
-        str.m_next    = this;
-        this->m_next  = next;
-        this->m_prev  = &str;
-        next->m_prev  = this;
+        str.m_next     = this;
+        this->m_next   = next;
+        this->m_prev   = &str;
+        next->m_prev   = this;
     }
 
     void string_t::release()
     {
-        if (m_data == nullptr)
-            return;
-
         // If we are the only one in the list then it means we can deallocate 'string_data'
         if (m_next == this && m_prev == this)
         {
             if (!ustring::is_default_string_data(m_data))
             {
-                runes_t str = ustring::get_runes(this->m_data, this->m_view);
-                context_t::string_alloc()->deallocate(str);
-                context_t::system_alloc()->deallocate(m_data);
+                if (m_data != nullptr)
+                    ustring::deallocdata(m_data);
             }
         }
         rem_from_list();
@@ -1290,7 +1211,7 @@ namespace xcore
         crunes_t strfound = find(strstr, strfind);
         if (strfound.is_empty() == false)
         {
-            s32 from,to;
+            s32 from, to;
             ustring::get_from_to(strfound, from, to);
             return inStr(from, to);
         }
@@ -1440,8 +1361,8 @@ namespace xcore
         vsprintf(str, ustring::get_crunes(format.m_data, format.m_view), args);
         switch (m_data->m_str_type)
         {
-            case ascii::TYPE: m_view.to = str.m_ascii.m_end - str.m_ascii.m_bos; break;
-            case utf32::TYPE: m_view.to = str.m_utf32.m_end - str.m_utf32.m_bos; break;
+            case ascii::TYPE: m_view.to = (s32)(str.m_ascii.m_end - str.m_ascii.m_bos); break;
+            case utf32::TYPE: m_view.to = (s32)(str.m_utf32.m_end - str.m_utf32.m_bos); break;
         }
         return len;
     }
@@ -1450,13 +1371,13 @@ namespace xcore
     {
         s32 len = vcprintf(ustring::get_crunes(format.m_data, format.m_view), args);
         ustring::resize(*this, len);
-        runes_t str               = ustring::get_runes(m_data, m_view);
+        runes_t str       = ustring::get_runes(m_data, m_view);
         str.m_ascii.m_str = str.m_ascii.m_end;
         vsprintf(str, ustring::get_crunes(format.m_data, format.m_view), args);
         switch (m_data->m_str_type)
         {
-            case ascii::TYPE: m_view.to = str.m_ascii.m_end - str.m_ascii.m_bos; break;
-            case utf32::TYPE: m_view.to = str.m_utf32.m_end - str.m_utf32.m_bos; break;
+            case ascii::TYPE: m_view.to = (s32)(str.m_ascii.m_end - str.m_ascii.m_bos); break;
+            case utf32::TYPE: m_view.to = (s32)(str.m_utf32.m_end - str.m_utf32.m_bos); break;
         }
         return len;
     }
