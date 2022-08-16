@@ -8,7 +8,7 @@
 #include "xbase/x_debug.h"
 #include "xbase/x_allocator.h"
 
-namespace xcore
+namespace ncore
 {
     //==============================================================================
     // String Slice
@@ -53,7 +53,7 @@ namespace xcore
         {
             data();
             data(s32 _count);
-            data(xbyte* data, s32 _count);
+            data(u8* data, s32 _count);
 
             static data sNull;
 
@@ -79,6 +79,6 @@ namespace xcore
 
         data* mData;
     };
-} // namespace xcore
+} // namespace ncore
 
 #endif

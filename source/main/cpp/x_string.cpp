@@ -6,7 +6,7 @@
 #include "xbase/x_runes.h"
 #include "xstring/x_string.h"
 
-namespace xcore
+namespace ncore
 {
     struct string_t::data
     {
@@ -1703,4 +1703,4 @@ namespace xcore
         find_remove(str, string_t("converted "));
     }
 
-} // namespace xcore
+} // namespace ncore

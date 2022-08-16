@@ -14,7 +14,7 @@
 //==============================================================================
 // string_t, a UTF32 string class
 //==============================================================================
-namespace xcore
+namespace ncore
 {
     class va_t;
     class va_list_t;
@@ -170,6 +170,6 @@ namespace xcore
     // Global string_t operators
 
     inline string_t operator+(const string_t& left, const string_t& right) { return string_t(left, right); }
-} // namespace xcore
+} // namespace ncore
 
 #endif ///< __XSTRING_STRING_H__
