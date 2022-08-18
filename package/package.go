@@ -1,33 +1,33 @@
-package xstring
+package cstring
 
 import (
+	cbase "github.com/jurgen-kluft/cbase/package"
 	"github.com/jurgen-kluft/ccode/denv"
-	"github.com/jurgen-kluft/xbase/package"
-	"github.com/jurgen-kluft/xentry/package"
+	centry "github.com/jurgen-kluft/centry/package"
 )
 
-// GetPackage returns the package object of 'xstring'
+// GetPackage returns the package object of 'cstring'
 func GetPackage() *denv.Package {
 	// Dependencies
-	unittestpkg := xunittest.GetPackage()
-	entrypkg := xentry.GetPackage()
-	xbasepkg := xbase.GetPackage()
+	unittestpkg := cunittest.GetPackage()
+	entrypkg := centry.GetPackage()
+	cbasepkg := cbase.GetPackage()
 
-	// The main (xstring) package
-	mainpkg := denv.NewPackage("xstring")
+	// The main (cstring) package
+	mainpkg := denv.NewPackage("cstring")
 	mainpkg.AddPackage(unittestpkg)
 	mainpkg.AddPackage(entrypkg)
-	mainpkg.AddPackage(xbasepkg)
+	mainpkg.AddPackage(cbasepkg)
 
-	// 'xstring' library
-	mainlib := denv.SetupDefaultCppLibProject("xstring", "github.com\\jurgen-kluft\\xstring")
-	mainlib.Dependencies = append(mainlib.Dependencies, xbasepkg.GetMainLib())
+	// 'cstring' library
+	mainlib := denv.SetupDefaultCppLibProject("cstring", "github.com\\jurgen-kluft\\cstring")
+	mainlib.Dependencies = append(mainlib.Dependencies, cbasepkg.GetMainLib())
 
-	// 'xstring' unittest project
-	maintest := denv.SetupDefaultCppTestProject("xstring_test", "github.com\\jurgen-kluft\\xstring")
+	// 'cstring' unittest project
+	maintest := denv.SetupDefaultCppTestProject("cstring_test", "github.com\\jurgen-kluft\\cstring")
 	maintest.Dependencies = append(maintest.Dependencies, unittestpkg.GetMainLib())
 	maintest.Dependencies = append(maintest.Dependencies, entrypkg.GetMainLib())
-	maintest.Dependencies = append(maintest.Dependencies, xbasepkg.GetMainLib())
+	maintest.Dependencies = append(maintest.Dependencies, cbasepkg.GetMainLib())
 	maintest.Dependencies = append(maintest.Dependencies, mainlib)
 
 	mainpkg.AddMainLib(mainlib)

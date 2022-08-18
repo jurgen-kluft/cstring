@@ -1,19 +1,13 @@
-#ifndef __XSTRING_STRING_H__
-#define __XSTRING_STRING_H__
+#ifndef __CSTRING_STRING_H__
+#define __CSTRING_STRING_H__
 #include "cbase/c_target.h"
 #ifdef USE_PRAGMA_ONCE
 #    pragma once
 #endif
 
-//==============================================================================
-// INCLUDES
-//==============================================================================
 #include "cbase/c_debug.h"
 #include "cbase/c_runes.h"
 
-//==============================================================================
-// string_t, a UTF32 string class
-//==============================================================================
 namespace ncore
 {
     class va_t;
@@ -83,10 +77,10 @@ namespace ncore
             s32 to;
         };
 
-        data*    m_data;
+        data*     m_data;
         string_t* m_next;
         string_t* m_prev;
-        range    m_view;
+        range     m_view;
     };
 
     bool isUpper(const string_t&);

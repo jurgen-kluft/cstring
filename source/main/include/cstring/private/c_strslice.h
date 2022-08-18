@@ -1,5 +1,5 @@
-#ifndef __XSTRING_STRING_SLICE_H__
-#define __XSTRING_STRING_SLICE_H__
+#ifndef __CSTRING_STRING_SLICE_H__
+#define __CSTRING_STRING_SLICE_H__
 #include "cbase/c_target.h"
 #ifdef USE_PRAGMA_ONCE
 #    pragma once
