@@ -166,4 +166,4 @@ namespace ncore
     inline string_t operator+(const string_t& left, const string_t& right) { return string_t(left, right); }
 } // namespace ncore
 
-#endif ///< __XSTRING_STRING_H__
+#endif ///< __CSTRING_STRING_H__
