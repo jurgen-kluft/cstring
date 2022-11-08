@@ -2,7 +2,7 @@
 
 Cross platform string library (BETA; still under construction)
 
-This string can deal with ascii and UTF-32, it is kind of reference counted and
+This string can deal with ascii and UTF-32, it is reference counted and
 supports modifying whereby other reference strings will be corrected.
 Since we now can have multiple views on the string we can do away with the user
 managing indices. However the string may re-allocate when an operation is causing

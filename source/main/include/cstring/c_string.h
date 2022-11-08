@@ -8,6 +8,9 @@
 #include "cbase/c_debug.h"
 #include "cbase/c_runes.h"
 
+
+// TODO needs to be refactored, not satisfied with the experimental 'view' mechanic
+
 namespace ncore
 {
     class va_t;
@@ -37,14 +40,11 @@ namespace ncore
         s32 format(string_t const& format, const va_list_t& args);
         s32 formatAdd(string_t const& format, const va_list_t& args);
 
-        string_t operator()(s32 to);
-        string_t operator()(s32 from, s32 to);
-
-        string_t operator()(s32 to) const;
-        string_t operator()(s32 from, s32 to) const;
-
-        uchar32 operator[](s32 index) const;
-
+        string_t  operator()(s32 to);
+        string_t  operator()(s32 from, s32 to);
+        string_t  operator()(s32 to) const;
+        string_t  operator()(s32 from, s32 to) const;
+        uchar32   operator[](s32 index) const;
         string_t& operator=(const char* other);
         string_t& operator=(const string_t& other);
         string_t& operator+=(const string_t& other);
