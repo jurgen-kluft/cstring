@@ -14,7 +14,6 @@
 // Instead you should get a slice from it and then use that to mutate.
 // Slices can only be created from string_t and other slices.
 
-
 namespace ncore
 {
     class va_t;
@@ -27,8 +26,9 @@ namespace ncore
     {
         inline str_range_t(s32 f, s32 t) : from(f), to(t) {}
         s32  size() const { return to - from; }
-        void reset() { *this = range_t(0, 0); }
-        s32  from, to;
+        void reset() { *this = str_range_t(0, 0); }
+        s32  from;
+        s32  to;
     };
 
     class str_slice_t
@@ -37,8 +37,12 @@ namespace ncore
         void clear();
         void invalidate();
 
-        s32  format(string_t const& format, const va_list_t& args);
-        s32  formatAdd(string_t const& format, const va_list_t& args);
+        bool     is_empty() const;
+        s32      cap() const;
+        s32      size() const;
+
+        s32 format(string_t const& format, const va_list_t& args);
+        s32 formatAdd(string_t const& format, const va_list_t& args);
 
         str_slice_t  operator()(s32 to);
         str_slice_t  operator()(s32 from, s32 to);
@@ -50,7 +54,9 @@ namespace ncore
         str_slice_t& operator+=(const str_slice_t& other);
 
     protected:
-        str_slice_t(); 
+        friend class ustring_t;
+
+        str_slice_t();
         str_slice_t(const str_slice_t& other);
 
         // You should only be able to work with them in a function but not construct them on the heap
@@ -62,7 +68,7 @@ namespace ncore
         str_data_t*  m_data;
         str_slice_t* m_next;
         str_slice_t* m_prev;
-        str_range_t  m_range;
+        str_range_t  m_view;
     };
 
     class string_t
@@ -76,7 +82,6 @@ namespace ncore
         string_t(str_slice_t const& other, str_slice_t const& concat);
         ~string_t();
 
-        bool     is_empty() const;
         s32      cap() const;
         s32      size() const;
         string_t clone() const;

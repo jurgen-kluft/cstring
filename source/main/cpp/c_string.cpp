@@ -8,11 +8,13 @@
 
 namespace ncore
 {
-    struct strdata_t
+    struct str_data_t
     {
         runes_t::ptr_t m_str_ptr;
         s32            m_str_type;
         s32            m_str_len;
+
+        s32 cap() const { return m_str_len; }
     };
 
     //==============================================================================
@@ -21,7 +23,7 @@ namespace ncore
     class ustring_t
     {
     public:
-        static inline uchar32 get_char_unsafe(strdata_t const* data, string_t::range_t const& view, s32 i)
+        static inline uchar32 get_char_unsafe(str_data_t const* data, str_range_t const& view, s32 i)
         {
             switch (data->m_str_type)
             {
@@ -41,9 +43,9 @@ namespace ncore
             return '\0';
         }
 
-        static inline uchar32 get_char_unsafe(string_t const& str, s32 i) { return get_char_unsafe(str.m_data, str.m_view, i); }
+        static inline uchar32 get_char_unsafe(str_slice_t const& str, s32 i) { return get_char_unsafe(str.m_data, str.m_view, i); }
 
-        static inline void set_char_unsafe(strdata_t* data, string_t::range_t const& view, s32 i, uchar32 c)
+        static inline void set_char_unsafe(str_data_t* data, str_range_t const& view, s32 i, uchar32 c)
         {
             switch (data->m_str_type)
             {
@@ -62,7 +64,7 @@ namespace ncore
             }
         }
 
-        static inline void set_char_unsafe(string_t& str, s32 i, uchar32 c) { set_char_unsafe(str.m_data, str.m_view, i, c); }
+        static inline void set_char_unsafe(str_slice_t& str, s32 i, uchar32 c) { set_char_unsafe(str.m_data, str.m_view, i, c); }
 
         static inline void get_from_to(crunes_t const& runes, s32& from, s32& to)
         {
@@ -83,7 +85,7 @@ namespace ncore
             }
         }
 
-        static inline crunes_t get_crunes(strdata_t const* data, string_t::range_t view)
+        static inline crunes_t get_crunes(str_data_t const* data, str_range_t view)
         {
             crunes_t r;
             r.m_type = data->m_str_type;
@@ -104,9 +106,9 @@ namespace ncore
             }
             return r;
         }
-        static inline crunes_t get_crunes(string_t const& str) { return get_crunes(str.m_data, str.m_view); }
+        static inline crunes_t get_crunes(str_slice_t const& str) { return get_crunes(str.m_data, str.m_view); }
 
-        static inline runes_t get_runes(strdata_t* data, string_t::range_t view)
+        static inline runes_t get_runes(str_data_t* data, str_range_t view)
         {
             runes_t r;
             r.m_type = data->m_str_type;
@@ -128,9 +130,9 @@ namespace ncore
             return r;
         }
 
-        static strdata_t* allocdata(s32 _strlen, s32 _strtype)
+        static str_data_t* allocdata(s32 _strlen, s32 _strtype)
         {
-            strdata_t* data = (strdata_t*)context_t::system_alloc()->allocate(sizeof(strdata_t), sizeof(void*));
+            str_data_t* data = (str_data_t*)context_t::system_alloc()->allocate(sizeof(str_data_t), sizeof(void*));
             data->m_str_type     = _strtype;
             data->m_str_len      = _strlen;
 
@@ -140,29 +142,29 @@ namespace ncore
             return data;
         }
 
-        static void deallocdata(strdata_t* data)
+        static void deallocdata(str_data_t* data)
         {
-            runes_t runes = get_runes(data, string_t::range_t());
+            runes_t runes = get_runes(data, str_range_t(0,0));
             context_t::string_alloc()->deallocate(runes);
             context_t::system_alloc()->deallocate(data);
         }
 
-        static void resize(string_t& str, s32 new_size)
+        static void resize(str_slice_t& str, s32 new_size)
         {
-            if (new_size > str.cap())
+            if (new_size > str.m_data->cap())
             {
-                strdata_t* data = allocdata(new_size, str.m_data->m_str_type);
+                str_data_t* data = allocdata(new_size, str.m_data->m_str_type);
 
-                runes_t trunes = get_runes(str.m_data, string_t::range_t(0, str.m_data->m_str_len));
-                runes_t nrunes = get_runes(data, string_t::range_t(0, data->m_str_len));
+                runes_t trunes = get_runes(str.m_data, str_range_t(0, str.m_data->m_str_len));
+                runes_t nrunes = get_runes(data, str_range_t(0, data->m_str_len));
                 copy(trunes, nrunes);
 
                 // deallocate old data and string
                 deallocdata(str.m_data);
 
                 // need to update the new data pointer for each view
-                string_t* list = &str;
-                string_t* iter = list;
+                str_slice_t* list = &str;
+                str_slice_t* iter = list;
                 do
                 {
                     iter->m_data = data;
@@ -175,7 +177,7 @@ namespace ncore
             }
         }
 
-        static bool is_view_of(string_t const& str, string_t const& part)
+        static bool is_view_of(str_slice_t const& str, str_slice_t const& part)
         {
             if (str.m_data == part.m_data)
             {
@@ -190,7 +192,7 @@ namespace ncore
             return false;
         }
 
-        static bool narrow_view(string_t& v, s32 move)
+        static bool narrow_view(str_slice_t& v, s32 move)
         {
             if (v.size() > 0)
             {
@@ -216,7 +218,7 @@ namespace ncore
             return false;
         }
 
-        static bool move_view(string_t const& str, string_t& view, s32 move)
+        static bool move_view(str_slice_t const& str, str_slice_t& view, s32 move)
         {
             s32 const from = view.m_view.from + move;
 
@@ -235,32 +237,32 @@ namespace ncore
             return true;
         }
 
-        static string_t select_before(const string_t& str, const string_t& selection)
+        static str_slice_t select_before(const str_slice_t& str, const str_slice_t& selection)
         {
-            string_t v(selection);
+            str_slice_t v(selection);
             v.m_view.to   = v.m_view.from;
             v.m_view.from = 0;
             return v;
         }
-        static string_t select_before_included(const string_t& str, const string_t& selection)
+        static str_slice_t select_before_included(const str_slice_t& str, const str_slice_t& selection)
         {
-            string_t v(selection);
+            str_slice_t v(selection);
             v.m_view.to   = v.m_view.to;
             v.m_view.from = 0;
             return v;
         }
 
-        static string_t select_after(const string_t& str, const string_t& sel)
+        static str_slice_t select_after(const str_slice_t& str, const str_slice_t& sel)
         {
-            string_t v(sel);
+            str_slice_t v(sel);
             v.m_view.to   = str.m_view.to;
             v.m_view.from = sel.m_view.from;
             return v;
         }
 
-        static string_t select_after_excluded(const string_t& str, const string_t& sel)
+        static str_slice_t select_after_excluded(const str_slice_t& str, const str_slice_t& sel)
         {
-            string_t v(sel);
+            str_slice_t v(sel);
             v.m_view.to   = str.m_view.to;
             v.m_view.from = sel.m_view.to;
             return v;
@@ -317,14 +319,14 @@ namespace ncore
             }
         }
 
-        static void insert(string_t& str, string_t const& pos, string_t const& insert)
+        static void insert(str_slice_t& str, str_slice_t const& pos, str_slice_t const& insert)
         {
             if (insert.is_empty() || (str.m_data != pos.m_data))
                 return;
 
             s32 dst = pos.m_view.from;
 
-            string_t::range_t insert_range(dst, dst + insert.size());
+            str_range_t insert_range(dst, dst + insert.size());
             ustring_t::adjust_active_views(&str, ustring_t::INSERTION, insert_range);
 
             s32 const current_len = str.m_data->m_str_len;
@@ -332,7 +334,7 @@ namespace ncore
             {
                 //@TODO: it should be better to get an actual full view from the list of strings, currently we
                 //       take the easy way and just take the whole allocated size as the full view.
-                runes_t str_runes = ustring_t::get_runes(str.m_data, string_t::range_t(0, current_len));
+                runes_t str_runes = ustring_t::get_runes(str.m_data, str_range_t(0, current_len));
                 insert_space(str_runes, dst, insert.size());
             }
             s32 src = 0;
@@ -345,7 +347,7 @@ namespace ncore
             }
         }
 
-        static void remove(string_t& str, string_t const& selection)
+        static void remove(str_slice_t& str, str_slice_t const& selection)
         {
             if (selection.is_empty())
                 return;
@@ -354,30 +356,30 @@ namespace ncore
             {
                 //@TODO: it should be better to get an actual full view from the list of strings, currently we
                 //       take the easy way and just take the whole allocated size as the full view.
-                runes_t str_runes = get_runes(str.m_data, string_t::range_t(0, str.m_data->m_str_len));
+                runes_t str_runes = get_runes(str.m_data, str_range_t(0, str.m_data->m_str_len));
                 remove_space(str_runes, selection.m_view.from, selection.size());
 
                 // TODO: Decision to shrink the allocated memory of m_runes ?
 
-                string_t::range_t remove_range(selection.m_view.from, selection.m_view.to);
+                str_range_t remove_range(selection.m_view.from, selection.m_view.to);
                 ustring_t::adjust_active_views(&str, ustring_t::REMOVAL, remove_range);
             }
         }
 
-        static void find_remove(string_t& _str, const string_t& _find)
+        static void find_remove(str_slice_t& _str, const str_slice_t& _find)
         {
-            string_t strvw(_str);
-            string_t sel = find(strvw, _find);
+            str_slice_t strvw(_str);
+            str_slice_t sel = find(strvw, _find);
             if (sel.is_empty() == false)
             {
                 remove(_str, sel);
             }
         }
 
-        static void find_replace(string_t& str, const string_t& _find, const string_t& replace)
+        static void find_replace(str_slice_t& str, const str_slice_t& _find, const str_slice_t& replace)
         {
-            string_t strvw(str);
-            string_t remove = find(strvw, _find);
+            str_slice_t strvw(str);
+            str_slice_t remove = find(strvw, _find);
             if (remove.is_empty() == false)
             {
                 s32 const remove_from = remove.m_view.from;
@@ -392,7 +394,7 @@ namespace ncore
 
                     // TODO: Decision to shrink the allocated memory of m_runes ?
 
-                    string_t::range_t remove_range(remove_from, remove_from + diff);
+                    str_range_t remove_range(remove_from, remove_from + diff);
                     ustring_t::adjust_active_views(&str, ustring_t::REMOVAL, remove_range);
                 }
                 else if (diff < 0)
@@ -403,7 +405,7 @@ namespace ncore
                     runes_t str_runes = ustring_t::get_runes(str.m_data, str.m_view);
                     insert_space(str_runes, remove_from, -diff);
 
-                    string_t::range_t insert_range(remove_from, remove_from + -diff);
+                    str_range_t insert_range(remove_from, remove_from + -diff);
                     ustring_t::adjust_active_views(&str, ustring_t::INSERTION, insert_range);
                 }
                 // Copy string 'remove' into the (now) same size selection space
@@ -432,10 +434,10 @@ namespace ncore
             }
         }
 
-        static void remove_any(string_t& str, const string_t& any)
+        static void remove_any(str_slice_t& str, const str_slice_t& any)
         {
             // Remove any of the characters in @charset from @str
-            string_t::range_t const strview = str.m_view;
+            str_range_t const strview = str.m_view;
             s32 const             strsize = strview.size();
 
             s32 d = 0;
@@ -458,7 +460,7 @@ namespace ncore
                         // have been adjusted according to the previous range removal. So here we have to adjust
                         // this removal range by shifting it left with 'gap'.
                         s32 const       gap = r - d;
-                        string_t::range_t removal_range(r - gap, i - gap);
+                        str_range_t removal_range(r - gap, i - gap);
                         ustring_t::adjust_active_views(&str, ustring_t::REMOVAL, removal_range);
                         r = -1;
                     }
@@ -512,7 +514,7 @@ namespace ncore
         static const s32 OVERLAP  = 0x07E0; // binary(0000,0111,1110,0000);
         static const s32 ENVELOPE = 0x37EC; // binary(0011,0111,1110,1100);
 
-        static s32 compare(string_t::range_t const& lhs, string_t::range_t const& rhs)
+        static s32 compare(str_range_t const& lhs, str_range_t const& rhs)
         {
             // Return where 'rhs' is in relation to 'lhs'
             // --------| lhs |--------[ rhs ]--------        RIGHT
@@ -550,7 +552,7 @@ namespace ncore
                 return ENVELOPE;
             return NONE;
         }
-        static inline s32 compute_range_overlap(string_t::range_t const& lhs, string_t::range_t const& rhs)
+        static inline s32 compute_range_overlap(str_range_t const& lhs, str_range_t const& rhs)
         {
             if (rhs.from < lhs.from && rhs.to < lhs.to)
                 return rhs.to - lhs.from;
@@ -569,9 +571,9 @@ namespace ncore
         static const s32 INSERTION = 1;
         static const s32 CLEARED   = 2;
         static const s32 RELEASED  = 3;
-        static void      adjust_active_view(string_t* v, s32 op_code, string_t::range_t const rhs)
+        static void      adjust_active_view(str_slice_t* v, s32 op_code, str_range_t const rhs)
         {
-            string_t::range_t& lhs = v->m_view;
+            str_range_t& lhs = v->m_view;
 
             switch (op_code)
             {
@@ -660,9 +662,9 @@ namespace ncore
             }
         }
 
-        static void adjust_active_views(string_t* list, s32 op_code, string_t::range_t op_range)
+        static void adjust_active_views(str_slice_t* list, s32 op_code, str_range_t op_range)
         {
-            string_t* iter = list;
+            str_slice_t* iter = list;
             do
             {
                 adjust_active_view(iter, op_code, op_range);
@@ -670,10 +672,10 @@ namespace ncore
             } while (iter != list);
         }
 
-        static strdata_t  s_default_data;
-        static strdata_t* get_default_string_data()
+        static str_data_t  s_default_data;
+        static str_data_t* get_default_string_data()
         {
-            static strdata_t* s_default_data_ptr = nullptr;
+            static str_data_t* s_default_data_ptr = nullptr;
             if (s_default_data_ptr == nullptr)
             {
                 s_default_data_ptr                    = &s_default_data;
@@ -684,22 +686,23 @@ namespace ncore
             return s_default_data_ptr;
         }
 
-        static inline bool is_default_string_data(strdata_t* data) { return data == &s_default_data; }
+        static inline bool is_default_string_data(str_data_t* data) { return data == &s_default_data; }
     };
-    strdata_t ustring_t::s_default_data;
+    str_data_t ustring_t::s_default_data;
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    bool string_t::is_empty() const { return m_view.size() == 0; }
+    bool str_slice_t::is_empty() const { return m_view.size() == 0; }
 
-    void string_t::add_to_list(string_t const* node)
+
+    void str_slice_t::add_to_list(str_slice_t const* node)
     {
         if (node != nullptr)
         {
-            string_t* prev = node->m_next;
-            string_t* next = prev->m_next;
+            str_slice_t* prev = node->m_next;
+            str_slice_t* next = prev->m_next;
             prev->m_next   = this;
             next->m_prev   = this;
             this->m_prev   = prev;
@@ -712,7 +715,7 @@ namespace ncore
         }
     }
 
-    void string_t::rem_from_list()
+    void str_slice_t::rem_from_list()
     {
         m_prev->m_next = m_next;
         m_next->m_prev = m_prev;
@@ -720,7 +723,7 @@ namespace ncore
         m_prev = this;
     }
 
-    void string_t::invalidate()
+    void str_slice_t::invalidate()
     {
         rem_from_list();
         m_data      = nullptr;
@@ -741,7 +744,7 @@ namespace ncore
             copy(srcrunes, dstrunes);
 
             string_t str;
-            str.m_data                    = (strdata_t*)context_t::system_alloc()->allocate(sizeof(strdata_t), sizeof(void*));
+            str.m_data                    = (str_data_t*)context_t::system_alloc()->allocate(sizeof(str_data_t), sizeof(void*));
             str.m_data->m_str_ptr.m_ascii = dstrunes.m_ascii.m_bos;
             str.m_data->m_str_len         = m_view.size();
             str.m_data->m_str_type        = m_data->m_str_type;
@@ -756,8 +759,8 @@ namespace ncore
     string_t::string_t()
     {
         m_data = ustring_t::get_default_string_data();
-        m_view = range(0, 0);
-        add_to_list(nullptr);
+        //m_view = range(0, 0);
+        //add_to_list(nullptr);
     }
 
     string_t::~string_t() { release(); }
@@ -769,10 +772,12 @@ namespace ncore
         s32 const strlen  = srcrunes.size();
         s32 const strtype = ascii::TYPE;
 
+        str_range_t view = str_range_t(0, strlen);
+
         if (strlen > 0)
         {
             m_data        = ustring_t::allocdata(strlen, strtype);
-            runes_t runes = ustring_t::get_runes(m_data, m_view);
+            runes_t runes = ustring_t::get_runes(m_data, view);
             copy(srcrunes, runes);
         }
         else
@@ -780,13 +785,11 @@ namespace ncore
             m_data = ustring_t::get_default_string_data();
         }
 
-        m_view = range(0, strlen);
-        add_to_list(nullptr);
+        //add_to_list(nullptr);
     }
 
     string_t::string_t(s32 _len, s32 _type)
         : m_data(nullptr)
-        , m_view()
     {
         s32 strlen  = _len;
         s32 strtype = _type;
@@ -800,17 +803,14 @@ namespace ncore
             m_data = ustring_t::get_default_string_data();
         }
 
-        m_view.from = 0;
-        m_view.to   = 0;
-
-        add_to_list(nullptr);
+        //add_to_list(nullptr);
     }
 
     string_t::string_t(const string_t& other)
         : m_data(other.m_data)
-        , m_view(other.m_view)
+        //, m_view(other.m_view)
     {
-        add_to_list(&other);
+        //add_to_list(&other);
     }
 
     string_t::string_t(const string_t& left, const string_t& right)
@@ -824,7 +824,7 @@ namespace ncore
         runes_t strdata;
         concatenate(strdata, leftrunes, rightrunes, context_t::string_alloc(), 16);
 
-        m_data                    = (strdata_t*)context_t::system_alloc()->allocate(sizeof(strdata_t), sizeof(void*));
+        m_data                    = (str_data_t*)context_t::system_alloc()->allocate(sizeof(str_data_t), sizeof(void*));
         m_data->m_str_type        = left.m_data->m_str_type;
         m_data->m_str_len         = strdata.cap();
         m_data->m_str_ptr.m_ascii = strdata.m_ascii.m_bos;
@@ -837,6 +837,8 @@ namespace ncore
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
+    s32 str_slice_t::size() const { return m_view.size(); }
+    s32 str_slice_t::cap() const { return m_data->m_str_len; }
 
     s32 string_t::size() const { return m_view.size(); }
     s32 string_t::cap() const { return m_data->m_str_len; }
@@ -1004,7 +1006,7 @@ namespace ncore
         runes_t dstrunes = ustring_t::get_runes(m_data, m_view);
         copy(srcrunes, dstrunes);
 
-        m_view = string_t::range_t(0, srcrunes.size());
+        m_view = str_range_t(0, srcrunes.size());
         add_to_list(nullptr);
     }
 
