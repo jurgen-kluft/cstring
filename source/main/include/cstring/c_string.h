@@ -37,12 +37,12 @@ namespace ncore
         void clear();
         void invalidate();
 
-        bool     is_empty() const;
-        s32      cap() const;
-        s32      size() const;
+        bool is_empty() const;
+        s32  cap() const;
+        s32  size() const;
 
-        s32 format(string_t const& format, const va_list_t& args);
-        s32 formatAdd(string_t const& format, const va_list_t& args);
+        s32 format(str_slice_t const& format, const va_list_t& args);
+        s32 formatAdd(str_slice_t const& format, const va_list_t& args);
 
         str_slice_t  operator()(s32 to);
         str_slice_t  operator()(s32 from, s32 to);
@@ -53,7 +53,11 @@ namespace ncore
         str_slice_t& operator=(const str_slice_t& other);
         str_slice_t& operator+=(const str_slice_t& other);
 
+        bool operator==(const str_slice_t& other) const;
+        bool operator!=(const str_slice_t& other) const;
+
     protected:
+        friend class string_t;
         friend class ustring_t;
 
         str_slice_t();
@@ -64,6 +68,10 @@ namespace ncore
 
         void add_to_list(str_slice_t const* s);
         void rem_from_list();
+
+        void attach(str_slice_t& str);
+        void clone(str_slice_t const& str);
+        void release();
 
         str_data_t*  m_data;
         str_slice_t* m_next;
@@ -85,18 +93,19 @@ namespace ncore
         s32      cap() const;
         s32      size() const;
         string_t clone() const;
+        bool     is_empty() const;
 
+        void        clear();
         str_slice_t slice();
 
-        bool operator==(const string_t& other) const;
-        bool operator!=(const string_t& other) const;
+        str_slice_t operator()(s32 from);
+        str_slice_t operator()(s32 from, s32 to);
+        uchar32     operator[](s32 index) const;
+        bool        operator==(const string_t& other) const;
+        bool        operator!=(const string_t& other) const;
 
     protected:
         friend class ustring_t;
-
-        void attach(string_t& str);
-        void clone(string_t const& str);
-        void release();
 
         str_data_t* m_data;
     };
@@ -143,7 +152,7 @@ namespace ncore
     str_slice_t find(str_slice_t& inStr, uchar32 inFind);
     str_slice_t find(str_slice_t& inStr, const char* inFind);
     str_slice_t find(str_slice_t& inStr, const str_slice_t& inFind);
-    str_slice_t findLast(str_slice_t& inStr, const str_slice_t& inFind);
+    str_slice_t findLast(str_slice_t const& inStr, const str_slice_t& inFind);
     str_slice_t findOneOf(str_slice_t& inStr, const str_slice_t& inFind);
     str_slice_t findOneOfLast(str_slice_t& inStr, const str_slice_t& inFind);
 

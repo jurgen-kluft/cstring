@@ -29,7 +29,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             CHECK_EQUAL(str.size(), 0);
             CHECK_TRUE(str[0] == '\0');
 
-            string_t v1 = str(2);
+            str_slice_t v1 = str(2);
             CHECK_TRUE(v1.is_empty());
             CHECK_EQUAL(v1.size(), 0);
             CHECK_TRUE(v1[0] == '\0');
@@ -82,7 +82,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             string_t str("This is an ASCII string converted to UTF-32");
             string_t ascii("ASCII");
 
-            string_t c1 = find(str, ascii);
+            str_slice_t c1 = find(str.slice(), ascii.slice());
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 5);
             CHECK_TRUE(c1[0] == 'A');
@@ -97,7 +97,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             string_t str( "This is an ASCII string converted to UTF-32");
             string_t ascii( "ASCII");
 
-            string_t c1 = selectUntil(str, ascii);
+            str_slice_t c1 = selectUntil(str.slice(), ascii.slice());
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 11);
             CHECK_TRUE(c1[0] == 'T');
@@ -108,7 +108,7 @@ UNITTEST_SUITE_BEGIN(test_xstring)
             string_t str("This is an ASCII string converted to UTF-32");
             string_t ascii("ASCII");
 
-            string_t c1 = selectUntilIncluded(str, ascii);
+            str_slice_t c1 = selectUntilIncluded(str.slice(), ascii.slice());
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 16);
             CHECK_TRUE(c1[11] == 'A');
@@ -121,79 +121,82 @@ UNITTEST_SUITE_BEGIN(test_xstring)
         UNITTEST_TEST(test_isUpper)
         {
             string_t str1( "THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
-            CHECK_TRUE(isUpper(str1));
+            CHECK_TRUE(isUpper(str1.slice()));
             string_t str2( "this is a lowercase string with numbers 1234");
-            CHECK_TRUE(!isUpper(str2));
+            CHECK_TRUE(!isUpper(str2.slice()));
         }
 
         UNITTEST_TEST(test_isLower)
         {
             string_t str1( "THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
-            CHECK_TRUE(!isLower(str1));
+            CHECK_TRUE(!isLower(str1.slice()));
             string_t str2( "this is a lowercase string with numbers 1234");
-            CHECK_TRUE(isLower(str2));
+            CHECK_TRUE(isLower(str2.slice()));
         }
 
         UNITTEST_TEST(test_isCapitalized)
         {
             string_t str1("This Is A Capitalized String With Numbers 1234");
-            CHECK_TRUE(isCapitalized(str1));
+            CHECK_TRUE(isCapitalized(str1.slice()));
             string_t str2("this is a lowercase string with numbers 1234");
-            CHECK_TRUE(!isCapitalized(str2));
+            CHECK_TRUE(!isCapitalized(str2.slice()));
         }
 
         UNITTEST_TEST(test_isQuoted)
         {
             string_t str1("\"a quoted piece of text\"");
-            CHECK_TRUE(isQuoted(str1));
+            CHECK_TRUE(isQuoted(str1.slice()));
             string_t str2("just a piece of text");
-            CHECK_TRUE(!isQuoted(str2));
+            CHECK_TRUE(!isQuoted(str2.slice()));
         }
 
         UNITTEST_TEST(test_isQuoted2)
         {
             string_t str1("$a quoted piece of text$");
-            CHECK_TRUE(isQuoted(str1, '$'));
+            CHECK_TRUE(isQuoted(str1.slice(), '$'));
             string_t str2("just a piece of text");
-            CHECK_TRUE(!isQuoted(str2, '$'));
+            CHECK_TRUE(!isQuoted(str2.slice(), '$'));
         }
 
         UNITTEST_TEST(test_isDelimited)
         {
             string_t str1("[a delimited piece of text]");
-            CHECK_TRUE(isDelimited(str1, '[', ']'));
+            CHECK_TRUE(isDelimited(str1.slice(), '[', ']'));
             string_t str2("just a piece of text");
-            CHECK_TRUE(!isDelimited(str2, '[', ']'));
+            CHECK_TRUE(!isDelimited(str2.slice(), '[', ']'));
         }
 
         UNITTEST_TEST(test_firstChar)
         {
             string_t str1("First character");
-            CHECK_EQUAL(firstChar(str1), 'F');
-            CHECK_NOT_EQUAL(firstChar(str1), 'G');
+            CHECK_EQUAL(firstChar(str1.slice()), 'F');
+            CHECK_NOT_EQUAL(firstChar(str1.slice()), 'G');
         }
 
         UNITTEST_TEST(test_lastChar)
         {
             string_t str1("Last character");
-            CHECK_EQUAL(lastChar(str1), 'r');
-            CHECK_NOT_EQUAL(lastChar(str1), 's');
+            CHECK_EQUAL(lastChar(str1.slice()), 'r');
+            CHECK_NOT_EQUAL(lastChar(str1.slice()), 's');
         }
 
         UNITTEST_TEST(test_startsWith)
         {
             string_t str1("Last character");
-            CHECK_TRUE(startsWith(str1, string_t("Last")));
-            CHECK_FALSE(startsWith(str1, string_t("First")));
+            string_t last("Last");
+            string_t first("First");
+            CHECK_TRUE(startsWith(str1.slice(), last.slice()));
+            CHECK_FALSE(startsWith(str1.slice(), first.slice()));
         }
 
         UNITTEST_TEST(test_endsWith)
         {
             string_t str1("Last character");
-            bool t1=endsWith(str1, string_t("character"));
+            string_t chr("character");
+            bool t1=endsWith(str1.slice(), chr.slice());
             CHECK_TRUE(t1);
             string_t f("first");
-            CHECK_FALSE(endsWith(str1, f));
+            CHECK_FALSE(endsWith(str1.slice(), f.slice()));
         }
 
         UNITTEST_TEST(test_find)
