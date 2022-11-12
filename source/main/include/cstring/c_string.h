@@ -54,6 +54,7 @@ namespace ncore
         str_slice_t& operator+=(const str_slice_t& other);
 
     protected:
+        friend class string_t;
         friend class ustring_t;
 
         str_slice_t();
@@ -85,6 +86,7 @@ namespace ncore
         s32      cap() const;
         s32      size() const;
         string_t clone() const;
+        void    clear();
 
         str_slice_t slice();
 

@@ -806,17 +806,17 @@ namespace ncore
         //add_to_list(nullptr);
     }
 
-    string_t::string_t(const string_t& other)
+    string_t::string_t(const str_slice_t& other)
         : m_data(other.m_data)
         //, m_view(other.m_view)
     {
         //add_to_list(&other);
     }
 
-    string_t::string_t(const string_t& left, const string_t& right)
+    string_t::string_t(const str_slice_t& left, const str_slice_t& right)
     {
         s32 strlen  = left.size() + right.size();
-        s32 strtype = xmax(left.m_data->m_str_type, right.m_data->m_str_type);
+        s32 strtype = math::max(left.m_data->m_str_type, right.m_data->m_str_type);
 
         crunes_t leftrunes  = ustring_t::get_crunes(left.m_data, left.m_view);
         crunes_t rightrunes = ustring_t::get_crunes(right.m_data, right.m_view);
@@ -828,11 +828,6 @@ namespace ncore
         m_data->m_str_type        = left.m_data->m_str_type;
         m_data->m_str_len         = strdata.cap();
         m_data->m_str_ptr.m_ascii = strdata.m_ascii.m_bos;
-
-        m_view.from = 0;
-        m_view.to   = m_data->m_str_len;
-
-        add_to_list(nullptr);
     }
 
     //------------------------------------------------------------------------------
@@ -840,13 +835,15 @@ namespace ncore
     s32 str_slice_t::size() const { return m_view.size(); }
     s32 str_slice_t::cap() const { return m_data->m_str_len; }
 
-    s32 string_t::size() const { return m_view.size(); }
+    s32 string_t::size() const { return m_data->m_str_len; }
     s32 string_t::cap() const { return m_data->m_str_len; }
 
     void string_t::clear()
     {
-        m_view.from = 0;
-        m_view.to   = 0;
+        if (m_data == ustring_t::get_default_string_data())
+            return;
+        ustring_t::deallocdata(m_data);
+        m_data = ustring_t::get_default_string_data();
     }
 
     string_t string_t::operator()(s32 to)
