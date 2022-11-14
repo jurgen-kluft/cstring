@@ -96,10 +96,10 @@ namespace ncore
         bool     is_empty() const;
 
         void        clear();
-        str_slice_t slice();
+        str_slice_t slice() const;
 
-        str_slice_t operator()(s32 from);
-        str_slice_t operator()(s32 from, s32 to);
+        str_slice_t operator()(s32 from) const;
+        str_slice_t operator()(s32 from, s32 to) const;
         uchar32     operator[](s32 index) const;
         bool        operator==(const string_t& other) const;
         bool        operator!=(const string_t& other) const;
@@ -107,7 +107,7 @@ namespace ncore
     protected:
         friend class ustring_t;
 
-        str_data_t* m_data;
+        mutable str_data_t* m_data;
     };
 
     bool isUpper(const str_slice_t&);

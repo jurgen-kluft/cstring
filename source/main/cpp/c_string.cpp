@@ -809,8 +809,9 @@ namespace ncore
         // add_to_list(nullptr);
     }
 
-    string_t::string_t(const string_t& other) : m_data(other.m_data)
-    //, m_view(other.m_view)
+    string_t::string_t(const str_slice_t& other)
+        : m_data(other.m_data)
+        //, m_view(other.m_view)
     {
         // add_to_list(&other);
     }
@@ -837,15 +838,41 @@ namespace ncore
     s32 str_slice_t::size() const { return m_view.size(); }
     s32 str_slice_t::cap() const { return m_data->m_str_len; }
 
-    s32  string_t::size() const { return m_data->m_str_len; }
-    s32  string_t::cap() const { return m_data->m_str_len; }
+    s32 string_t::size() const { return m_data->m_str_len; }
+    s32 string_t::cap() const { return m_data->m_str_len; }
     bool string_t::is_empty() const { return m_data->m_str_len == 0; }
 
-    void string_t::clear() { m_data = ustring_t::get_default_string_data(); }
+    void string_t::clear()
+    {
+        if (m_data == ustring_t::get_default_string_data())
+            return;
+        ustring_t::deallocdata(m_data);
+        m_data = ustring_t::get_default_string_data();
+    }
 
-    str_slice_t string_t::slice() const { return str_slice_t(m_data, str_range_t(0, m_data->m_str_len)); }
-    str_slice_t string_t::operator(s32 to) const { return str_slice_t(m_data, str_range_t(0, to)); }
-    str_slice_t string_t::operator(s32 from, s32 to) const { return str_slice_t(m_data, str_range_t(from, to)); }
+    str_slice_t string_t::slice() const { return str_slice_t((str_data_t*)m_data, str_range_t(0, m_data->m_str_len)); }
+    str_slice_t string_t::operator()(s32 to) const 
+    { 
+        str_slice_t v;
+        str_range_t view = str_range_t(0, m_data->m_str_len);
+
+        v.m_data      = m_data;
+        v.m_view.from = view.from;
+        v.m_view.to   = math::min(view.from + to, view.to);
+        return v;
+    }
+    str_slice_t string_t::operator()(s32 from, s32 to) const 
+    { 
+        math::sort(from, to);
+        str_range_t view = str_range_t(0, m_data->m_str_len);
+        to   = math::min(view.from + to, view.to);
+        from = view.from + math::min(from, to);
+        str_slice_t v;
+        v.m_data      = m_data;
+        v.m_view.from = from;
+        v.m_view.to   = to;
+        return v;
+    }
 
     str_slice_t str_slice_t::operator()(s32 to)
     {
@@ -965,6 +992,38 @@ namespace ncore
         {
             uchar32 const lc = ustring_t::get_char_unsafe(this->m_data, this->m_view, i);
             uchar32 const rc = ustring_t::get_char_unsafe(other.m_data, other.m_view, i);
+            if (lc != rc)
+                return true;
+        }
+        return false;
+    }
+
+    bool string_t::operator==(const string_t& other) const
+    {
+        if (size() != other.size())
+            return false;
+        str_range_t thisview = str_range_t(0, this->m_data->m_str_len);
+        str_range_t otherview = str_range_t(0, other.m_data->m_str_len);
+        for (s32 i = 0; i < size(); i++)
+        {
+            uchar32 const lc = ustring_t::get_char_unsafe(this->m_data, thisview, i);
+            uchar32 const rc = ustring_t::get_char_unsafe(other.m_data, otherview, i);
+            if (lc != rc)
+                return false;
+        }
+        return true;
+    }
+
+    bool string_t::operator!=(const string_t& other) const
+    {
+        if (size() != other.size())
+            return true;
+        str_range_t thisview = str_range_t(0, this->m_data->m_str_len);
+        str_range_t otherview = str_range_t(0, other.m_data->m_str_len);
+        for (s32 i = 0; i < size(); i++)
+        {
+            uchar32 const lc = ustring_t::get_char_unsafe(this->m_data, thisview, i);
+            uchar32 const rc = ustring_t::get_char_unsafe(other.m_data, otherview, i);
             if (lc != rc)
                 return true;
         }
