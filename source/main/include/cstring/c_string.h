@@ -64,7 +64,7 @@ namespace ncore
         str_slice_t(const str_slice_t& other);
 
         // You should only be able to work with them in a function but not construct them on the heap
-        XCORE_CLASS_PLACEMENT_NEW_DELETE
+        DCORE_CLASS_PLACEMENT_NEW_DELETE
 
         void add_to_list(str_slice_t const* s);
         void rem_from_list();
