@@ -8,8 +8,7 @@
 #include "cunittest/cunittest.h"
 
 UNITTEST_SUITE_LIST(cUnitTest);
-
-UNITTEST_SUITE_DECLARE(cUnitTest, test_xstring);
+UNITTEST_SUITE_DECLARE(cUnitTest, test_cstring);
 //UNITTEST_SUITE_DECLARE(cUnitTest, test_string_reader);
 //UNITTEST_SUITE_DECLARE(cUnitTest, test_string_writer);
 
