@@ -15,6 +15,7 @@ UNITTEST_SUITE_BEGIN(test_string)
         UNITTEST_TEST(test_index_op)
         {
             string_t str;
+
             CHECK_TRUE(str.is_empty());
             CHECK_EQUAL(str.size(), 0);
             CHECK_TRUE(str[0] == '\0');
@@ -25,11 +26,12 @@ UNITTEST_SUITE_BEGIN(test_string)
         UNITTEST_TEST(test_view)
         {
             string_t str;
+
             CHECK_TRUE(str.is_empty());
             CHECK_EQUAL(str.size(), 0);
             CHECK_TRUE(str[0] == '\0');
 
-            str_slice_t v1 = str(2);
+            string_t v1 = str(2);
             CHECK_TRUE(v1.is_empty());
             CHECK_EQUAL(v1.size(), 0);
             CHECK_TRUE(v1[0] == '\0');
@@ -82,7 +84,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str("This is an ASCII string converted to UTF-32");
             string_t ascii("ASCII");
 
-            str_slice_t c1 = find(str.slice(), ascii.slice());
+            string_t c1 = find(str.slice(), ascii.slice());
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 5);
             CHECK_TRUE(c1[0] == 'A');
@@ -97,7 +99,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str( "This is an ASCII string converted to UTF-32");
             string_t ascii( "ASCII");
 
-            str_slice_t c1 = selectUntil(str.slice(), ascii.slice());
+            string_t c1 = selectUntil(str.slice(), ascii.slice());
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 11);
             CHECK_TRUE(c1[0] == 'T');
@@ -108,7 +110,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str("This is an ASCII string converted to UTF-32");
             string_t ascii("ASCII");
 
-            str_slice_t c1 = selectUntilIncluded(str.slice(), ascii.slice());
+            string_t c1 = selectUntilIncluded(str.slice(), ascii.slice());
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 16);
             CHECK_TRUE(c1[11] == 'A');

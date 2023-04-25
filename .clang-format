@@ -24,6 +24,7 @@ FixNamespaceComments: "true"
 IndentPPDirectives: AfterHash
 IndentCaseLabels: "true"
 IndentWidth: "4"
+IndentPPDirectives: AfterHash
 Language: Cpp
 MaxEmptyLinesToKeep: "1"
 NamespaceIndentation: All
