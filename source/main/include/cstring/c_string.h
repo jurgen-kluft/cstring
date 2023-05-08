@@ -16,16 +16,6 @@ namespace ncore
 
     struct str_data_t;
 
-    struct str_range_t
-    {
-        inline str_range_t() : from(0), to(0) {}
-        inline str_range_t(s32 f, s32 t) : from(f), to(t) {}
-        s32  size() const { return to - from; }
-        void reset() { *this = str_range_t(0, 0); }
-        s32  from;
-        s32  to;
-    };
-
     class string_t
     {
     public:
@@ -37,8 +27,8 @@ namespace ncore
         string_t(string_t const& other, string_t const& concat);
         ~string_t();
 
-        s32 format(string_t const& format, const va_list_t& args);
-        s32 formatAdd(string_t const& format, const va_list_t& args);
+        s32 format(string_t const& format, const va_t* argv, s32 argc);
+        s32 formatAdd(string_t const& format, const va_t* argv, s32 argc);
 
         s32      cap() const;
         s32      size() const;
@@ -63,8 +53,8 @@ namespace ncore
         friend class str_data_t;
         friend class ustring_t;
 
-        string_t(str_data_t* data, str_range_t view);
-    
+        string_t(str_data_t* data, s32 from, s32 to);
+
         void attach(string_t& str);
         void release();
         void clone(string_t const& str);
@@ -73,7 +63,8 @@ namespace ncore
         void rem_from_list();
         void invalidate();
 
-        str_range_t         m_view;
+        s32                 m_from;
+        s32                 m_to;
         string_t*           m_next;
         string_t*           m_prev;
         mutable str_data_t* m_data;
