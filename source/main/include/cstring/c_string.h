@@ -14,8 +14,6 @@ namespace ncore
     class va_list_t;
     class alloc_t;
 
-    struct str_data_t;
-
     class string_t
     {
     public:
@@ -50,23 +48,22 @@ namespace ncore
         bool operator!=(const string_t& other) const;
 
     protected:
+        struct str_data_t;
         friend class str_data_t;
         friend class ustring_t;
-
-        string_t(str_data_t* data, s32 from, s32 to);
 
         void attach(string_t& str);
         void release();
         void clone(string_t const& str);
 
-        void add_to_list(string_t* node);
+        void add_to_list(string_t* node) const;
         void rem_from_list();
         void invalidate();
 
         s32                 m_from;
         s32                 m_to;
-        string_t*           m_next;
-        string_t*           m_prev;
+        mutable string_t*   m_next;
+        mutable string_t*   m_prev;
         mutable str_data_t* m_data;
     };
 

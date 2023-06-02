@@ -8,14 +8,14 @@
 
 namespace ncore
 {
-    struct str_data_t
+    struct string_t::str_data_t
     {
         alloc_t* m_alloc;
         void*    m_str_ptr;
         s8       m_str_type;
         s32      m_str_len;
 
-        s32 cap() const { return m_str_len; }
+        inline s32 cap() const { return m_str_len; }
     };
 
     //==============================================================================
@@ -24,7 +24,7 @@ namespace ncore
     class ustring_t
     {
     public:
-        static inline uchar32 get_char_unsafe(str_data_t const* data, s32 from, s32 to, s32 i)
+        static inline uchar32 get_char_unsafe(string_t::str_data_t const* data, s32 from, s32 to, s32 i)
         {
             switch (data->m_str_type)
             {
@@ -46,7 +46,7 @@ namespace ncore
 
         static inline uchar32 get_char_unsafe(string_t const& str, s32 i) { return get_char_unsafe(str.m_data, str.m_from, str.m_to, i); }
 
-        static inline void set_char_unsafe(str_data_t* data, s32 from, s32 to, s32 i, uchar32 c)
+        static inline void set_char_unsafe(string_t::str_data_t* data, s32 from, s32 to, s32 i, uchar32 c)
         {
             switch (data->m_str_type)
             {
@@ -86,7 +86,7 @@ namespace ncore
             }
         }
 
-        static inline crunes_t get_crunes(str_data_t const* data, s32 from, s32 to)
+        static inline crunes_t get_crunes(string_t::str_data_t const* data, s32 from, s32 to)
         {
             crunes_t r;
             r.m_ascii.m_flags = data->m_str_type;
@@ -109,7 +109,7 @@ namespace ncore
         }
         static inline crunes_t get_crunes(string_t const& str) { return get_crunes(str.m_data, str.m_from, str.m_to); }
 
-        static inline runes_t get_runes(str_data_t* data, s32 from, s32 to)
+        static inline runes_t get_runes(string_t::str_data_t* data, s32 from, s32 to)
         {
             runes_t r;
             r.m_ascii.m_flags = data->m_str_type;
@@ -131,9 +131,9 @@ namespace ncore
             return r;
         }
 
-        static str_data_t* allocdata(s32 _strlen, s32 _strtype)
+        static string_t::str_data_t* allocdata(s32 _strlen, s32 _strtype)
         {
-            str_data_t* data = (str_data_t*)context_t::system_alloc()->allocate(sizeof(str_data_t), sizeof(void*));
+            string_t::str_data_t* data = (string_t::str_data_t*)context_t::system_alloc()->allocate(sizeof(string_t::str_data_t), sizeof(void*));
             data->m_str_type = _strtype;
             data->m_str_len  = _strlen;
 
@@ -143,7 +143,7 @@ namespace ncore
             return data;
         }
 
-        static void deallocdata(str_data_t* data)
+        static void deallocdata(string_t::str_data_t* data)
         {
             runes_t runes = get_runes(data, 0, 0);
             context_t::string_alloc()->deallocate(runes);
@@ -154,7 +154,7 @@ namespace ncore
         {
             if (new_size > str.m_data->cap())
             {
-                str_data_t* data   = allocdata(new_size, str.m_data->m_str_type);
+                string_t::str_data_t* data   = allocdata(new_size, str.m_data->m_str_type);
                 runes_t     trunes = get_runes(str.m_data, 0, str.m_data->m_str_len);
                 runes_t     nrunes = get_runes(data, 0, data->m_str_len);
                 copy(trunes, nrunes);
@@ -669,10 +669,10 @@ namespace ncore
             } while (iter != list);
         }
 
-        static str_data_t  s_default_data;
-        static str_data_t* get_default_string_data()
+        static string_t::str_data_t s_default_data;
+        static string_t::str_data_t* get_default_string_data()
         {
-            static str_data_t* s_default_data_ptr = nullptr;
+            static string_t::str_data_t* s_default_data_ptr = nullptr;
             if (s_default_data_ptr == nullptr)
             {
                 s_default_data_ptr             = &s_default_data;
@@ -683,9 +683,9 @@ namespace ncore
             return s_default_data_ptr;
         }
 
-        static inline bool is_default_string_data(str_data_t* data) { return data == &s_default_data; }
+        static inline bool is_default_string_data(string_t::str_data_t* data) { return data == &s_default_data; }
     };
-    str_data_t ustring_t::s_default_data;
+    string_t::str_data_t ustring_t::s_default_data;
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
@@ -693,21 +693,21 @@ namespace ncore
 
     bool string_t::is_empty() const { return (m_from == m_to); }
 
-    void string_t::add_to_list(string_t* node)
+    void string_t::add_to_list(string_t* node) const
     {
         if (node != nullptr)
         {
             string_t* prev = node->m_next;
             string_t* next = prev->m_next;
-            prev->m_next   = this;
-            next->m_prev   = this;
+            prev->m_next   = (string_t*)this;
+            next->m_prev   = (string_t*)this;
             this->m_prev   = prev;
             this->m_next   = next;
         }
         else
         {
-            m_next = this;
-            m_prev = this;
+            m_next = (string_t*)this;
+            m_prev = (string_t*)this;
         }
     }
 
@@ -754,18 +754,12 @@ namespace ncore
     string_t::string_t()
     {
         m_data = ustring_t::get_default_string_data();
-        // m_view = range(0, 0);
-        // add_to_list(nullptr);
+        m_from = 0;
+        m_to = 0;
+        add_to_list(nullptr);
     }
 
-    string_t::~string_t()
-    {
-        if (!ustring_t::is_default_string_data(m_data))
-        {
-            if (m_data != nullptr)
-                ustring_t::deallocdata(m_data);
-        }
-    }
+    string_t::~string_t() { release(); }
 
     string_t::string_t(const char* str)
     {
@@ -788,13 +782,13 @@ namespace ncore
             m_data = ustring_t::get_default_string_data();
         }
 
-        // add_to_list(nullptr);
+        add_to_list(nullptr);
     }
 
     string_t::string_t(s32 _len, s32 _type) : m_data(nullptr)
     {
-        s32 strlen  = _len;
-        s32 strtype = _type;
+        const s32 strlen  = _len;
+        const s32 strtype = _type;
 
         if (strlen > 0)
         {
@@ -805,19 +799,15 @@ namespace ncore
             m_data = ustring_t::get_default_string_data();
         }
 
-        // add_to_list(nullptr);
+        add_to_list(nullptr);
     }
 
-    string_t::string_t(const string_t& other) : m_data(other.m_data)
-    //, m_view(other.m_view)
-    {
-        // add_to_list(&other);
-    }
+    string_t::string_t(const string_t& other) : m_from(other.m_from), m_to(other.m_to), m_data(nullptr), m_next(nullptr), m_prev(nullptr) { clone(other); }
 
     string_t::string_t(const string_t& left, const string_t& right)
     {
-        s32 strlen  = left.size() + right.size();
-        s32 strtype = math::max(left.m_data->m_str_type, right.m_data->m_str_type);
+        const s32 strlen  = left.size() + right.size();
+        const s32 strtype = math::max(left.m_data->m_str_type, right.m_data->m_str_type);
 
         crunes_t leftrunes  = ustring_t::get_crunes(left.m_data, left.m_from, left.m_to);
         crunes_t rightrunes = ustring_t::get_crunes(right.m_data, right.m_from, right.m_to);
@@ -848,28 +838,32 @@ namespace ncore
         m_data = ustring_t::get_default_string_data();
     }
 
-    string_t string_t::slice() const { return string_t((str_data_t*)m_data, 0, m_data->m_str_len); }
+    string_t string_t::slice() const 
+    { 
+        string_t str;
+        str.m_from = m_from;
+        str.m_to   = m_to;
+        str.m_data = m_data;
+        
+    }
+
     string_t string_t::operator()(s32 _to) const
     {
-        const s32 from = 0;
+        const s32 from = m_from + _to;
         const s32 to   = m_data->m_str_len;
-
-        string_t v;
-        v.m_data = m_data;
-        v.m_from = from;
-        v.m_to   = math::min(from + _to, to);
-        return v;
+        string_t str;
+        str.m_data = m_data;
+        str.m_from = m_from;
+        str.m_to = math::min(from, to);
+        add_to_list(&str);
     }
     string_t string_t::operator()(s32 _from, s32 _to) const
     {
         math::sort(_from, _to);
-        string_t v;
-        v.m_data = m_data;
-        v.m_from = math::min(m_from + _from, m_to);
-        v.m_to   = math::min(m_from + _to, m_to);
-        return v;
+        const s32 from = math::min(m_from + _from, m_to);
+        const s32 to   = math::min(m_from + _to, m_to);
+        return string_t(m_data, from, to);
     }
-
     uchar32 string_t::operator[](s32 index) const
     {
         if (index >= size())
@@ -979,6 +973,8 @@ namespace ncore
 
     void string_t::attach(string_t& str)
     {
+        if (&str == this)
+            return;
         string_t* next = str.m_next;
         str.m_next     = this;
         this->m_next   = next;
