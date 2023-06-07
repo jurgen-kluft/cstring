@@ -691,8 +691,6 @@ namespace ncore
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    bool string_t::is_empty() const { return (m_from == m_to); }
-
     void string_t::add_to_list(string_t* node) const
     {
         if (node != nullptr)
@@ -825,17 +823,15 @@ namespace ncore
     //------------------------------------------------------------------------------
     s32 string_t::size() const { return m_to - m_from; }
     s32 string_t::cap() const { return m_data->m_str_len; }
-
-    s32  string_t::size() const { return m_data->m_str_len; }
-    s32  string_t::cap() const { return m_data->m_str_len; }
-    bool string_t::is_empty() const { return m_data->m_str_len == 0; }
+    bool string_t::is_empty() const { return m_to == m_from; }
 
     void string_t::clear()
     {
-        if (m_data == ustring_t::get_default_string_data())
-            return;
-        ustring_t::deallocdata(m_data);
-        m_data = ustring_t::get_default_string_data();
+        if (m_next == this && m_prev == this && !ustring_t::is_default_string_data(m_data))
+        {
+            ustring_t::deallocdata(m_data);
+            m_data = ustring_t::get_default_string_data();
+        }
     }
 
     string_t string_t::slice() const 
@@ -844,7 +840,8 @@ namespace ncore
         str.m_from = m_from;
         str.m_to   = m_to;
         str.m_data = m_data;
-        
+        add_to_list(&str);
+        return str;
     }
 
     string_t string_t::operator()(s32 _to) const
@@ -856,13 +853,19 @@ namespace ncore
         str.m_from = m_from;
         str.m_to = math::min(from, to);
         add_to_list(&str);
+        return str;
     }
     string_t string_t::operator()(s32 _from, s32 _to) const
     {
         math::sort(_from, _to);
         const s32 from = math::min(m_from + _from, m_to);
         const s32 to   = math::min(m_from + _to, m_to);
-        return string_t(m_data, from, to);
+        string_t str;
+        str.m_data = m_data;
+        str.m_from = m_from;
+        str.m_to   = m_to;
+        add_to_list(&str);
+        return str;
     }
     uchar32 string_t::operator[](s32 index) const
     {
@@ -943,34 +946,6 @@ namespace ncore
         return false;
     }
 
-    bool string_t::operator==(const string_t& other) const
-    {
-        if (size() != other.size())
-            return false;
-        for (s32 i = 0; i < size(); i++)
-        {
-            uchar32 const lc = ustring_t::get_char_unsafe(this->m_data, 0, this->m_data->m_str_len, i);
-            uchar32 const rc = ustring_t::get_char_unsafe(other.m_data, 0, other.m_data->m_str_len, i);
-            if (lc != rc)
-                return false;
-        }
-        return true;
-    }
-
-    bool string_t::operator!=(const string_t& other) const
-    {
-        if (size() != other.size())
-            return true;
-        for (s32 i = 0; i < size(); i++)
-        {
-            uchar32 const lc = ustring_t::get_char_unsafe(this->m_data, 0, this->m_data->m_str_len, i);
-            uchar32 const rc = ustring_t::get_char_unsafe(other.m_data, 0, other.m_data->m_str_len, i);
-            if (lc != rc)
-                return true;
-        }
-        return false;
-    }
-
     void string_t::attach(string_t& str)
     {
         if (&str == this)
@@ -985,13 +960,9 @@ namespace ncore
     void string_t::release()
     {
         // If we are the only one in the list then it means we can deallocate 'string_data'
-        if (m_next == this && m_prev == this)
+        if (m_next == this && m_prev == this && !ustring_t::is_default_string_data(m_data))
         {
-            if (!ustring_t::is_default_string_data(m_data))
-            {
-                if (m_data != nullptr)
-                    ustring_t::deallocdata(m_data);
-            }
+            ustring_t::deallocdata(m_data);
         }
         rem_from_list();
         m_data = nullptr;
@@ -1355,14 +1326,14 @@ namespace ncore
     {
         release();
 
-        const s32 len = cprintf(ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
+        const s32 len = cprintf_(ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
 
         str_data_t* ndata = ustring_t::allocdata(len, format.m_data->m_str_type);
         m_next            = this;
         m_prev            = this;
 
         runes_t str = ustring_t::get_runes(ndata, 0, 0);
-        sprintf(str, ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
+        sprintf_(str, ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
         switch (m_data->m_str_type)
         {
             case ascii::TYPE: m_to = (s32)(str.m_ascii.m_end); break;
@@ -1373,11 +1344,11 @@ namespace ncore
 
     s32 string_t::formatAdd(string_t const& format, const va_t* argv, s32 argc)
     {
-        const s32 len = cprintf(ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
+        const s32 len = cprintf_(ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
         ustring_t::resize(*this, len);
         runes_t str       = ustring_t::get_runes(m_data, m_from, m_to);
         str.m_ascii.m_str = str.m_ascii.m_end;
-        sprintf(str, ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
+        sprintf_(str, ustring_t::get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
         switch (m_data->m_str_type)
         {
             case ascii::TYPE: m_to = (s32)(str.m_ascii.m_end); break;

@@ -49,7 +49,7 @@ namespace ncore
 
     protected:
         struct str_data_t;
-        friend class str_data_t;
+        friend struct str_data_t;
         friend class ustring_t;
 
         void attach(string_t& str);
