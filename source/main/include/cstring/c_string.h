@@ -14,14 +14,14 @@ namespace ncore
     class va_list_t;
     class alloc_t;
 
+    struct stritem_t;
     class string_t
     {
     public:
         string_t();
-        //@TODO: We should also add wchar_t (utf16)
         string_t(const char* str);
         string_t(s32 _len, s32 _type);
-        string_t(const string_t& other); // copy constructor
+        string_t(const string_t& other);
         string_t(const string_t& other, const string_t& concat);
         ~string_t();
 
@@ -48,8 +48,6 @@ namespace ncore
         bool operator!=(const string_t& other) const;
 
     protected:
-        struct str_data_t;
-        friend struct str_data_t;
         friend class ustring_t;
 
         void attach(string_t& str);
@@ -60,11 +58,7 @@ namespace ncore
         void rem_from_list();
         void invalidate();
 
-        s32                 m_from;
-        s32                 m_to;
-        mutable string_t*   m_next;
-        mutable string_t*   m_prev;
-        mutable str_data_t* m_data;
+        mutable stritem_t* m_item;
     };
 
     bool isUpper(const string_t&);
@@ -145,6 +139,6 @@ namespace ncore
     void concatenate(string_t& str, const string_t& con);
     void concatenate_repeat(string_t&, const string_t& con, s32 ntimes);
 
-} // namespace ncore
+}  // namespace ncore
 
-#endif ///< __CSTRING_STRING_H__
+#endif  ///< __CSTRING_STRING_H__

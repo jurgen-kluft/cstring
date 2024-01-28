@@ -8,7 +8,7 @@
 
 namespace ncore
 {
-    struct string_t::str_data_t
+    struct strdata_t
     {
         alloc_t* m_alloc;
         void*    m_str_ptr;
@@ -18,13 +18,21 @@ namespace ncore
         inline s32 cap() const { return m_str_len; }
     };
 
+    struct stritem_t
+    {
+        s32        m_from;
+        s32        m_to;
+        stritem_t* m_next;
+        strdata_t* m_data;
+    };
+
     //==============================================================================
     // We use a (static) class here so that we can access protected members of string_t
     // since we are defined as a friend class.
     class ustring_t
     {
     public:
-        static inline uchar32 get_char_unsafe(string_t::str_data_t const* data, s32 from, s32 to, s32 i)
+        static inline uchar32 get_char_unsafe(strdata_t const* data, s32 from, s32 to, s32 i)
         {
             switch (data->m_str_type)
             {
@@ -46,7 +54,7 @@ namespace ncore
 
         static inline uchar32 get_char_unsafe(string_t const& str, s32 i) { return get_char_unsafe(str.m_data, str.m_from, str.m_to, i); }
 
-        static inline void set_char_unsafe(string_t::str_data_t* data, s32 from, s32 to, s32 i, uchar32 c)
+        static inline void set_char_unsafe(strdata_t* data, s32 from, s32 to, s32 i, uchar32 c)
         {
             switch (data->m_str_type)
             {
@@ -86,7 +94,7 @@ namespace ncore
             }
         }
 
-        static inline crunes_t get_crunes(string_t::str_data_t const* data, s32 from, s32 to)
+        static inline crunes_t get_crunes(strdata_t const* data, s32 from, s32 to)
         {
             crunes_t r;
             r.m_ascii.m_flags = data->m_str_type;
@@ -109,7 +117,7 @@ namespace ncore
         }
         static inline crunes_t get_crunes(string_t const& str) { return get_crunes(str.m_data, str.m_from, str.m_to); }
 
-        static inline runes_t get_runes(string_t::str_data_t* data, s32 from, s32 to)
+        static inline runes_t get_runes(strdata_t* data, s32 from, s32 to)
         {
             runes_t r;
             r.m_ascii.m_flags = data->m_str_type;
@@ -131,9 +139,9 @@ namespace ncore
             return r;
         }
 
-        static string_t::str_data_t* allocdata(s32 _strlen, s32 _strtype)
+        static strdata_t* allocdata(s32 _strlen, s32 _strtype)
         {
-            string_t::str_data_t* data = (string_t::str_data_t*)context_t::system_alloc()->allocate(sizeof(string_t::str_data_t), sizeof(void*));
+            strdata_t* data  = (strdata_t*)context_t::system_alloc()->allocate(sizeof(strdata_t), sizeof(void*));
             data->m_str_type = _strtype;
             data->m_str_len  = _strlen;
 
@@ -143,7 +151,7 @@ namespace ncore
             return data;
         }
 
-        static void deallocdata(string_t::str_data_t* data)
+        static void deallocdata(strdata_t* data)
         {
             runes_t runes = get_runes(data, 0, 0);
             context_t::string_alloc()->deallocate(runes);
@@ -154,9 +162,9 @@ namespace ncore
         {
             if (new_size > str.m_data->cap())
             {
-                string_t::str_data_t* data   = allocdata(new_size, str.m_data->m_str_type);
-                runes_t     trunes = get_runes(str.m_data, 0, str.m_data->m_str_len);
-                runes_t     nrunes = get_runes(data, 0, data->m_str_len);
+                strdata_t* data   = allocdata(new_size, str.m_data->m_str_type);
+                runes_t    trunes = get_runes(str.m_data, 0, str.m_data->m_str_len);
+                runes_t    nrunes = get_runes(data, 0, data->m_str_len);
                 copy(trunes, nrunes);
 
                 // deallocate old data and string
@@ -502,12 +510,12 @@ namespace ncore
         static string_t get_default() { return string_t(); }
 
         static const s32 NONE     = 0;
-        static const s32 LEFT     = 0x0800; // binary(0000,1000,0000,0000);
-        static const s32 RIGHT    = 0x0010; // binary(0000,0000,0001,0000);
-        static const s32 INSIDE   = 0x0180; // binary(0000,0001,1000,0000);
-        static const s32 MATCH    = 0x03C0; // binary(0000,0011,1100,0000);
-        static const s32 OVERLAP  = 0x07E0; // binary(0000,0111,1110,0000);
-        static const s32 ENVELOPE = 0x37EC; // binary(0011,0111,1110,1100);
+        static const s32 LEFT     = 0x0800;  // binary(0000,1000,0000,0000);
+        static const s32 RIGHT    = 0x0010;  // binary(0000,0000,0001,0000);
+        static const s32 INSIDE   = 0x0180;  // binary(0000,0001,1000,0000);
+        static const s32 MATCH    = 0x03C0;  // binary(0000,0011,1100,0000);
+        static const s32 OVERLAP  = 0x07E0;  // binary(0000,0111,1110,0000);
+        static const s32 ENVELOPE = 0x37EC;  // binary(0011,0111,1110,1100);
 
         static s32 compare(s32 lhs_from, s32 lhs_to, s32 rhs_from, s32 rhs_to)
         {
@@ -669,10 +677,10 @@ namespace ncore
             } while (iter != list);
         }
 
-        static string_t::str_data_t s_default_data;
-        static string_t::str_data_t* get_default_string_data()
+        static strdata_t  s_default_data;
+        static strdata_t* get_default_string_data()
         {
-            static string_t::str_data_t* s_default_data_ptr = nullptr;
+            static strdata_t* s_default_data_ptr = nullptr;
             if (s_default_data_ptr == nullptr)
             {
                 s_default_data_ptr             = &s_default_data;
@@ -683,9 +691,9 @@ namespace ncore
             return s_default_data_ptr;
         }
 
-        static inline bool is_default_string_data(string_t::str_data_t* data) { return data == &s_default_data; }
+        static inline bool is_default_string_data(strdata_t* data) { return data == &s_default_data; }
     };
-    string_t::str_data_t ustring_t::s_default_data;
+    strdata_t ustring_t::s_default_data;
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
@@ -753,7 +761,7 @@ namespace ncore
     {
         m_data = ustring_t::get_default_string_data();
         m_from = 0;
-        m_to = 0;
+        m_to   = 0;
         add_to_list(nullptr);
     }
 
@@ -783,7 +791,8 @@ namespace ncore
         add_to_list(nullptr);
     }
 
-    string_t::string_t(s32 _len, s32 _type) : m_data(nullptr)
+    string_t::string_t(s32 _len, s32 _type)
+        : m_data(nullptr)
     {
         const s32 strlen  = _len;
         const s32 strtype = _type;
@@ -800,7 +809,15 @@ namespace ncore
         add_to_list(nullptr);
     }
 
-    string_t::string_t(const string_t& other) : m_from(other.m_from), m_to(other.m_to), m_data(nullptr), m_next(nullptr), m_prev(nullptr) { clone(other); }
+    string_t::string_t(const string_t& other)
+        : m_from(other.m_from)
+        , m_to(other.m_to)
+        , m_data(nullptr)
+        , m_next(nullptr)
+        , m_prev(nullptr)
+    {
+        clone(other);
+    }
 
     string_t::string_t(const string_t& left, const string_t& right)
     {
@@ -821,8 +838,8 @@ namespace ncore
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
-    s32 string_t::size() const { return m_to - m_from; }
-    s32 string_t::cap() const { return m_data->m_str_len; }
+    s32  string_t::size() const { return m_to - m_from; }
+    s32  string_t::cap() const { return m_data->m_str_len; }
     bool string_t::is_empty() const { return m_to == m_from; }
 
     void string_t::clear()
@@ -834,8 +851,8 @@ namespace ncore
         }
     }
 
-    string_t string_t::slice() const 
-    { 
+    string_t string_t::slice() const
+    {
         string_t str;
         str.m_from = m_from;
         str.m_to   = m_to;
@@ -848,10 +865,10 @@ namespace ncore
     {
         const s32 from = m_from + _to;
         const s32 to   = m_data->m_str_len;
-        string_t str;
+        string_t  str;
         str.m_data = m_data;
         str.m_from = m_from;
-        str.m_to = math::min(from, to);
+        str.m_to   = math::min(from, to);
         add_to_list(&str);
         return str;
     }
@@ -860,7 +877,7 @@ namespace ncore
         math::sort(_from, _to);
         const s32 from = math::min(m_from + _from, m_to);
         const s32 to   = math::min(m_from + _to, m_to);
-        string_t str;
+        string_t  str;
         str.m_data = m_data;
         str.m_from = m_from;
         str.m_to   = m_to;
@@ -1680,4 +1697,4 @@ namespace ncore
         find_remove(strvw, converted.slice());
     }
 
-} // namespace ncore
+}  // namespace ncore
