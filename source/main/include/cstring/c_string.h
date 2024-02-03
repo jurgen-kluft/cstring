@@ -13,16 +13,19 @@ namespace ncore
     class va_t;
     class va_list_t;
     class alloc_t;
+    class arena_t;
 
     struct stritem_t;
     class string_t
     {
     public:
         string_t();
-        string_t(const char* str);
-        string_t(s32 _len, s32 _type);
-        string_t(const string_t& other);
-        string_t(const string_t& other, const string_t& concat);
+        string_t(stritem_t* item);
+        string_t(arena_t* arena);
+        string_t(arena_t* arena, const char* str);
+        string_t(arena_t* arena, s32 _len, s32 _type);
+        string_t(arena_t* arena, const string_t& other);
+        string_t(arena_t* arena, const string_t& other, const string_t& concat);
         ~string_t();
 
         s32 format(const string_t& format, const va_t* argv, s32 argc);
@@ -31,6 +34,7 @@ namespace ncore
         s32      cap() const;
         s32      size() const;
         string_t clone() const;
+        bool     is_slice() const;
         bool     is_empty() const;
 
         void     clear();
@@ -48,16 +52,6 @@ namespace ncore
         bool operator!=(const string_t& other) const;
 
     protected:
-        friend class ustring_t;
-
-        void attach(string_t& str);
-        void release();
-        void clone(const string_t& str);
-
-        void add_to_list(string_t* node) const;
-        void rem_from_list();
-        void invalidate();
-
         mutable stritem_t* m_item;
     };
 
