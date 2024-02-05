@@ -43,16 +43,6 @@ namespace ncore
         inline s64  len() const { return m_to - m_from; }
         inline s64  size() const { return m_to - m_from; }
 
-        stritem_t* copy(strdata_t* data) const
-        {
-            stritem_t* v = (stritem_t*)m_arena->allocate(sizeof(stritem_t));
-            v->m_from    = m_from;
-            v->m_to      = m_to;
-            v->m_data    = data->attach();
-            v->m_arena   = m_arena;
-            return v;
-        }
-
         void release(strdata_t* data);
         void clone(strdata_t* data, const stritem_t* str);
 
@@ -61,6 +51,16 @@ namespace ncore
 
         void invalidate();
     };
+
+    stritem_t* make_item(arena_t* arena, s32 from, s32 to, strdata_t* data)
+    {
+        stritem_t* v = (stritem_t*)arena->allocate(sizeof(stritem_t));
+        v->m_from    = from;
+        v->m_to      = to;
+        v->m_data    = data->attach();
+        v->m_arena   = arena;
+        return v;
+    }
 
     static inline void get_from_to(crunes_t const& runes, u32& from, u32& to)
     {
@@ -237,14 +237,14 @@ namespace ncore
 
     static stritem_t* select_before(const stritem_t* str, const stritem_t* selection)
     {
-        stritem_t* v = selection->copy(selection->m_data);
+        stritem_t* v = make_item(selection->m_arena, selection->m_from, selection->m_from, str->m_data);
         v->m_to      = v->m_from;
         v->m_from    = 0;
         return v;
     }
     static stritem_t* select_before_included(const stritem_t* str, const stritem_t* selection)
     {
-        stritem_t* v = selection->copy(selection->m_data);
+        stritem_t* v = make_item(selection->m_arena, selection->m_from, selection->m_from, str->m_data);
         v->m_to      = v->m_to;
         v->m_from    = 0;
         return v;
@@ -252,7 +252,7 @@ namespace ncore
 
     static stritem_t* select_after(const stritem_t* str, const stritem_t* sel)
     {
-        stritem_t* v = sel->copy(sel->m_data);
+        stritem_t* v = make_item(sel->m_arena, sel->m_to, sel->m_to, str->m_data);
         v->m_to      = str->m_from, str->m_to;
         v->m_from    = sel->m_from;
         return v;
@@ -260,7 +260,7 @@ namespace ncore
 
     static stritem_t* select_after_excluded(const stritem_t* str, const stritem_t* sel)
     {
-        stritem_t* v = sel->copy(sel->m_data);
+        stritem_t* v = make_item(sel->m_arena, sel->m_to, sel->m_to, str->m_data);
         v->m_to      = str->m_from;
         v->m_from    = sel->m_to;
         return v;
@@ -367,7 +367,7 @@ namespace ncore
 
     static stritem_t* find(stritem_t* str, const stritem_t* _find)
     {
-        stritem_t* sel = str->copy(str->m_data);
+        stritem_t* sel = make_item(str->m_arena, 0, 0, str->m_data);
         if (_find->is_empty() == false)
         {
             s32 const strfrom  = str->m_from;
@@ -417,7 +417,7 @@ namespace ncore
 
     static void find_remove(stritem_t* _str, const stritem_t* _find)
     {
-        stritem_t* strvw = _str->copy(_str->m_data);
+        stritem_t* strvw = make_item(_str->m_arena, 0, 0, _str->m_data);
         stritem_t* sel   = find(strvw, _find);
         if (sel->is_empty() == false)
         {
@@ -790,7 +790,7 @@ namespace ncore
         if (m_item->len() > 0)
         {
             strdata_t* data = unique_data(m_item->m_data, m_item->m_from, m_item->m_to);
-            stritem_t* item = m_item->copy(m_item->m_data);
+            stritem_t* item = make_item(m_item->m_arena, 0, data->m_len, data);
             return string_t(item);
         }
         return string_t();
@@ -798,10 +798,7 @@ namespace ncore
 
     string_t::string_t()
     {
-        m_data = get_default_string_item();
-        m_from = 0;
-        m_to   = 0;
-        add_to_list(nullptr);
+        m_item  = get_default_string_item();
     }
 
     string_t::~string_t() { release(); }
