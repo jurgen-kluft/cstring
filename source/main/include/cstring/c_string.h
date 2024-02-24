@@ -20,6 +20,7 @@ namespace ncore
     public:
         struct instance_t;
         struct data_t;
+        struct range_t;
 
         string_t();
         string_t(arena_t* arena);
@@ -54,6 +55,7 @@ namespace ncore
 
     //protected:
         string_t(instance_t* item);
+        string_t(range_t range, instance_t* item);
         friend class string_unprotected_t;
         
         void release();

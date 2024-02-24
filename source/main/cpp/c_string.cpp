@@ -31,7 +31,7 @@ namespace ncore
         string_t::data_t* detach();
     };
 
-    struct string_range_t
+    struct string_t::range_t
     {
         u32 m_from;
         u32 m_to;
@@ -39,12 +39,12 @@ namespace ncore
         inline bool is_empty() const { return m_from == m_to; }
         inline s64  len() const { return m_to - m_from; }
         inline s64  size() const { return m_to - m_from; }
-        inline bool is_inside(string_range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
+        inline bool is_inside(string_t::range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
     };
 
     struct string_t::instance_t  // 32 bytes
     {
-        string_range_t        m_range;
+        string_t::range_t     m_range;
         string_t::instance_t* m_next;
         string_t::data_t*     m_data;
         arena_t*              m_arena;
@@ -94,7 +94,7 @@ namespace ncore
     static inline bool is_default_instance(string_t::instance_t* item) { return item == &s_default_item; }
     static inline bool is_default_data(string_t::data_t* data) { return data == &s_default_data; }
 
-    string_t::instance_t* alloc_instance(arena_t* arena, string_range_t range, string_t::data_t* data)
+    string_t::instance_t* alloc_instance(arena_t* arena, string_t::range_t range, string_t::data_t* data)
     {
         if (data == nullptr)
             data = get_default_data();
@@ -276,32 +276,10 @@ namespace ncore
         return true;
     }
 
-    static string_t::instance_t* select_before(const string_t::instance_t* str, const string_t::instance_t* selection)
-    {
-        string_t::instance_t* v = alloc_instance(selection->m_arena, selection->m_range, str->m_data);
-        v->m_range              = {str->m_range.m_from, selection->m_range.m_from};
-        return v;
-    }
-    static string_t::instance_t* select_before_included(const string_t::instance_t* str, const string_t::instance_t* selection)
-    {
-        string_t::instance_t* v = alloc_instance(selection->m_arena, {str->m_range.m_from, selection->m_range.m_to}, str->m_data);
-        v->m_range              = {str->m_range.m_from, selection->m_range.m_to};
-        return v;
-    }
-
-    static string_t::instance_t* select_after(const string_t::instance_t* str, const string_t::instance_t* sel)
-    {
-        string_t::instance_t* v = alloc_instance(sel->m_arena, {0, 0}, str->m_data);
-        v->m_range              = {sel->m_range.m_from, str->m_range.m_to};
-        return v;
-    }
-
-    static string_t::instance_t* select_after_excluded(const string_t::instance_t* str, const string_t::instance_t* sel)
-    {
-        string_t::instance_t* v = alloc_instance(sel->m_arena, {0, 0}, str->m_data);
-        v->m_range              = {sel->m_range.m_to, str->m_range.m_to};
-        return v;
-    }
+    static string_t::range_t select_before(const string_t::instance_t* str, const string_t::instance_t* selection) { return {str->m_range.m_from, selection->m_range.m_from}; }
+    static string_t::range_t select_before_included(const string_t::instance_t* str, const string_t::instance_t* selection) { return {str->m_range.m_from, selection->m_range.m_to}; }
+    static string_t::range_t select_after(const string_t::instance_t* str, const string_t::instance_t* sel) { return {sel->m_range.m_from, str->m_range.m_to}; }
+    static string_t::range_t select_after_excluded(const string_t::instance_t* str, const string_t::instance_t* sel) { return {sel->m_range.m_to, str->m_range.m_to}; }
 
     static void insert_space(runes_t& r, s32 pos, s32 len)
     {
@@ -832,7 +810,7 @@ namespace ncore
 
     void string_t::instance_t::invalidate()
     {
-        m_data = get_default_data();
+        m_data  = get_default_data();
         m_range = {0, 0};
     }
 
@@ -859,7 +837,7 @@ namespace ncore
     {
         crunes_t srcrunes(str);
 
-        u32 const strlen  = srcrunes.size();
+        u32 const strlen = srcrunes.size();
 
         u32 from = 0;
         u32 to   = strlen;
@@ -880,7 +858,7 @@ namespace ncore
     string_t::string_t(arena_t* arena, s32 _len)
         : m_item(nullptr)
     {
-        const s32 strlen  = _len;
+        const s32 strlen = _len;
 
         if (strlen > 0)
         {
@@ -967,8 +945,8 @@ namespace ncore
     {
         crunes_t srcrunes(other);
 
-        arena_t* arena   = m_item->m_arena;
-        u32      strlen  = srcrunes.size();
+        arena_t* arena  = m_item->m_arena;
+        u32      strlen = srcrunes.size();
 
         release();
 
@@ -1092,7 +1070,8 @@ namespace ncore
                     // So here we have a view with the size of the @find string on
                     // string @str that matches the string @find and we need to return
                     // a string view that exist before view @v.
-                    return select_before(str.m_item, v.m_item);
+                    string_t::range_t range = select_before(str.m_item, v.m_item);
+                    return string_t(range, str.m_item);
                 }
                 if (!move_view(str.m_item, v.m_item, 1))
                     break;
@@ -1123,7 +1102,8 @@ namespace ncore
                     // So here we have a view with the size of the @find string on
                     // string @str that matches the string @find and we need to return
                     // a string view that exist before view @v.
-                    return select_before(str.m_item, v.m_item);
+                    string_t::range_t range = select_before(str.m_item, v.m_item);
+                    return string_t(range, str.m_item);
                 }
                 if (!move_view(str.m_item, v.m_item, -1))
                     break;
@@ -1141,7 +1121,8 @@ namespace ncore
                     // So here we have a view with the size of the @find string on
                     // string @str that matches the string @find and we need to return
                     // a string view that exist before and includes view @v.
-                    return select_before_included(str.m_item, v.m_item);
+                    string_t::range_t range = select_before_included(str.m_item, v.m_item);
+                    return string_t(range, str.m_item);
                 }
                 if (!move_view(str.m_item, v.m_item, 1))
                     break;
@@ -1149,8 +1130,16 @@ namespace ncore
             return string_t(get_default_instance());
         }
 
-        static string_t selectUntilEndExcludeSelection(const string_t& str, const string_t& selection) { return select_after_excluded(str.m_item, selection.m_item); }
-        static string_t selectUntilEndIncludeSelection(const string_t& str, const string_t& selection) { return select_after(str.m_item, selection.m_item); }
+        static string_t selectUntilEndExcludeSelection(const string_t& str, const string_t& selection)
+        {
+            string_t::range_t range = select_after_excluded(str.m_item, selection.m_item);
+            return string_t(range, str.m_item);
+        }
+        static string_t selectUntilEndIncludeSelection(const string_t& str, const string_t& selection)
+        {
+            string_t::range_t range = select_after(str.m_item, selection.m_item);
+            return string_t(range, str.m_item);
+        }
 
         static bool isUpper(const string_t& str)
         {
@@ -1434,12 +1423,18 @@ namespace ncore
         return len;
     }
 
-    void insert(string_t& str, string_t const& pos, string_t const& insert) { insert(str.m_item, pos.m_item, insert.m_item); }
+    // insert by replacement ?
+    void insert(string_t& str, string_t const& pos, string_t const& insert)
+    {
+        string_t::range_t range = pos.m_item->m_range;
+        insert(str.m_item, range, insert.m_item);
+    }
 
     void insert_after(string_t& str, string_t const& pos, string_t const& insert)
     {
-        string_t::instance_t* after = select_after_excluded(str.m_item, pos.m_item);
-        insert(str.m_item, after, insert.m_item);
+        string_t::range_t range = select_after_excluded(str.m_item, pos.m_item);
+        range.m_from            = range.m_to;
+        insert(str.m_item, range, insert.m_item);
     }
 
     void remove(string_t& str, string_t const& selection) { remove(str, selection); }
