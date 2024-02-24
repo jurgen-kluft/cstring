@@ -8,67 +8,111 @@
 
 namespace ncore
 {
-    // Strings are stored in memory in UTF-16 format.
+    // Strings are stored in memory in UTF-16 format the internal encoding is more correctly described as UCS-2.
     // All code here assumes 2 bytes is one codepoint so only the Basic Multilingual Plane (BMP) is supported.
-    // This internal encoding is more correctly described as UCS-2.
     // Strings are stored in the endian-ness appropriate for the current platform.
-    struct stritem_t;
 
-    struct strdata_t  // 32 bytes
+    struct string_t::data_t  // 32 bytes
     {
-        u16*       m_ptr;  // UCS-2
-        stritem_t* m_slices;
-        s32        m_len;
-        s32        m_ref;
-        arena_t*   m_arena;
+        u16*                  m_ptr;   // UCS-2
+        string_t::instance_t* m_head;  // The first view of this string, single linked list of instances
+        u32                   m_len;
+        s32                   m_ref;
+        arena_t*              m_arena;
 
         inline s64 cap() const { return m_len; }
-        strdata_t* attach()
+
+        string_t::data_t* attach()
         {
             m_ref++;
             return this;
         }
+
+        string_t::data_t* detach();
     };
 
-    struct stritem_t  // 32 bytes
+    struct string_range_t
     {
-        s32        m_from;
-        s32        m_to;
-        stritem_t* m_next;
-        strdata_t* m_data;
-        arena_t*   m_arena;
+        u32 m_from;
+        u32 m_to;
 
         inline bool is_empty() const { return m_from == m_to; }
-        inline s64  cap() const { return m_data->cap(); }
         inline s64  len() const { return m_to - m_from; }
         inline s64  size() const { return m_to - m_from; }
-
-        void release(strdata_t* data);
-        void clone(strdata_t* data, const stritem_t* str);
-
-        void add(stritem_t* node);
-        void rem();
-
-        void invalidate();
+        inline bool is_inside(string_range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
     };
 
-    stritem_t* make_item(arena_t* arena, s32 from, s32 to, strdata_t* data)
+    struct string_t::instance_t  // 32 bytes
     {
-        stritem_t* v = (stritem_t*)arena->allocate(sizeof(stritem_t));
-        v->m_from    = from;
-        v->m_to      = to;
-        v->m_data    = data->attach();
-        v->m_arena   = arena;
+        string_range_t        m_range;
+        string_t::instance_t* m_next;
+        string_t::data_t*     m_data;
+        arena_t*              m_arena;
+
+        inline bool is_empty() const { return m_range.is_empty(); }
+        inline s64  cap() const { return m_data->cap(); }
+        inline s64  len() const { return m_range.len(); }
+        inline s64  size() const { return m_range.size(); }
+
+        string_t::instance_t* clone_full(arena_t* instance_arena) const;
+        string_t::instance_t* clone_slice(arena_t* instance_arena, arena_t* data_arena) const;
+
+        void add(string_t::instance_t* node);
+        void rem();
+
+        string_t::instance_t* release();
+        void                  invalidate();
+    };
+
+    static string_t::instance_t s_default_item;
+    static string_t::data_t     s_default_data;
+    static uchar16              s_default_str[4] = {0, 0, 0, 0};
+
+    static inline string_t::data_t* get_default_data() { return &s_default_data; }
+
+    static string_t::instance_t* get_default_instance()
+    {
+        static string_t::instance_t* s_default_item_ptr = nullptr;
+        if (s_default_item_ptr == nullptr)
+        {
+            s_default_item_ptr = &s_default_item;
+
+            s_default_data.m_ptr   = (utf16::prune)s_default_str;
+            s_default_data.m_len   = 0;
+            s_default_data.m_ref   = 1;
+            s_default_data.m_arena = nullptr;
+            s_default_data.m_head  = s_default_item_ptr;
+
+            s_default_item.m_arena = nullptr;
+            s_default_item.m_data  = get_default_data();
+            s_default_item.m_range = {0, 0};
+            s_default_item.m_next  = s_default_item_ptr;
+        }
+        return s_default_item_ptr;
+    }
+
+    static inline bool is_default_instance(string_t::instance_t* item) { return item == &s_default_item; }
+    static inline bool is_default_data(string_t::data_t* data) { return data == &s_default_data; }
+
+    string_t::instance_t* alloc_instance(arena_t* arena, string_range_t range, string_t::data_t* data)
+    {
+        if (data == nullptr)
+            data = get_default_data();
+
+        string_t::instance_t* v = (string_t::instance_t*)arena->allocate(sizeof(string_t::instance_t));
+        v->m_range              = range;
+        v->m_data               = data->attach();
+        v->m_arena              = arena;
         return v;
     }
 
     static inline void get_from_to(crunes_t const& runes, u32& from, u32& to)
     {
-        from = (u32)(runes.m_ascii.m_str);
-        to   = (u32)(runes.m_ascii.m_end);
+        from = runes.m_ascii.m_str;
+        to   = runes.m_ascii.m_end;
     }
 
-    static inline crunes_t get_crunes(strdata_t const* data, s32 from, s32 to)
+    static inline crunes_t get_crunes(string_t::data_t const* data, s32 from, s32 to)
     {
         crunes_t r;
         r.m_utf16.m_flags = utf16::TYPE;
@@ -78,7 +122,9 @@ namespace ncore
         r.m_utf16.m_end   = to;
         return r;
     }
-    static inline runes_t get_runes(strdata_t* data, s32 from, s32 to)
+    static inline crunes_t get_crunes(string_t::instance_t const* inst, s32 from, s32 to) { return get_crunes(inst->m_data, from, to); }
+
+    static inline runes_t get_runes(string_t::data_t* data, s32 from, s32 to)
     {
         runes_t r;
         r.m_utf16.m_flags = utf16::TYPE;
@@ -88,6 +134,7 @@ namespace ncore
         r.m_utf16.m_end   = to;
         return r;
     }
+    static inline runes_t get_runes(string_t::instance_t* inst, s32 from, s32 to) { return get_runes(inst->m_data, from, to); }
 
     class arena_t
     {
@@ -113,11 +160,11 @@ namespace ncore
         void deallocate(void* ptr) {}
     };
 
-    static strdata_t* alloc_data(arena_t* arena, s32 _strlen)
+    static string_t::data_t* alloc_data(arena_t* arena, s32 _strlen)
     {
-        strdata_t* data = (strdata_t*)arena->allocate(sizeof(strdata_t));
-        data->m_len     = _strlen;
-        data->m_ref     = 1;
+        string_t::data_t* data = (string_t::data_t*)arena->allocate(sizeof(string_t::data_t));
+        data->m_len            = _strlen;
+        data->m_ref            = 1;
 
         utf16::prune strdata = (utf16::prune)arena->allocate(_strlen);
         data->m_ptr          = strdata;
@@ -126,7 +173,7 @@ namespace ncore
         return data;
     }
 
-    static void resize_data(strdata_t* data, s32 new_size)
+    static void resize_data(string_t::data_t* data, s32 new_size)
     {
         if (data->m_len != new_size)
         {
@@ -139,16 +186,16 @@ namespace ncore
         }
     }
 
-    static strdata_t* unique_data(strdata_t* data, s32 from, s32 to)
+    static string_t::data_t* unique_data(string_t::data_t* data, s32 from, s32 to)
     {
-        s32        len      = to - from;
-        strdata_t* newdata  = (strdata_t*)data->m_arena->allocate(len);
-        newdata->m_len      = len;
-        newdata->m_ref      = 1;
-        newdata->m_arena    = data->m_arena;
-        utf16::prune newptr = (utf16::prune)data->m_arena->allocate(len);
-        newdata->m_ptr      = newptr;
-        newdata->m_slices   = nullptr;
+        s32               len     = to - from;
+        string_t::data_t* newdata = (string_t::data_t*)data->m_arena->allocate(len);
+        newdata->m_len            = len;
+        newdata->m_ref            = 1;
+        newdata->m_arena          = data->m_arena;
+        utf16::prune newptr       = (utf16::prune)data->m_arena->allocate(len);
+        newdata->m_ptr            = newptr;
+        newdata->m_head           = nullptr;
 
         runes_t trunes = get_runes(data, 0, data->m_len);
         runes_t nrunes(newptr, newptr + len);
@@ -156,14 +203,14 @@ namespace ncore
         return newdata;
     }
 
-    static void dealloc_data(strdata_t* data)
+    static void dealloc_data(string_t::data_t* data)
     {
         runes_t runes = get_runes(data, 0, 0);
         context_t::string_alloc()->deallocate(runes);
         context_t::system_alloc()->deallocate(data);
     }
 
-    static void resize(stritem_t* str, s32 new_size)
+    static void resize(string_t::instance_t* str, s32 new_size)
     {
         if (new_size > str->cap())
         {
@@ -175,22 +222,16 @@ namespace ncore
         }
     }
 
-    static bool is_view_of(stritem_t const* str, stritem_t const* part)
+    static bool is_view_of(string_t::instance_t const* parent, string_t::instance_t const* slice)
     {
-        if (str->m_data == part->m_data)
+        if (parent->m_data == slice->m_data)
         {
-            if (part->m_from >= str->m_from)
-            {
-                if (part->m_to <= str->m_to)
-                {
-                    return true;
-                }
-            }
+            return slice->m_range.is_inside(parent->m_range);
         }
         return false;
     }
 
-    static bool narrow_view(stritem_t* v, s32 move)
+    static bool narrow_view(string_t::instance_t* v, s32 move)
     {
         if (v->size() > 0)
         {
@@ -200,7 +241,7 @@ namespace ncore
                 move = -move;
                 if (move <= v->size())
                 {
-                    v->m_from += move;
+                    v->m_range.m_from += move;
                     return true;
                 }
             }
@@ -208,7 +249,7 @@ namespace ncore
             {
                 if (move <= v->size())
                 {
-                    v->m_to -= move;
+                    v->m_range.m_to -= move;
                     return true;
                 }
             }
@@ -216,53 +257,49 @@ namespace ncore
         return false;
     }
 
-    static bool move_view(stritem_t const* str, stritem_t* view, s32 move)
+    static bool move_view(string_t::instance_t const* str, string_t::instance_t* view, s32 move)
     {
-        s32 const from = view->m_from + move;
+        s32 const from = view->m_range.m_from + move;
 
         // Check if the move doesn't result in an out-of-bounds
-        if (from < str->m_from, str->m_from)
+        if (from < str->m_range.m_from, str->m_range.m_from)
             return false;
 
         // Check if the movement doesn't invalidate this view
-        s32 const to = view->m_to + move;
-        if (to > str->m_from, str->m_to)
+        s32 const to = view->m_range.m_to + move;
+        if (to > str->m_range.m_from, str->m_range.m_to)
             return false;
 
         // Movement is ok, new view is valid
-        view->m_from = from;
-        view->m_to   = to;
+        view->m_range.m_from = from;
+        view->m_range.m_to   = to;
         return true;
     }
 
-    static stritem_t* select_before(const stritem_t* str, const stritem_t* selection)
+    static string_t::instance_t* select_before(const string_t::instance_t* str, const string_t::instance_t* selection)
     {
-        stritem_t* v = make_item(selection->m_arena, selection->m_from, selection->m_from, str->m_data);
-        v->m_to      = v->m_from;
-        v->m_from    = 0;
+        string_t::instance_t* v = alloc_instance(selection->m_arena, selection->m_range, str->m_data);
+        v->m_range              = {str->m_range.m_from, selection->m_range.m_from};
         return v;
     }
-    static stritem_t* select_before_included(const stritem_t* str, const stritem_t* selection)
+    static string_t::instance_t* select_before_included(const string_t::instance_t* str, const string_t::instance_t* selection)
     {
-        stritem_t* v = make_item(selection->m_arena, selection->m_from, selection->m_from, str->m_data);
-        v->m_to      = v->m_to;
-        v->m_from    = 0;
-        return v;
-    }
-
-    static stritem_t* select_after(const stritem_t* str, const stritem_t* sel)
-    {
-        stritem_t* v = make_item(sel->m_arena, sel->m_to, sel->m_to, str->m_data);
-        v->m_to      = str->m_from, str->m_to;
-        v->m_from    = sel->m_from;
+        string_t::instance_t* v = alloc_instance(selection->m_arena, {str->m_range.m_from, selection->m_range.m_to}, str->m_data);
+        v->m_range              = {str->m_range.m_from, selection->m_range.m_to};
         return v;
     }
 
-    static stritem_t* select_after_excluded(const stritem_t* str, const stritem_t* sel)
+    static string_t::instance_t* select_after(const string_t::instance_t* str, const string_t::instance_t* sel)
     {
-        stritem_t* v = make_item(sel->m_arena, sel->m_to, sel->m_to, str->m_data);
-        v->m_to      = str->m_from;
-        v->m_from    = sel->m_to;
+        string_t::instance_t* v = alloc_instance(sel->m_arena, {0, 0}, str->m_data);
+        v->m_range              = {sel->m_range.m_from, str->m_range.m_to};
+        return v;
+    }
+
+    static string_t::instance_t* select_after_excluded(const string_t::instance_t* str, const string_t::instance_t* sel)
+    {
+        string_t::instance_t* v = alloc_instance(sel->m_arena, {0, 0}, str->m_data);
+        v->m_range              = {sel->m_range.m_to, str->m_range.m_to};
         return v;
     }
 
@@ -317,16 +354,16 @@ namespace ncore
         }
     }
 
-    static inline uchar16 get_char_unsafe(strdata_t* data, s32 from, s32 to, s32 index) { return data->m_ptr[from + index]; }
+    static inline uchar16 get_char_unsafe(string_t::data_t* data, s32 from, s32 to, s32 index) { return data->m_ptr[from + index]; }
 
-    static inline void set_char_unsafe(strdata_t* data, s32 from, s32 to, s32 index, uchar16 c) { data->m_ptr[from + index] = c; }
+    static inline void set_char_unsafe(string_t::data_t* data, s32 from, s32 to, s32 index, uchar16 c) { data->m_ptr[from + index] = c; }
 
-    static void insert(stritem_t* str, stritem_t const* pos, stritem_t const* insert)
+    static void insert(string_t::instance_t* str, string_t::instance_t const* pos, string_t::instance_t const* insert)
     {
         if (insert->is_empty() || (str->m_data != pos->m_data))
             return;
 
-        s32 dst = pos->m_from;
+        s32 dst = pos->m_range.m_from;
         adjust_active_views(str, INSERTION, dst, dst + insert->size());
 
         s32 const current_len = str->m_data->m_len;
@@ -340,14 +377,14 @@ namespace ncore
         s32 src = 0;
         while (src < insert->size())
         {
-            uchar32 const c = get_char_unsafe(insert->m_data, insert->m_from, insert->m_to, src);
-            set_char_unsafe(str->m_data, str->m_from, str->m_to, dst, c);
+            uchar32 const c = get_char_unsafe(insert->m_data, insert->m_range.m_from, insert->m_range.m_to, src);
+            set_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, dst, c);
             ++src;
             ++dst;
         }
     }
 
-    static void remove(stritem_t* str, stritem_t const* selection)
+    static void remove(string_t::instance_t* str, string_t::instance_t const* selection)
     {
         if (selection->is_empty())
             return;
@@ -357,25 +394,25 @@ namespace ncore
             //@TODO: it should be better to get an actual full view from the list of strings, currently we
             //       take the easy way and just take the whole allocated size as the full
             runes_t str_runes = get_runes(str->m_data, 0, str->m_data->m_len);
-            remove_space(str_runes, selection->m_from, selection->size());
+            remove_space(str_runes, selection->m_range.m_from, selection->size());
 
             // TODO: Decision to shrink the allocated memory of m_runes ?
 
-            adjust_active_views(str, REMOVAL, selection->m_from, selection->m_to);
+            adjust_active_views(str, REMOVAL, selection->m_range.m_from, selection->m_range.m_to);
         }
     }
 
-    static stritem_t* find(stritem_t* str, const stritem_t* _find)
+    static string_t::instance_t* find(string_t::instance_t* str, const string_t::instance_t* _find)
     {
-        stritem_t* sel = make_item(str->m_arena, 0, 0, str->m_data);
+        string_t::instance_t* sel = alloc_instance(str->m_arena, {0, 0}, str->m_data);
         if (_find->is_empty() == false)
         {
-            s32 const strfrom  = str->m_from;
-            s32 const strto    = str->m_to;
-            s32 const strsize  = str->m_to - str->m_from;
-            s32 const findfrom = _find->m_from;
-            s32 const findto   = _find->m_to;
-            s32 const findsize = _find->m_to - _find->m_from;
+            s32 const strfrom  = str->m_range.m_from;
+            s32 const strto    = str->m_range.m_to;
+            s32 const strsize  = str->m_range.m_to - str->m_range.m_from;
+            s32 const findfrom = _find->m_range.m_from;
+            s32 const findto   = _find->m_range.m_to;
+            s32 const findsize = _find->m_range.m_to - _find->m_range.m_from;
 
             s32 i = 0;
             s32 r = -1;
@@ -404,41 +441,41 @@ namespace ncore
 
             if (r >= 0)
             {
-                sel->m_from = r;
-                sel->m_to   = r + findsize;
+                sel->m_range.m_from = r;
+                sel->m_range.m_to   = r + findsize;
             }
             else
             {
-                sel->m_from = sel->m_to = 0;
+                sel->m_range.m_from = sel->m_range.m_to = 0;
             }
         }
         return sel;
     }
 
-    static void find_remove(stritem_t* _str, const stritem_t* _find)
+    static void find_remove(string_t::instance_t* _str, const string_t::instance_t* _find)
     {
-        stritem_t* strvw = make_item(_str->m_arena, 0, 0, _str->m_data);
-        stritem_t* sel   = find(strvw, _find);
+        string_t::instance_t* strvw = alloc_instance(_str->m_arena, {0, 0}, _str->m_data);
+        string_t::instance_t* sel   = find(strvw, _find);
         if (sel->is_empty() == false)
         {
             remove(_str, sel);
         }
     }
 
-    static void find_replace(stritem_t* str, const stritem_t* _find, const stritem_t* replace)
+    static void find_replace(string_t::instance_t* str, const string_t::instance_t* _find, const string_t::instance_t* replace)
     {
-        stritem_t* strvw  = str;
-        stritem_t* remove = find(strvw, _find);
+        string_t::instance_t* strvw  = str;
+        string_t::instance_t* remove = find(strvw, _find);
         if (remove->is_empty() == false)
         {
-            s32 const remove_from = remove->m_from;
+            s32 const remove_from = remove->m_range.m_from;
             s32 const remove_len  = remove->size();
             s32 const diff        = remove_len - replace->size();
             if (diff > 0)
             {
                 // The string to replace the selection with is smaller, so we have to remove
                 // some space from the string.
-                runes_t str_runes = get_runes(str->m_data, str->m_from, str->m_to);
+                runes_t str_runes = get_runes(str->m_data, str->m_range.m_from, str->m_range.m_to);
                 remove_space(str_runes, remove_from, diff);
 
                 // TODO: Decision to shrink the allocated memory of m_runes ?
@@ -450,7 +487,7 @@ namespace ncore
                 // The string to replace the selection with is longer, so we have to insert some
                 // space into the string.
                 resize(str, str->size() + (-diff));
-                runes_t str_runes = get_runes(str->m_data, str->m_from, str->m_to);
+                runes_t str_runes = get_runes(str->m_data, str->m_range.m_from, str->m_range.m_to);
                 insert_space(str_runes, remove_from, -diff);
 
                 adjust_active_views(str, INSERTION, remove_from, remove_from + -diff);
@@ -462,30 +499,30 @@ namespace ncore
             utf32::prune pdst = (utf32::prune)str->m_data->m_ptr;
             while (src < replace->size())
             {
-                pdst[dst++] = get_char_unsafe(replace->m_data, replace->m_from, replace->m_to, src++);
+                pdst[dst++] = get_char_unsafe(replace->m_data, replace->m_range.m_from, replace->m_range.m_to, src++);
             }
         }
     }
 
-    static bool contains(const stritem_t* str, uchar16 find)
+    static bool contains(const string_t::instance_t* str, uchar16 find)
     {
         s32 len = str->len();
         s32 i   = 0;
         while (i < len)
         {
-            uchar32 const c = get_char_unsafe(str->m_data, str->m_from, str->m_to, i);
+            uchar32 const c = get_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, i);
             if (c == find)
                 return true;
         }
         return false;
     }
 
-    static void remove_any(stritem_t* str, const stritem_t* any)
+    static void remove_any(string_t::instance_t* str, const string_t::instance_t* any)
     {
         // Remove any of the characters in @charset from @str
-        s32 const strfrom = str->m_from;
-        s32 const strto   = str->m_to;
-        s32 const strsize = str->m_to - str->m_from;
+        s32 const strfrom = str->m_range.m_from;
+        s32 const strto   = str->m_range.m_to;
+        s32 const strsize = str->m_range.m_to - str->m_range.m_from;
 
         s32 d = 0;
         s32 i = 0;
@@ -605,10 +642,10 @@ namespace ncore
     static const s32 INSERTION = 1;
     static const s32 CLEARED   = 2;
     static const s32 RELEASED  = 3;
-    static void      adjust_active_view(stritem_t* v, s32 op_code, s32 rhs_from, s32 rhs_to)
+    static void      adjust_active_view(string_t::instance_t* v, s32 op_code, s32 rhs_from, s32 rhs_to)
     {
-        s32 lhs_from = v->m_from;
-        s32 lhs_to   = v->m_to;
+        s32 lhs_from = v->m_range.m_from;
+        s32 lhs_to   = v->m_range.m_to;
 
         switch (op_code)
         {
@@ -697,9 +734,9 @@ namespace ncore
         }
     }
 
-    static void adjust_active_views(stritem_t* list, s32 op_code, s32 op_range_from, s32 op_range_to)
+    static void adjust_active_views(string_t::instance_t* list, s32 op_code, s32 op_range_from, s32 op_range_to)
     {
-        stritem_t* iter = list;
+        string_t::instance_t* iter = list;
         do
         {
             adjust_active_view(iter, op_code, op_range_from, op_range_to);
@@ -707,39 +744,38 @@ namespace ncore
         } while (iter != list);
     }
 
-    static stritem_t  s_default_item;
-    static strdata_t  s_default_data;
-    static uchar16    s_default_str[4] = {0, 0, 0, 0};
-    static stritem_t* get_default_string_item()
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+    string_t::data_t* string_t::data_t::detach()
     {
-        static stritem_t* s_default_item_ptr = nullptr;
-        if (s_default_item_ptr == nullptr)
+        m_ref--;
+        if (m_ref == 0)
         {
-            s_default_item_ptr = &s_default_item;
-
-            s_default_data.m_ptr    = (utf16::prune)s_default_str;
-            s_default_data.m_len    = 0;
-            s_default_data.m_ref    = 1;
-            s_default_data.m_arena  = nullptr;
-            s_default_data.m_slices = s_default_item_ptr;
-
-            s_default_item.m_arena = nullptr;
-            s_default_item.m_data  = &s_default_data;
-            s_default_item.m_from  = 0;
-            s_default_item.m_to    = 0;
-            s_default_item.m_next  = s_default_item_ptr;
+            dealloc_data(this);
+            return get_default_data();
         }
-        return s_default_item_ptr;
+        return this;
     }
 
-    static inline bool is_default_string_item(stritem_t* item) { return item == &s_default_item; }
-    static inline bool is_default_string_data(strdata_t* data) { return data == &s_default_data; }
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+    //------------------------------------------------------------------------------
+    string_t::instance_t* string_t::instance_t::clone_full(arena_t* instance_arena) const
+    {
+        string_t::instance_t* v = alloc_instance(instance_arena, m_range, m_data->attach());
+        return v;
+    }
 
-    //------------------------------------------------------------------------------
-    //------------------------------------------------------------------------------
-    //------------------------------------------------------------------------------
+    string_t::instance_t* string_t::instance_t::clone_slice(arena_t* instance_arena, arena_t* data_arena) const
+    {
+        u32 const             strlen = m_range.len();
+        string_t::data_t*     data   = unique_data(m_data, m_range.m_from, m_range.m_to);
+        string_t::instance_t* v      = alloc_instance(instance_arena, {0, strlen}, data);
+        return v;
+    }
 
-    void stritem_t::add(stritem_t* node)
+    void string_t::instance_t::add(string_t::instance_t* node)
     {
         if (node != nullptr)
         {
@@ -752,14 +788,14 @@ namespace ncore
         }
     }
 
-    void stritem_t::rem()
+    void string_t::instance_t::rem()
     {
         if (m_next != nullptr)
         {
-            stritem_t* head = m_data->m_slices;
+            string_t::instance_t* head = m_data->m_head;
             if (head == this)
             {
-                m_data->m_slices = head->m_next;
+                m_data->m_head = head->m_next;
             }
             else
             {
@@ -773,12 +809,31 @@ namespace ncore
         }
     }
 
-    void stritem_t::invalidate()
+    string_t::instance_t* string_t::instance_t::release()
     {
-        rem();
-        m_data = nullptr;
-        m_from = 0;
-        m_to   = 0;
+        if (!is_default_instance(this))
+        {
+            if (!is_default_data(m_data))
+            {
+                if (m_data->m_ref <= 1)
+                {
+                    dealloc_data(m_data);
+                    invalidate();
+                }
+                else
+                {
+                    m_data->m_ref--;
+                }
+            }
+            m_arena->deallocate(this);
+        }
+        return get_default_instance();
+    }
+
+    void string_t::instance_t::invalidate()
+    {
+        m_data = get_default_data();
+        m_range = {0, 0};
     }
 
     //------------------------------------------------------------------------------
@@ -789,88 +844,74 @@ namespace ncore
     {
         if (m_item->len() > 0)
         {
-            strdata_t* data = unique_data(m_item->m_data, m_item->m_from, m_item->m_to);
-            stritem_t* item = make_item(m_item->m_arena, 0, data->m_len, data);
+            string_t::data_t*     data = unique_data(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
+            string_t::instance_t* item = alloc_instance(m_item->m_arena, {0, data->m_len}, data);
             return string_t(item);
         }
         return string_t();
     }
 
-    string_t::string_t()
-    {
-        m_item  = get_default_string_item();
-    }
+    string_t::string_t() { m_item = get_default_instance(); }
 
-    string_t::~string_t() { release(); }
+    string_t::string_t(string_t::instance_t* item) { m_item = item; }
 
-    string_t::string_t(const char* str)
+    string_t::string_t(arena_t* arena, const char* str)
     {
         crunes_t srcrunes(str);
 
-        s32 const strlen  = srcrunes.size();
-        s32 const strtype = ascii::TYPE;
+        u32 const strlen  = srcrunes.size();
 
-        s32 from = 0;
-        s32 to   = strlen;
+        u32 from = 0;
+        u32 to   = strlen;
 
         if (strlen > 0)
         {
-            m_data        = alloc_data(strlen, strtype);
-            runes_t runes = get_runes(m_data, from, to);
+            string_t::data_t* data = alloc_data(arena, strlen);
+            m_item                 = alloc_instance(arena, {from, to}, data);
+            runes_t runes          = get_runes(m_item->m_data, from, to);
             copy(srcrunes, runes);
         }
         else
         {
-            m_data = get_default_string_item();
+            m_item = get_default_instance();
         }
-
-        add_to_list(nullptr);
     }
 
-    string_t::string_t(s32 _len, s32 _type)
-        : m_data(nullptr)
+    string_t::string_t(arena_t* arena, s32 _len)
+        : m_item(nullptr)
     {
         const s32 strlen  = _len;
-        const s32 strtype = _type;
 
         if (strlen > 0)
         {
-            m_data = alloc_data(_len, _type);
+            string_t::data_t* data = alloc_data(arena, strlen);
+            m_item                 = alloc_instance(arena, {0, 0}, data);
         }
         else
         {
-            m_data = get_default_string_item();
+            m_item = get_default_instance();
         }
-
-        add_to_list(nullptr);
     }
 
-    string_t::string_t(const string_t& other)
-        : m_from(other.m_from)
-        , m_to(other.m_to)
-        , m_data(nullptr)
-        , m_next(nullptr)
-        , m_prev(nullptr)
-    {
-        clone(other);
-    }
+    string_t::string_t(arena_t* arena, const string_t& other) { m_item = other.m_item->clone_full(arena); }
 
-    string_t::string_t(const string_t& left, const string_t& right)
+    string_t::string_t(arena_t* arena, const string_t& left, const string_t& right)
     {
-        const s32 strlen  = left.size() + right.size();
-        const s32 strtype = math::max(left.m_data->m_type, right.m_data->m_type);
+        const u32 strlen = left.size() + right.size();
 
-        crunes_t leftrunes  = get_crunes(left.m_data, left.m_from, left.m_to);
-        crunes_t rightrunes = get_crunes(right.m_data, right.m_from, right.m_to);
+        crunes_t leftrunes  = get_crunes(left.m_item, left.m_item->m_range.m_from, left.m_item->m_range.m_to);
+        crunes_t rightrunes = get_crunes(right.m_item, right.m_item->m_range.m_from, right.m_item->m_range.m_to);
 
         runes_t strdata;
         concatenate(strdata, leftrunes, rightrunes, context_t::string_alloc(), 16);
 
-        m_data         = (str_data_t*)context_t::system_alloc()->allocate(sizeof(str_data_t), sizeof(void*));
-        m_data->m_type = left.m_data->m_type;
-        m_data->m_len  = strdata.cap();
-        m_data->m_ptr  = strdata.m_ascii.m_bos;
+        string_t::data_t* data = alloc_data(arena, strdata.size());
+        m_item                 = alloc_instance(arena, {0, strlen}, data);
+        m_item->m_data->m_len  = strdata.cap();
+        m_item->m_data->m_ptr  = strdata.m_utf16.m_bos;
     }
+
+    string_t::~string_t() { release(); }
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
@@ -878,94 +919,92 @@ namespace ncore
     s32  string_t::cap() const { return m_item->cap(); }
     bool string_t::is_empty() const { return m_item->is_empty(); }
 
-    void string_t::clear()
-    {
-        if (m_next == this && m_prev == this && !is_default_string_data(m_data))
-        {
-            dealloc_data(m_data);
-            m_data = get_default_string_item();
-        }
-    }
+    void string_t::clear() { release(); }
 
     string_t string_t::slice() const
     {
         string_t str;
-        str->m_from = m_from;
-        str->m_to   = m_to;
-        str->m_data = m_data;
-        add_to_list(&str);
+        str.m_item->m_range.m_from = m_item->m_range.m_from;
+        str.m_item->m_range.m_to   = m_item->m_range.m_to;
+        str.m_item->m_data         = m_item->m_data->attach();
+        m_item->add(str.m_item);
         return str;
     }
 
     string_t string_t::operator()(s32 _to) const
     {
-        const s32 from = m_from + _to;
-        const s32 to   = m_data->m_len;
-        string_t  str;
-        str->m_data = m_data;
-        str->m_from = m_from;
-        str->m_to   = math::min(from, to);
-        add_to_list(&str);
+        const s32 from = m_item->m_range.m_from + _to;
+        const s32 to   = m_item->m_data->m_len;
+
+        string_t str;
+        str.m_item->m_data         = m_item->m_data->attach();
+        str.m_item->m_range.m_from = m_item->m_range.m_from;
+        str.m_item->m_range.m_to   = math::min(from, to);
+        m_item->add(str.m_item);
         return str;
     }
     string_t string_t::operator()(s32 _from, s32 _to) const
     {
         math::sort(_from, _to);
-        const s32 from = math::min(m_from + _from, m_to);
-        const s32 to   = math::min(m_from + _to, m_to);
-        string_t  str;
-        str->m_data = m_data;
-        str->m_from = m_from;
-        str->m_to   = m_to;
-        add_to_list(&str);
+        const s32 from = math::min(m_item->m_range.m_from + _from, m_item->m_range.m_to);
+        const s32 to   = math::min(m_item->m_range.m_from + _to, m_item->m_range.m_to);
+
+        string_t str;
+        str.m_item->m_data         = m_item->m_data;
+        str.m_item->m_range.m_from = m_item->m_range.m_from;
+        str.m_item->m_range.m_to   = m_item->m_range.m_to;
+        m_item->add(str.m_item);
         return str;
     }
     uchar32 string_t::operator[](s32 index) const
     {
         if (index >= size())
             return '\0';
-        return get_char_unsafe(this->m_data, m_from, m_to, index);
+        return get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, index);
     }
 
     string_t& string_t::operator=(const char* other)
     {
         crunes_t srcrunes(other);
 
+        arena_t* arena   = m_item->m_arena;
+        u32      strlen  = srcrunes.size();
+
         release();
 
-        s32 strlen  = srcrunes.size();
-        s32 strtype = ascii::TYPE;
-
-        if (strlen > 0)
+        if (strlen != 0)
         {
-            m_data        = alloc_data(strlen, ascii::TYPE);
-            runes_t runes = get_runes(m_data, m_from, m_to);
+            string_t::data_t*     data  = alloc_data(arena, strlen);
+            string_t::instance_t* item  = alloc_instance(arena, {0, strlen}, data);
+            runes_t               runes = get_runes(m_item, m_item->m_range.m_from, m_item->m_range.m_to);
             copy(srcrunes, runes);
         }
         else
         {
-            m_data = get_default_string_item();
+            m_item = get_default_instance();
         }
 
-        m_from = 0;
-        m_to   = strlen;
-        add_to_list(nullptr);
+        m_item->m_range.m_from = 0;
+        m_item->m_range.m_to   = strlen;
 
         return *this;
     }
 
     string_t& string_t::operator=(const string_t& other)
     {
-        if (this != &other)
+        if (this != &other && m_item != other.m_item)
         {
-            if (this->m_data == other.m_data)
+            if (this->m_item->m_data == other.m_item->m_data)
             {
-                this->m_from = other.m_from;
-                this->m_to   = other.m_to;
+                m_item->m_range.m_from = other.m_item->m_range.m_from;
+                m_item->m_range.m_to   = other.m_item->m_range.m_to;
             }
             else
             {
-                clone(other);
+                m_item->m_data         = m_item->m_data->detach();
+                m_item->m_data         = other.m_item->m_data->attach();
+                m_item->m_range.m_from = other.m_item->m_range.m_from;
+                m_item->m_range.m_to   = other.m_item->m_range.m_to;
             }
         }
         return *this;
@@ -977,8 +1016,8 @@ namespace ncore
             return false;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const lc = get_char_unsafe(this->m_data, this->m_from, this->m_to, i);
-            uchar32 const rc = get_char_unsafe(other.m_data, other.m_from, other.m_to, i);
+            uchar32 const lc = get_char_unsafe(m_item->m_data, this->m_item->m_range.m_from, this->m_item->m_range.m_to, i);
+            uchar32 const rc = get_char_unsafe(other.m_item->m_data, other.m_item->m_range.m_from, other.m_item->m_range.m_to, i);
             if (lc != rc)
                 return false;
         }
@@ -991,433 +1030,416 @@ namespace ncore
             return true;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const lc = get_char_unsafe(this->m_data, this->m_from, this->m_to, i);
-            uchar32 const rc = get_char_unsafe(other.m_data, other.m_from, other.m_to, i);
+            uchar32 const lc = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const rc = get_char_unsafe(other.m_item->m_data, other.m_item->m_range.m_from, other.m_item->m_range.m_to, i);
             if (lc != rc)
                 return true;
         }
         return false;
     }
 
-    void string_t::attach(string_t& str)
-    {
-        if (&str == this)
-            return;
-        string_t* next = str->m_next;
-        str->m_next    = this;
-        this->m_next   = next;
-        this->m_prev   = &str;
-        next->m_prev   = this;
-    }
-
     void string_t::release()
     {
         // If we are the only one in the list then it means we can deallocate 'string_data'
-        if (m_next == this && m_prev == this && !is_default_string_data(m_data))
+        if (!is_default_data(m_item->m_data))
         {
-            dealloc_data(m_data);
+            dealloc_data(m_item->m_data);
         }
-        rem_from_list();
-        m_data = nullptr;
+        m_item->rem();
+        m_item = m_item->release();
     }
 
-    void string_t::clone(string_t const& str)
+    string_t string_t::clone() const
     {
-        release();
+        crunes_t srcrunes = get_crunes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
 
-        crunes_t srcrunes = get_crunes(str->m_data, str->m_from, str->m_to);
-
-        m_data           = alloc_data(srcrunes.size(), str->m_data->m_type);
-        runes_t dstrunes = get_runes(m_data, m_from, m_to);
+        string_t::data_t* data     = alloc_data(m_item->m_data->m_arena, srcrunes.size());
+        runes_t           dstrunes = get_runes(data, 0, srcrunes.size());
         copy(srcrunes, dstrunes);
 
-        m_from = 0;
-        m_to   = srcrunes.size();
-        add_to_list(nullptr);
+        string_t::instance_t* item = alloc_instance(m_item->m_arena, {0, srcrunes.size()}, data);
+        item->m_range.m_from       = 0;
+        item->m_range.m_to         = srcrunes.size();
+        item->add(this->m_item);
+
+        return string_t(item);
     }
 
     //------------------------------------------------------------------------------
-    string_t selectUntil(const string_t& str, uchar32 find)
+    class string_unprotected_t : public string_t
     {
-        for (s32 i = 0; i < str->size(); i++)
+    public:
+        static string_t selectUntil(const string_t& str, uchar32 find)
         {
-            uchar32 const c = get_char_unsafe(str, i);
-            if (c == find)
+            for (s32 i = 0; i < str.size(); i++)
             {
-                return str(0, i);
+                uchar32 const c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+                if (c == find)
+                {
+                    return str(0, i);
+                }
             }
+            return string_t(get_default_instance());
         }
-        return get_default();
-    }
 
-    string_t selectUntil(const string_t& str, const string_t& find)
-    {
-        string_t v = str(0, find.size());
-        while (!v->is_empty())
+        static string_t selectUntil(const string_t& str, const string_t& find)
         {
-            if (v == find)
+            string_t v = str(0, find.size());
+            while (!v.is_empty())
             {
-                // So here we have a view with the size of the @find string on
-                // string @str that matches the string @find and we need to return
-                // a string view that exist before view @v->
-                return select_before(str, v);
+                if (v == find)
+                {
+                    // So here we have a view with the size of the @find string on
+                    // string @str that matches the string @find and we need to return
+                    // a string view that exist before view @v.
+                    return select_before(str.m_item, v.m_item);
+                }
+                if (!move_view(str.m_item, v.m_item, 1))
+                    break;
             }
-            if (!move_view(str, v, 1))
-                break;
+            return string_t(get_default_instance());
         }
-        return get_default();
-    }
 
-    string_t selectUntilLast(const string_t& str, uchar32 find)
-    {
-        for (s32 i = str->size() - 1; i >= 0; --i)
+        static string_t selectUntilLast(const string_t& str, uchar32 find)
         {
-            uchar32 const c = str[i];
-            if (c == find)
+            for (s32 i = str.size() - 1; i >= 0; --i)
             {
-                return str(0, i);
+                uchar32 const c = str[i];
+                if (c == find)
+                {
+                    return str(0, i);
+                }
             }
+            return string_t(get_default_instance());
         }
-        return get_default();
-    }
 
-    string_t selectUntilLast(const string_t& str, const string_t& find)
-    {
-        string_t v = str(str->size() - find.size(), str->size());
-        while (!v->is_empty())
+        static string_t selectUntilLast(const string_t& str, const string_t& find)
         {
-            if (v == find)
+            string_t v = str(str.size() - find.size(), str.size());
+            while (!v.is_empty())
             {
-                // So here we have a view with the size of the @find string on
-                // string @str that matches the string @find and we need to return
-                // a string view that exist before view @v->
-                return select_before(str, v);
+                if (v == find)
+                {
+                    // So here we have a view with the size of the @find string on
+                    // string @str that matches the string @find and we need to return
+                    // a string view that exist before view @v.
+                    return select_before(str.m_item, v.m_item);
+                }
+                if (!move_view(str.m_item, v.m_item, -1))
+                    break;
             }
-            if (!move_view(str, v, -1))
-                break;
+            return string_t(get_default_instance());
         }
-        return get_default();
-    }
 
-    string_t selectUntilIncluded(const string_t& str, const string_t& find)
-    {
-        string_t v = str(0, find.size());
-        while (!v->is_empty())
+        static string_t selectUntilIncluded(const string_t& str, const string_t& find)
         {
-            if (v == find)
+            string_t v = str(0, find.size());
+            while (!v.is_empty())
             {
-                // So here we have a view with the size of the @find string on
-                // string @str that matches the string @find and we need to return
-                // a string view that exist before and includes view @v->
-                return select_before_included(str, v);
+                if (v == find)
+                {
+                    // So here we have a view with the size of the @find string on
+                    // string @str that matches the string @find and we need to return
+                    // a string view that exist before and includes view @v.
+                    return select_before_included(str.m_item, v.m_item);
+                }
+                if (!move_view(str.m_item, v.m_item, 1))
+                    break;
             }
-            if (!move_view(str, v, 1))
-                break;
+            return string_t(get_default_instance());
         }
-        return get_default();
-    }
 
-    string_t selectUntilEndExcludeSelection(const string_t& str, const string_t& selection) { return select_after_excluded(str, selection); }
+        static string_t selectUntilEndExcludeSelection(const string_t& str, const string_t& selection) { return select_after_excluded(str.m_item, selection.m_item); }
+        static string_t selectUntilEndIncludeSelection(const string_t& str, const string_t& selection) { return select_after(str.m_item, selection.m_item); }
 
-    string_t selectUntilEndIncludeSelection(const string_t& str, const string_t& selection) { return select_after(str, selection); }
-
-    bool isUpper(const string_t& str)
-    {
-        for (s32 i = 0; i < str->size(); i++)
+        static bool isUpper(const string_t& str)
         {
-            uchar32 const c = str[i];
-            if (is_lower(c))
-                return false;
+            for (s32 i = 0; i < str.size(); i++)
+            {
+                uchar32 const c = str[i];
+                if (is_lower(c))
+                    return false;
+            }
+            return true;
         }
-        return true;
-    }
 
-    bool isLower(const string_t& str)
-    {
-        for (s32 i = 0; i < str->size(); i++)
+        static bool isLower(const string_t& str)
         {
-            uchar32 const c = get_char_unsafe(str, i);
-            if (is_upper(c))
-                return false;
+            for (s32 i = 0; i < str.size(); i++)
+            {
+                uchar32 const c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+                if (is_upper(c))
+                    return false;
+            }
+            return true;
         }
-        return true;
-    }
 
-    bool isCapitalized(const string_t& s)
-    {
-        stritem_t* str = s->m_item;
-
-        s32 i = 0;
-        while (i < str->size())
+        static bool isCapitalized(const string_t& s)
         {
-            uchar32 c = '\0';
+            string_t::instance_t* str = s.m_item;
+
+            s32 i = 0;
             while (i < str->size())
             {
-                c = get_char_unsafe(str, i);
-                if (!is_space(c))
-                    break;
-                i += 1;
-            }
-
-            if (is_upper(c))
-            {
-                i += 1;
+                uchar32 c = '\0';
                 while (i < str->size())
                 {
-                    c = get_char_unsafe(str, i);
-                    if (is_space(c))
+                    c = get_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, i);
+                    if (!is_space(c))
                         break;
-                    if (is_upper(c))
-                        return false;
                     i += 1;
                 }
+
+                if (is_upper(c))
+                {
+                    i += 1;
+                    while (i < str->size())
+                    {
+                        c = get_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, i);
+                        if (is_space(c))
+                            break;
+                        if (is_upper(c))
+                            return false;
+                        i += 1;
+                    }
+                }
+                else if (is_alpha(c))
+                {
+                    return false;
+                }
+                i += 1;
             }
-            else if (is_alpha(c))
-            {
+            return true;
+        }
+
+        static bool isQuoted(const string_t& str) { return isQuoted(str, '"'); }
+        static bool isQuoted(const string_t& str, uchar32 inQuote) { return isDelimited(str, inQuote, inQuote); }
+
+        static bool isDelimited(const string_t& str, uchar32 inLeft, uchar32 inRight)
+        {
+            if (str.is_empty())
                 return false;
-            }
-            i += 1;
+            s32 const first = 0;
+            s32 const last  = str.size() - 1;
+            return str[first] == inLeft && str[last] == inRight;
         }
-        return true;
-    }
 
-    bool isQuoted(const string_t& str) { return isQuoted(str, '"'); }
+        static uchar32 firstChar(const string_t& str)
+        {
+            s32 const first = 0;
+            return str[first];
+        }
 
-    bool isQuoted(const string_t& str, uchar32 inQuote) { return isDelimited(str, inQuote, inQuote); }
+        static uchar32 lastChar(const string_t& str)
+        {
+            s32 const last = str.size() - 1;
+            return str[last];
+        }
 
-    bool isDelimited(const string_t& str, uchar32 inLeft, uchar32 inRight)
-    {
-        if (str->is_empty())
+        static bool startsWith(const string_t& str, string_t const& start)
+        {
+            string_t v = str(0, start.size());
+            if (!v.is_empty())
+                return (v == start);
             return false;
-        s32 const first = 0;
-        s32 const last  = str->size() - 1;
-        return str[first] == inLeft && str[last] == inRight;
-    }
-
-    uchar32 firstChar(const string_t& str)
-    {
-        s32 const first = 0;
-        return str[first];
-    }
-
-    uchar32 lastChar(const string_t& str)
-    {
-        s32 const last = str->size() - 1;
-        return str[last];
-    }
-
-    bool startsWith(const string_t& str, string_t const& start)
-    {
-        string_t v = str(0, start.size());
-        if (!v->is_empty())
-            return (v == start);
-        return false;
-    }
-
-    bool endsWith(const string_t& str, string_t const& end)
-    {
-        string_t v = str(str->size() - end.size(), str->size());
-        if (!v->is_empty())
-            return (v == end);
-        return false;
-    }
-
-    string_t find(string_t& str, uchar32 find)
-    {
-        for (s32 i = 0; i < str->size(); i++)
-        {
-            uchar32 const c = str[i];
-            if (c == find)
-                return str(i, i + 1);
         }
-        return get_default();
-    }
 
-    string_t find(string_t& inStr, const char* inFind)
-    {
-        crunes_t strfind(inFind);
-        crunes_t strstr = get_crunes(inStr);
-
-        crunes_t strfound = find(strstr, strfind);
-        if (strfound.is_empty() == false)
+        static bool endsWith(const string_t& str, string_t const& end)
         {
-            s32 from, to;
-            get_from_to(strfound, from, to);
-            return inStr(from, to);
+            string_t v = str(str.size() - end.size(), str.size());
+            if (!v.is_empty())
+                return (v == end);
+            return false;
         }
-        return get_default();
-    }
 
-    string_t find(string_t& str, const string_t& find)
-    {
-        string_t v = str(0, find.size());
-        while (!v->is_empty())
+        static string_t find(string_t& str, uchar32 find)
         {
-            if (v == find)
+            for (s32 i = 0; i < str.size(); i++)
             {
-                // So here we have a view with the size of the @find string on
-                // string @str that matches the string @find.
-                return v(0, v->size());
-            }
-            if (!move_view(str, v, 1))
-                break;
-        }
-        return get_default();
-    }
-
-    string_t findLast(const string_t& str, const string_t& find)
-    {
-        string_t v = str(str->size() - find.size(), str->size());
-        while (!v->is_empty())
-        {
-            if (v == find)
-            {
-                // So here we have a view with the size of the @find string on
-                // string @str that matches the string @find.
-                return v(0, v->size());
-            }
-            if (!move_view(str, v, -1))
-                break;
-        }
-        return get_default();
-    }
-
-    string_t findOneOf(const string_t& str, const string_t& charset)
-    {
-        for (s32 i = 0; i < str->size(); i++)
-        {
-            uchar32 const sc = str[i];
-            for (s32 j = 0; j < charset.size(); j++)
-            {
-                uchar32 const fc = charset[i];
-                if (sc == fc)
-                {
+                uchar32 const c = str[i];
+                if (c == find)
                     return str(i, i + 1);
+            }
+            return string_t(get_default_instance());
+        }
+
+        static string_t find(string_t& inStr, const char* inFind)
+        {
+            crunes_t strfind(inFind);
+            crunes_t strstr = get_crunes(inStr.m_item, inStr.m_item->m_range.m_from, inStr.m_item->m_range.m_to);
+
+            crunes_t strfound = ncore::find(strstr, strfind);
+            if (strfound.is_empty() == false)
+            {
+                u32 from, to;
+                get_from_to(strfound, from, to);
+                return inStr(from, to);
+            }
+            return string_t(get_default_instance());
+        }
+
+        static string_t find(string_t& str, const string_t& find)
+        {
+            string_t v = str(0, find.size());
+            while (!v.is_empty())
+            {
+                if (v == find)
+                {
+                    // So here we have a view with the size of the @find string on
+                    // string @str that matches the string @find.
+                    return v(0, v.size());
+                }
+                if (!move_view(str.m_item, v.m_item, 1))
+                    break;
+            }
+            return string_t(get_default_instance());
+        }
+
+        static string_t findLast(const string_t& str, const string_t& find)
+        {
+            string_t v = str(str.size() - find.size(), str.size());
+            while (!v.is_empty())
+            {
+                if (v == find)
+                {
+                    // So here we have a view with the size of the @find string on
+                    // string @str that matches the string @find.
+                    return v(0, v.size());
+                }
+                if (!move_view(str.m_item, v.m_item, -1))
+                    break;
+            }
+            return string_t(get_default_instance());
+        }
+
+        static string_t findOneOf(const string_t& str, const string_t& charset)
+        {
+            for (s32 i = 0; i < str.size(); i++)
+            {
+                uchar32 const sc = str[i];
+                for (s32 j = 0; j < charset.size(); j++)
+                {
+                    uchar32 const fc = charset[i];
+                    if (sc == fc)
+                    {
+                        return str(i, i + 1);
+                    }
                 }
             }
+            return string_t(get_default_instance());
         }
-        return get_default();
-    }
 
-    string_t findOneOfLast(const string_t& str, const string_t& charset)
-    {
-        for (s32 i = str->size() - 1; i >= 0; i--)
+        static string_t findOneOfLast(const string_t& str, const string_t& charset)
         {
-            uchar32 const sc = str[i];
-            for (s32 j = 0; j < charset.size(); j++)
+            for (s32 i = str.size() - 1; i >= 0; i--)
             {
-                uchar32 const fc = charset[i];
-                if (sc == fc)
+                uchar32 const sc = str[i];
+                for (s32 j = 0; j < charset.size(); j++)
                 {
-                    return str(i, i + 1);
+                    uchar32 const fc = charset[i];
+                    if (sc == fc)
+                    {
+                        return str(i, i + 1);
+                    }
                 }
             }
+            return string_t(get_default_instance());
         }
-        return get_default();
-    }
 
-    s32 compare(const string_t& lhs, const string_t& rhs)
-    {
-        if (lhs.size() < rhs.size())
-            return -1;
-        if (lhs.size() > rhs.size())
-            return 1;
-
-        for (s32 i = 0; i < lhs.size(); i++)
+        static s32 compare(const string_t& lhs, const string_t& rhs)
         {
-            uchar32 const lc = get_char_unsafe(lhs, i);
-            uchar32 const rc = get_char_unsafe(rhs, i);
-            if (lc < rc)
+            if (lhs.size() < rhs.size())
                 return -1;
-            else if (lc > rc)
+            if (lhs.size() > rhs.size())
                 return 1;
-        }
-        return 0;
-    }
 
-    bool isEqual(const string_t& lhs, const string_t& rhs) { return compare(lhs, rhs) == 0; }
-
-    bool contains(const string_t& str, const string_t& contains)
-    {
-        string_t v = str(0, contains.size());
-        while (!v->is_empty())
-        {
-            if (v == contains)
+            for (s32 i = 0; i < lhs.size(); i++)
             {
-                // So here we have a view with the size of the @find string on
-                // string @str that matches the string @find.
-                return true;
+                uchar32 const lc = get_char_unsafe(lhs.m_item->m_data, lhs.m_item->m_range.m_from, lhs.m_item->m_range.m_to, i);
+                uchar32 const rc = get_char_unsafe(rhs.m_item->m_data, rhs.m_item->m_range.m_from, rhs.m_item->m_range.m_to, i);
+                if (lc < rc)
+                    return -1;
+                else if (lc > rc)
+                    return 1;
             }
-            if (!move_view(str, v, 1))
-                break;
+            return 0;
         }
-        return false;
-    }
 
-    bool contains(const string_t& str, uchar32 contains)
-    {
-        for (s32 i = 0; i < str->size(); i++)
+        static bool isEqual(const string_t& lhs, const string_t& rhs) { return compare(lhs, rhs) == 0; }
+
+        static bool contains(const string_t& str, const string_t& contains)
         {
-            uchar32 const sc = get_char_unsafe(str, i);
-            if (sc == contains)
+            string_t v = str(0, contains.size());
+            while (!v.is_empty())
             {
-                return true;
+                if (v == contains)
+                {
+                    // So here we have a view with the size of the @find string on
+                    // string @str that matches the string @find.
+                    return true;
+                }
+                if (!move_view(str.m_item, v.m_item, 1))
+                    break;
+            }
+            return false;
+        }
+
+        static bool contains(const string_t& str, uchar32 contains)
+        {
+            for (s32 i = 0; i < str.size(); i++)
+            {
+                uchar32 const sc = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+                if (sc == contains)
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        static void concatenate_repeat(string_t& str, string_t const& con, s32 ntimes)
+        {
+            s32 const len = str.size() + (con.size() * ntimes) + 1;
+            resize(str.m_item, len);
+            for (s32 i = 0; i < ntimes; ++i)
+            {
+                concatenate(str, con);
             }
         }
-        return false;
-    }
-
-    void concatenate_repeat(string_t& str, string_t const& con, s32 ntimes)
-    {
-        s32 const len = str->size() + (con.size() * ntimes) + 1;
-        resize(str, len);
-        for (s32 i = 0; i < ntimes; ++i)
-        {
-            concatenate(str, con);
-        }
-    }
+    };
 
     s32 string_t::format(string_t const& format, const va_t* argv, s32 argc)
     {
         release();
 
-        const s32 len = cprintf_(get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
+        const u32 len = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
 
-        str_data_t* ndata = alloc_data(len, format.m_data->m_type);
-        m_next            = this;
-        m_prev            = this;
+        string_t::data_t*     data = alloc_data(format.m_item->m_arena, len);
+        string_t::instance_t* item = alloc_instance(format.m_item->m_arena, {0, len}, data);
 
-        runes_t str = get_runes(ndata, 0, 0);
-        sprintf_(str, get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
-        switch (m_data->m_type)
-        {
-            case ascii::TYPE: m_to = (s32)(str->m_ascii.m_end); break;
-            case utf32::TYPE: m_to = (s32)(str->m_utf32.m_end); break;
-        }
+        runes_t str = get_runes(item, 0, 0);
+        sprintf_(str, get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        item->m_range.m_to = str.m_utf16.m_end;
         return len;
     }
 
     s32 string_t::formatAdd(string_t const& format, const va_t* argv, s32 argc)
     {
-        const s32 len = cprintf_(get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
-        resize(*this, len);
-        runes_t str        = get_runes(m_data, m_from, m_to);
-        str->m_ascii.m_str = str->m_ascii.m_end;
-        sprintf_(str, get_crunes(format.m_data, format.m_from, format.m_to), argv, argc);
-        switch (m_data->m_type)
-        {
-            case ascii::TYPE: m_to = (s32)(str->m_ascii.m_end); break;
-            case utf32::TYPE: m_to = (s32)(str->m_utf32.m_end); break;
-        }
+        const s32 len = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        resize(this->m_item, len);
+        runes_t str       = get_runes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
+        str.m_ascii.m_str = str.m_ascii.m_end;
+        sprintf_(str, get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        m_item->m_range.m_to = str.m_utf16.m_end;
         return len;
     }
 
-    void insert(string_t& str, string_t const& pos, string_t const& insert) { insert(str, pos, insert); }
+    void insert(string_t& str, string_t const& pos, string_t const& insert) { insert(str.m_item, pos.m_item, insert.m_item); }
 
     void insert_after(string_t& str, string_t const& pos, string_t const& insert)
     {
-        string_t after = select_after_excluded(str, pos);
-        insert(str, after, insert);
+        string_t::instance_t* after = select_after_excluded(str.m_item, pos.m_item);
+        insert(str.m_item, after, insert.m_item);
     }
 
     void remove(string_t& str, string_t const& selection) { remove(str, selection); }
@@ -1425,7 +1447,7 @@ namespace ncore
     void find_remove(string_t& str, const string_t& _find)
     {
         string_t sel = find(str, _find);
-        if (sel->is_empty() == false)
+        if (sel.is_empty() == false)
         {
             remove(str, sel);
         }
@@ -1438,33 +1460,33 @@ namespace ncore
     void replace_any(string_t& str, const string_t& any, uchar32 with)
     {
         // Replace any of the characters in @charset from @str with character @with
-        for (s32 i = 0; i < str->size(); ++i)
+        for (s32 i = 0; i < str.size(); ++i)
         {
-            uchar32 const c = get_char_unsafe(str, i);
+            uchar32 const c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             if (contains(any, c))
             {
-                set_char_unsafe(str, i, with);
+                set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, with);
             }
         }
     }
 
     void upper(string_t& str)
     {
-        for (s32 i = 0; i < str->size(); i++)
+        for (s32 i = 0; i < str.size(); i++)
         {
-            uchar32 c = get_char_unsafe(str, i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             c         = to_upper(c);
-            set_char_unsafe(str, i, c);
+            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
         }
     }
 
     void lower(string_t& str)
     {
-        for (s32 i = 0; i < str->size(); i++)
+        for (s32 i = 0; i < str.size(); i++)
         {
-            uchar32 c = get_char_unsafe(str, i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             c         = to_lower(c);
-            set_char_unsafe(str, i, c);
+            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
         }
     }
 
@@ -1473,9 +1495,9 @@ namespace ncore
         // Standard separator is ' '
         bool prev_is_space = true;
         s32  i             = 0;
-        while (i < str->size())
+        while (i < str.size())
         {
-            uchar32 c = get_char_unsafe(str, i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             uchar32 d = c;
             if (is_alpha(c))
             {
@@ -1495,7 +1517,7 @@ namespace ncore
 
             if (c != d)
             {
-                set_char_unsafe(str, i, c);
+                set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
             }
             i++;
         }
@@ -1505,9 +1527,9 @@ namespace ncore
     {
         bool prev_is_space = false;
         s32  i             = 0;
-        while (i < str->size())
+        while (i < str.size())
         {
-            uchar32 c = get_char_unsafe(str, i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             uchar32 d = c;
             if (is_alpha(c))
             {
@@ -1534,7 +1556,7 @@ namespace ncore
             }
             if (c != d)
             {
-                set_char_unsafe(str, i, c);
+                set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
             }
             i++;
         }
@@ -1550,14 +1572,14 @@ namespace ncore
 
     void trimLeft(string_t& str)
     {
-        for (s32 i = 0; i < str->size(); ++i)
+        for (s32 i = 0; i < str.size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str, i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
             {
                 if (i > 0)
                 {
-                    narrow_view(str, -i);
+                    narrow_view(str.m_item, -i);
                 }
                 return;
             }
@@ -1566,15 +1588,15 @@ namespace ncore
 
     void trimRight(string_t& str)
     {
-        s32 const last = str->size() - 1;
-        for (s32 i = 0; i < str->size(); ++i)
+        s32 const last = str.size() - 1;
+        for (s32 i = 0; i < str.size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str, last - i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
             if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
             {
                 if (i > 0)
                 {
-                    narrow_view(str, i);
+                    narrow_view(str.m_item, i);
                 }
                 return;
             }
@@ -1589,14 +1611,14 @@ namespace ncore
 
     void trimLeft(string_t& str, uchar32 r)
     {
-        for (s32 i = 0; i < str->size(); ++i)
+        for (s32 i = 0; i < str.size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str, i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             if (c != r)
             {
                 if (i > 0)
                 {
-                    narrow_view(str, -i);
+                    narrow_view(str.m_item, -i);
                 }
                 return;
             }
@@ -1605,15 +1627,15 @@ namespace ncore
 
     void trimRight(string_t& str, uchar32 r)
     {
-        s32 const last = str->size() - 1;
-        for (s32 i = 0; i < str->size(); ++i)
+        s32 const last = str.size() - 1;
+        for (s32 i = 0; i < str.size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str, last - i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
             if (c != r)
             {
                 if (i > 0)
                 {
-                    narrow_view(str, i);
+                    narrow_view(str.m_item, i);
                 }
                 return;
             }
@@ -1628,14 +1650,14 @@ namespace ncore
 
     void trimLeft(string_t& str, string_t const& set)
     {
-        for (s32 i = 0; i < str->size(); ++i)
+        for (s32 i = 0; i < str.size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str, i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
             if (!contains(set, c))
             {
                 if (i > 0)
                 {
-                    narrow_view(str, -i);
+                    narrow_view(str.m_item, -i);
                 }
                 return;
             }
@@ -1644,15 +1666,15 @@ namespace ncore
 
     void trimRight(string_t& str, string_t const& set)
     {
-        s32 const last = str->size() - 1;
-        for (s32 i = 0; i < str->size(); ++i)
+        s32 const last = str.size() - 1;
+        for (s32 i = 0; i < str.size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str, last - i);
+            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
             if (!contains(set, c))
             {
                 if (i > 0)
                 {
-                    narrow_view(str, i);
+                    narrow_view(str.m_item, i);
                 }
                 return;
             }
@@ -1671,13 +1693,13 @@ namespace ncore
 
     void reverse(string_t& str)
     {
-        s32 const last = str->size() - 1;
+        s32 const last = str.size() - 1;
         for (s32 i = 0; i < (last - i); ++i)
         {
-            uchar32 l = get_char_unsafe(str, i);
-            uchar32 r = get_char_unsafe(str, last - i);
-            set_char_unsafe(str, i, r);
-            set_char_unsafe(str, last - i, l);
+            uchar32 l = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 r = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
+            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, r);
+            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i, l);
         }
     }
 
@@ -1686,7 +1708,7 @@ namespace ncore
         outLeft = selectUntil(str, inChar);
         if (outLeft.is_empty())
             return false;
-        outRight = str(outLeft.size(), str->size());
+        outRight = str(outLeft.size(), str.size());
         trimRight(outLeft, inChar);
         return true;
     }
@@ -1696,7 +1718,7 @@ namespace ncore
         outLeft = selectUntil(str, inStr);
         if (outLeft.is_empty())
             return false;
-        outRight = str(outLeft.size() + inStr.size(), str->size());
+        outRight = str(outLeft.size() + inStr.size(), str.size());
         return true;
     }
 
@@ -1705,7 +1727,7 @@ namespace ncore
         outLeft = selectUntilLast(str, inChar);
         if (outLeft.is_empty())
             return false;
-        outRight = str(outLeft.size(), str->size());
+        outRight = str(outLeft.size(), str.size());
         trimRight(outLeft, inChar);
         return true;
     }
@@ -1715,23 +1737,26 @@ namespace ncore
         outLeft = selectUntilLast(str, inStr);
         if (outLeft.is_empty())
             return false;
-        outRight = str(outLeft.size() + inStr.size(), str->size());
+        outRight = str(outLeft.size() + inStr.size(), str.size());
         return true;
     }
 
-    void concatenate(string_t& str, const string_t& con) { resize(str, str->size() + con.size() + 1); }
+    void concatenate(string_t& str, const string_t& con) { resize(str.m_item, str.size() + con.size() + 1); }
 
     //------------------------------------------------------------------------------
     static void user_case_for_string()
     {
-        string_t str("This is an ascii string that will be converted to UTF-32");
+        arena_t* a;
 
-        string_t strvw  = str->slice();
-        string_t ascii  = ("ascii");
+        string_t str(a, "This is an ascii string that will be converted to UTF-32");
+
+        string_t strvw = str.slice();
+        string_t ascii;
+        ascii           = "ascii";
         string_t substr = find(strvw, ascii.slice());
         upper(substr);
 
-        string_t converted("converted ");
+        string_t converted(a, "converted ");
         find_remove(strvw, converted.slice());
     }
 

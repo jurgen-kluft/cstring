@@ -15,15 +15,16 @@ namespace ncore
     class alloc_t;
     class arena_t;
 
-    struct stritem_t;
     class string_t
     {
     public:
+        struct instance_t;
+        struct data_t;
+
         string_t();
-        string_t(stritem_t* item);
         string_t(arena_t* arena);
         string_t(arena_t* arena, const char* str);
-        string_t(arena_t* arena, s32 _len, s32 _type);
+        string_t(arena_t* arena, s32 _len);
         string_t(arena_t* arena, const string_t& other);
         string_t(arena_t* arena, const string_t& other, const string_t& concat);
         ~string_t();
@@ -31,11 +32,11 @@ namespace ncore
         s32 format(const string_t& format, const va_t* argv, s32 argc);
         s32 formatAdd(const string_t& format, const va_t* argv, s32 argc);
 
-        s32      cap() const;
-        s32      size() const;
+        s32  cap() const;
+        s32  size() const;
         string_t clone() const;
-        bool     is_slice() const;
-        bool     is_empty() const;
+        bool is_slice() const;
+        bool is_empty() const;
 
         void     clear();
         string_t slice() const;
@@ -51,8 +52,13 @@ namespace ncore
         bool operator==(const string_t& other) const;
         bool operator!=(const string_t& other) const;
 
-    protected:
-        mutable stritem_t* m_item;
+    //protected:
+        string_t(instance_t* item);
+        friend class string_unprotected_t;
+        
+        void release();
+
+        mutable instance_t* m_item;
     };
 
     bool isUpper(const string_t&);
