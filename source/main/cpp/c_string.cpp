@@ -389,7 +389,7 @@ namespace ncore
     static void find_remove(string_t::instance_t* _str, const string_t::instance_t* _find)
     {
         string_t::instance_t* strvw = alloc_instance(_str->m_arena, {0, 0}, _str->m_data);
-        string_t::range_t sel   = find(strvw, _find);
+        string_t::range_t     sel   = find(strvw, _find);
         if (sel.is_empty() == false)
         {
             string_remove(_str, sel);
@@ -1001,7 +1001,7 @@ namespace ncore
     class string_functions_t : public string_t
     {
     public:
-        static inline uchar32 get_char_unsafe(string_t const& str, u32 index) { return ncore::get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, index); }
+        static inline uchar32 get_char_unsafe(const string_t& str, u32 index) { return ncore::get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, index); }
 
         // select parst of the string, return local view range
         static range_t selectBefore(const instance_t* str, const instance_t* sel) { return {str->m_range.m_from - str->m_range.m_from, sel->m_range.m_from - str->m_range.m_from}; }
@@ -1009,7 +1009,7 @@ namespace ncore
         static range_t selectAfter(const instance_t* str, const instance_t* sel) { return {sel->m_range.m_to - str->m_range.m_from, str->m_range.m_to - str->m_range.m_from}; }
         static range_t selectAfterIncluded(const instance_t* str, const instance_t* sel) { return {sel->m_range.m_from - str->m_range.m_from, str->m_range.m_to - str->m_range.m_from}; }
 
-        static bool isEqual(string_t const& str, string_t::range_t strview, string_t const& rhs)
+        static bool isEqual(const string_t& str, string_t::range_t strview, const string_t& rhs)
         {
             if (strview.get_length() != rhs.size())
                 return false;
@@ -1024,7 +1024,7 @@ namespace ncore
             return true;
         }
 
-        static string_t::range_t selectUntil(string_t const& str, uchar32 find)
+        static string_t::range_t selectUntil(const string_t& str, uchar32 find)
         {
             for (u32 i = 0; i < str.size(); i++)
             {
@@ -1055,7 +1055,7 @@ namespace ncore
             return {0, 0};
         }
 
-        static string_t::range_t selectUntilLast(string_t const& str, uchar32 find)
+        static string_t::range_t selectUntilLast(const string_t& str, uchar32 find)
         {
             for (u32 i = str.size() - 1; i >= 0; --i)
             {
@@ -1068,7 +1068,7 @@ namespace ncore
             return {0, 0};
         }
 
-        static string_t::range_t selectUntilLast(string_t const& str, const string_t& find)
+        static string_t::range_t selectUntilLast(const string_t& str, const string_t& find)
         {
             string_t::range_t v = {str.size() - find.size(), str.size()};
             while (!v.is_empty())
@@ -1231,7 +1231,7 @@ namespace ncore
         return get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last);
     }
 
-    bool string_t::startsWith(string_t const& start) const
+    bool string_t::startsWith(const string_t& start) const
     {
         string_t v = select(0, start.size());
         if (!v.is_empty())
@@ -1239,7 +1239,7 @@ namespace ncore
         return false;
     }
 
-    bool string_t::endsWith(string_t const& end) const
+    bool string_t::endsWith(const string_t& end) const
     {
         string_t v = select(size() - end.size(), size());
         if (!v.is_empty())
@@ -1382,7 +1382,7 @@ namespace ncore
         return false;
     }
 
-    void string_t::concatenate_repeat(string_t const& con, s32 ntimes)
+    void string_t::concatenate_repeat(const string_t& con, s32 ntimes)
     {
         s32 const len = size() + (con.size() * ntimes) + 1;
 
@@ -1394,7 +1394,7 @@ namespace ncore
         }
     }
 
-    s32 string_t::format(string_t const& format, const va_t* argv, s32 argc)
+    s32 string_t::format(const string_t& format, const va_t* argv, s32 argc)
     {
         release();
 
@@ -1409,7 +1409,7 @@ namespace ncore
         return len;
     }
 
-    s32 string_t::formatAdd(string_t const& format, const va_t* argv, s32 argc)
+    s32 string_t::formatAdd(const string_t& format, const va_t* argv, s32 argc)
     {
         const s32 len = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
         resize(this->m_item, len);
@@ -1420,86 +1420,116 @@ namespace ncore
         return len;
     }
 
-    void string_t::insert_replace(string_t const& pos, string_t const& insert)
+    void string_t::insert_replace(const string_t& pos, const string_t& insert)
     {
         string_t::range_t range = pos.m_item->m_range;
         string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::insert_before(string_t const& pos, string_t const& insert)
+    void string_t::insert_before(const string_t& pos, const string_t& insert)
     {
         string_t::range_t range = string_functions_t::selectAfter(m_item, pos.m_item);
         range.m_from            = range.m_to;
         string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::insert_after(string_t const& pos, string_t const& insert)
+    void string_t::insert_after(const string_t& pos, const string_t& insert)
     {
         string_t::range_t range = string_functions_t::selectAfter(m_item, pos.m_item);
         range.m_from            = range.m_to;
         string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::remove_selection(string_t const& selection)
-    {
-        // @TODO: remove the selection from the string
-    }
+    void string_t::remove_selection(const string_t& selection) { string_remove(m_item, selection.m_item->m_range); }
 
     s32 string_t::find_remove(const string_t& _find, s32 ntimes)
     {
-        string_t sel = find(_find);
-        if (sel.is_empty() == false)
+        for (s32 i = 0; i < ntimes; i++)
         {
+            string_t sel = find(_find);
+            if (sel.is_empty())
+                return i + 1;
             remove_selection(sel);
         }
         return ntimes;
     }
 
-    void find_replace(string_t& str, const string_t& find, const string_t& replace) { find_replace(str, find, replace); }
+    s32 string_t::find_replace(const string_t& find, const string_t& replace, s32 ntimes)
+    {
+        for (s32 i = 0; i < ntimes; i++)
+        {
+            string_t::range_t v = string_functions_t::selectUntil(*this, find);
+            if (v.is_empty())
+                return i + 1;
+            v.m_from = v.m_to;
+            v.m_to   = v.m_to + find.size();
+            string_insert(m_item, v, replace.m_item);
+        }
+        return ntimes;
+    }
 
-    void remove_any(string_t& str, const string_t& any) { remove_any(str, any); }
+    s32 string_t::remove_any(const string_t& any, s32 ntimes)
+    {
+        if (ntimes == 0)
+            ntimes = size();
 
-    void replace_any(string_t& str, const string_t& any, uchar32 with)
+        for (u32 i = 0; i < size() && ntimes > 0;)
+        {
+            u32 const begin = i;
+            for (; i < size() && ntimes > 0; ++i, --ntimes)
+            {
+                uchar32 const d = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+                if (!any.contains(d))
+                    break;
+            }
+            if (i > begin)
+                string_remove(m_item, {begin, i});
+        }
+        return ntimes;
+    }
+
+    s32 string_t::replace_any(const string_t& any, uchar32 with, s32 ntimes)
     {
         // Replace any of the characters in @charset from @str with character @with
-        for (s32 i = 0; i < str.size(); ++i)
+        for (s32 i = 0, j = 0; i < size() && j < ntimes; ++i)
         {
-            uchar32 const c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 const c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             if (any.contains(c))
             {
-                set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, with);
+                ++j;
+                set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, with);
             }
         }
     }
 
-    void upper(string_t& str)
+    void string_t::toUpper()
     {
-        for (s32 i = 0; i < str.size(); i++)
+        for (s32 i = 0; i < size(); i++)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             c         = nrunes::to_upper(c);
-            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
+            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
         }
     }
 
-    void lower(string_t& str)
+    void string_t::toLower()
     {
-        for (s32 i = 0; i < str.size(); i++)
+        for (s32 i = 0; i < size(); i++)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             c         = nrunes::to_lower(c);
-            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
+            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
         }
     }
 
-    void capitalize(string_t& str)
+    void string_t::capitalize()
     {
         // Standard separator is ' '
         bool prev_is_space = true;
         s32  i             = 0;
-        while (i < str.size())
+        while (i < size())
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             uchar32 d = c;
             if (nrunes::is_alpha(c))
             {
@@ -1519,19 +1549,19 @@ namespace ncore
 
             if (c != d)
             {
-                set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
+                set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
             }
             i++;
         }
     }
 
-    void capitalize(string_t& str, string_t const& separators)
+    void string_t::capitalize(const string_t& separators)
     {
         bool prev_is_space = false;
         s32  i             = 0;
-        while (i < str.size())
+        while (i < size())
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             uchar32 d = c;
             if (nrunes::is_alpha(c))
             {
@@ -1558,7 +1588,7 @@ namespace ncore
             }
             if (c != d)
             {
-                set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, c);
+                set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
             }
             i++;
         }
@@ -1566,179 +1596,181 @@ namespace ncore
 
     // Trim does nothing more than narrowing the <from, to>, nothing is actually removed
     // from the actual underlying string string_data.
-    void trim(string_t& str)
+    void string_t::trim()
     {
-        trimLeft(str);
-        trimRight(str);
+        trimLeft();
+        trimRight();
     }
 
-    void trimLeft(string_t& str)
+    void string_t::trimLeft()
     {
-        for (s32 i = 0; i < str.size(); ++i)
+        for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
             {
                 if (i > 0)
                 {
-                    narrow_view(str.m_item, -i);
+                    narrow_view(m_item, -i);
                 }
                 return;
             }
         }
     }
 
-    void trimRight(string_t& str)
+    void string_t::trimRight()
     {
-        s32 const last = str.size() - 1;
-        for (s32 i = 0; i < str.size(); ++i)
+        s32 const last = size() - 1;
+        for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
             if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
             {
                 if (i > 0)
                 {
-                    narrow_view(str.m_item, i);
+                    narrow_view(m_item, i);
                 }
                 return;
             }
         }
     }
 
-    void trim(string_t& str, uchar32 r)
+    void string_t::trim(uchar32 r)
     {
-        trimLeft(str, r);
-        trimRight(str, r);
+        trimLeft(r);
+        trimRight(r);
     }
 
-    void trimLeft(string_t& str, uchar32 r)
+    void string_t::trimLeft(uchar32 r)
     {
-        for (s32 i = 0; i < str.size(); ++i)
+        for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             if (c != r)
             {
                 if (i > 0)
                 {
-                    narrow_view(str.m_item, -i);
+                    narrow_view(m_item, -i);
                 }
                 return;
             }
         }
     }
 
-    void trimRight(string_t& str, uchar32 r)
+    void string_t::trimRight(uchar32 r)
     {
-        s32 const last = str.size() - 1;
-        for (s32 i = 0; i < str.size(); ++i)
+        s32 const last = size() - 1;
+        for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
             if (c != r)
             {
                 if (i > 0)
                 {
-                    narrow_view(str.m_item, i);
+                    narrow_view(m_item, i);
                 }
                 return;
             }
         }
     }
 
-    void trim(string_t& str, string_t const& set)
+    void string_t::trim(const string_t& set)
     {
-        trimLeft(str, set);
-        trimRight(str, set);
+        trimLeft(set);
+        trimRight(set);
     }
 
-    void trimLeft(string_t& str, string_t const& set)
+    void string_t::trimLeft(const string_t& set)
     {
-        for (s32 i = 0; i < str.size(); ++i)
+        for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
             if (!set.contains(c))
             {
                 if (i > 0)
                 {
-                    narrow_view(str.m_item, -i);
+                    narrow_view(m_item, -i);
                 }
                 return;
             }
         }
     }
 
-    void trimRight(string_t& str, string_t const& set)
+    void string_t::trimRight(const string_t& set)
     {
-        s32 const last = str.size() - 1;
-        for (s32 i = 0; i < str.size(); ++i)
+        s32 const last = size() - 1;
+        for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
+            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
             if (!set.contains(c))
             {
                 if (i > 0)
                 {
-                    narrow_view(str.m_item, i);
+                    narrow_view(m_item, i);
                 }
                 return;
             }
         }
     }
 
-    void trimQuotes(string_t& str) { trimDelimiters(str, '"', '"'); }
-    void trimQuotes(string_t& str, uchar32 quote) { trimDelimiters(str, quote, quote); }
+    void string_t::trimQuotes() { trimDelimiters('"', '"'); }
+    void string_t::trimQuotes(uchar32 quote) { trimDelimiters(quote, quote); }
 
-    void trimDelimiters(string_t& str, uchar32 left, uchar32 right)
+    void string_t::trimDelimiters(uchar32 left, uchar32 right)
     {
-        trimLeft(str, left);
-        trimRight(str, right);
+        trimLeft(left);
+        trimRight(right);
     }
 
-    void reverse(string_t& str)
+    void string_t::reverse()
     {
-        s32 const last = str.size() - 1;
+        s32 const last = size() - 1;
         for (s32 i = 0; i < (last - i); ++i)
         {
-            uchar32 l = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i);
-            uchar32 r = get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i);
-            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, i, r);
-            set_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, last - i, l);
+            uchar32 l = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 r = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
+            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, r);
+            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i, l);
         }
     }
 
-    bool splitOn(string_t& str, uchar32 inChar, string_t& outLeft, string_t& outRight)
+    bool string_t::selectBeforeAndAfter(uchar32 inChar, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectUntil(str, inChar);
-        if (outLeft.is_empty())
+        string_t::range_t range = string_functions_t::selectUntil(*this, inChar);
+        if (range.is_empty())
             return false;
-        outRight = str(outLeft.size(), str.size());
-        trimRight(outLeft, inChar);
+        outLeft  = select(range.m_from, range.m_to);
+        outRight = select(outLeft.size() + 1, size());
         return true;
     }
 
-    bool splitOn(string_t& str, string_t& inStr, string_t& outLeft, string_t& outRight)
+    bool string_t::selectBeforeAndAfter(const string_t& str, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectUntil(str, inStr);
-        if (outLeft.is_empty())
+        string_t::range_t range = string_functions_t::selectUntil(*this, str);
+        if (range.is_empty())
             return false;
-        outRight = str(outLeft.size() + inStr.size(), str.size());
+        outLeft  = select(range.m_from, range.m_to);
+        outRight = select(range.m_to + str.size(), size());
         return true;
     }
 
-    bool splitOnLast(string_t& str, uchar32 inChar, string_t& outLeft, string_t& outRight)
+    bool string_t::selectBeforeAndAfterLast(uchar32 inChar, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectUntilLast(str, inChar);
-        if (outLeft.is_empty())
+        string_t::range_t range = string_functions_t::selectUntilLast(*this, inChar);
+        if (range.is_empty())
             return false;
-        outRight = str(outLeft.size(), str.size());
-        trimRight(outLeft, inChar);
+        outLeft  = select(range.m_from, range.m_to);
+        outRight = select(range.m_to + 1, size());
         return true;
     }
 
-    bool splitOnLast(string_t& str, string_t& inStr, string_t& outLeft, string_t& outRight)
+    bool string_t::selectBeforeAndAfterLast(const string_t& inStr, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectUntilLast(str, inStr);
-        if (outLeft.is_empty())
+        string_t::range_t range = string_functions_t::selectUntilLast(*this, inStr);
+        if (range.is_empty())
             return false;
-        outRight = str(outLeft.size() + inStr.size(), str.size());
+        outLeft  = select(range.m_from, range.m_to);
+        outRight = select(range.m_to + inStr.size(), size());
         return true;
     }
 
@@ -1755,7 +1787,7 @@ namespace ncore
         string_t ascii;
         ascii           = "ascii";
         string_t substr = strvw.find(ascii.slice());
-        upper(substr);
+        substr.toUpper();
 
         string_t converted(a, "converted ");
         strvw.find_remove(converted.slice());
