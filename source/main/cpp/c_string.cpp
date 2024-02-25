@@ -1394,10 +1394,12 @@ namespace ncore
         }
     }
 
-    s32 string_t::format(const string_t& format, const va_t* argv, s32 argc)
+    s32 string_t::format(const string_t& format, const va_list_t& args)
     {
         release();
 
+        s32 const argc = args.argc();
+        va_t const* argv = args.argv();
         const u32 len = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
 
         string_t::data_t*     data = alloc_data(format.m_item->m_arena, len);
@@ -1409,8 +1411,10 @@ namespace ncore
         return len;
     }
 
-    s32 string_t::formatAdd(const string_t& format, const va_t* argv, s32 argc)
+    s32 string_t::formatAdd(const string_t& format, const va_list_t& args)
     {
+        s32 const argc = args.argc();
+        va_t const* argv = args.argv();
         const s32 len = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
         resize(this->m_item, len);
         runes_t str       = get_runes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
