@@ -15,28 +15,29 @@ namespace ncore
     class alloc_t;
     class arena_t;
 
+    // holds the memory allocators for string_t
+    class string_memory_t
+    {
+    public:
+        static alloc_t* s_object_alloc;  // for instance_t and data_t
+        static alloc_t* s_string_alloc;  // for the actual string data
+
+        static void init(alloc_t* object_alloc=nullptr, alloc_t* string_alloc=nullptr);
+    };
+
     class string_t
     {
     public:
         struct instance_t;
         struct data_t;
-
-        struct range_t
-        {
-            u32 m_from;
-            u32 m_to;
-
-            inline s64  get_length() const { return m_to - m_from; }
-            inline bool is_empty() const { return m_from == m_to; }
-            inline bool is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
-        };
+        struct range_t;
 
         string_t();
-        string_t(arena_t* arena);
-        string_t(arena_t* arena, const char* str);
-        string_t(arena_t* arena, s32 _len);
-        string_t(arena_t* arena, const string_t& other);
-        string_t(arena_t* arena, const string_t& other, const string_t& concat);
+        string_t();
+        string_t(const char* str);
+        string_t(s32 _len);
+        string_t(const string_t& other);
+        string_t(const string_t& other, const string_t& concat);
         ~string_t();
 
         s32 format(const string_t& format, const va_t* argv, s32 argc);
@@ -148,7 +149,7 @@ namespace ncore
 
         // protected:
         string_t(instance_t* item);
-        string_t(range_t range, instance_t* item);
+        string_t(instance_t* item, range_t const& range);
         friend class string_unprotected_t;
 
         void release();

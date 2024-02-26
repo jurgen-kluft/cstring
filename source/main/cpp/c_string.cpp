@@ -12,13 +12,21 @@ namespace ncore
     // All code here assumes 2 bytes is one codepoint so only the Basic Multilingual Plane (BMP) is supported.
     // Strings are stored in the endian-ness appropriate for the current platform.
 
-    struct string_t::data_t  // 32 bytes
+    static alloc_t* s_object_alloc;  // for instance_t and data_t
+    static alloc_t* s_string_alloc;  // for the actual string data
+
+    void string_memory_t::init(alloc_t* object_alloc, alloc_t* string_alloc)
     {
-        u16*                  m_ptr;   // UCS-2
+        s_object_alloc = object_alloc;
+        s_string_alloc = string_alloc;
+    }
+
+    struct string_t::data_t  // 24 bytes
+    {
+        uchar16*              m_ptr;   // UCS-2
         string_t::instance_t* m_head;  // The first view of this string, single linked list of instances
         u32                   m_len;
         s32                   m_ref;
-        arena_t*              m_arena;
 
         inline s64 cap() const { return m_len; }
 
@@ -31,19 +39,28 @@ namespace ncore
         string_t::data_t* detach();
     };
 
-    struct string_t::instance_t  // 32 bytes
+    struct string_t::range_t
     {
-        string_t::range_t     m_range;
-        string_t::instance_t* m_next;
-        string_t::data_t*     m_data;
-        arena_t*              m_arena;
+        u32 m_from;
+        u32 m_to;
+
+        inline s64  get_length() const { return m_to - m_from; }
+        inline bool is_empty() const { return m_from == m_to; }
+        inline bool is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
+    };    
+
+    struct string_t::instance_t  // 24 bytes
+    {
+        string_t::range_t     m_range;  // [from,to] view on the string data
+        string_t::instance_t* m_next;   // single linked list of instances that also own 'm_data'
+        string_t::data_t*     m_data;   // reference counted string data
 
         inline bool is_empty() const { return m_range.is_empty(); }
         inline s64  cap() const { return m_data->cap(); }
         inline s64  size() const { return m_range.get_length(); }
 
-        string_t::instance_t* clone_full(arena_t* instance_arena) const;
-        string_t::instance_t* clone_slice(arena_t* instance_arena, arena_t* data_arena) const;
+        string_t::instance_t* clone_full() const;
+        string_t::instance_t* clone_slice() const;
 
         void add(string_t::instance_t* node);
         void rem();
@@ -65,13 +82,11 @@ namespace ncore
         {
             s_default_item_ptr = &s_default_item;
 
-            s_default_data.m_ptr   = (utf16::prune)s_default_str;
-            s_default_data.m_len   = 0;
-            s_default_data.m_ref   = 1;
-            s_default_data.m_arena = nullptr;
-            s_default_data.m_head  = s_default_item_ptr;
+            s_default_data.m_ptr  = (utf16::prune)s_default_str;
+            s_default_data.m_len  = 0;
+            s_default_data.m_ref  = 1;
+            s_default_data.m_head = s_default_item_ptr;
 
-            s_default_item.m_arena = nullptr;
             s_default_item.m_data  = get_default_data();
             s_default_item.m_range = {0, 0};
             s_default_item.m_next  = s_default_item_ptr;
@@ -82,15 +97,14 @@ namespace ncore
     static inline bool is_default_instance(string_t::instance_t* item) { return item == &s_default_item; }
     static inline bool is_default_data(string_t::data_t* data) { return data == &s_default_data; }
 
-    string_t::instance_t* alloc_instance(arena_t* arena, string_t::range_t range, string_t::data_t* data)
+    string_t::instance_t* alloc_instance(string_t::range_t range, string_t::data_t* data)
     {
         if (data == nullptr)
             data = get_default_data();
 
-        string_t::instance_t* v = (string_t::instance_t*)arena->allocate(sizeof(string_t::instance_t));
+        string_t::instance_t* v = (string_t::instance_t*)string_memory_t::s_object_alloc->allocate(sizeof(string_t::instance_t));
         v->m_range              = range;
         v->m_data               = data->attach();
-        v->m_arena              = arena;
         return v;
     }
 
@@ -148,15 +162,14 @@ namespace ncore
         void deallocate(void* ptr) {}
     };
 
-    static string_t::data_t* alloc_data(arena_t* arena, s32 _strlen)
+    static string_t::data_t* alloc_data(s32 _strlen)
     {
-        string_t::data_t* data = (string_t::data_t*)arena->allocate(sizeof(string_t::data_t));
+        string_t::data_t* data = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(sizeof(string_t::data_t));
         data->m_len            = _strlen;
         data->m_ref            = 1;
 
-        utf16::prune strdata = (utf16::prune)arena->allocate(_strlen);
+        utf16::prune strdata = (utf16::prune)string_memory_t::s_string_alloc->allocate(_strlen);
         data->m_ptr          = strdata;
-        data->m_arena        = arena;
 
         return data;
     }
@@ -166,7 +179,7 @@ namespace ncore
         if (data->m_len != new_size)
         {
             data->m_len         = new_size;
-            utf16::prune newptr = (utf16::prune)data->m_arena->allocate(new_size);
+            utf16::prune newptr = (utf16::prune)string_memory_t::s_string_alloc->allocate(new_size);
 
             runes_t trunes = get_runes(data, 0, data->m_len);
             runes_t nrunes(newptr, newptr + new_size);
@@ -177,11 +190,10 @@ namespace ncore
     static string_t::data_t* unique_data(string_t::data_t* data, s32 from, s32 to)
     {
         s32               len     = to - from;
-        string_t::data_t* newdata = (string_t::data_t*)data->m_arena->allocate(len);
+        string_t::data_t* newdata = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(len);
         newdata->m_len            = len;
         newdata->m_ref            = 1;
-        newdata->m_arena          = data->m_arena;
-        utf16::prune newptr       = (utf16::prune)data->m_arena->allocate(len);
+        utf16::prune newptr       = (utf16::prune)string_memory_t::s_string_alloc->allocate(len);
         newdata->m_ptr            = newptr;
         newdata->m_head           = nullptr;
 
@@ -189,12 +201,6 @@ namespace ncore
         runes_t nrunes(newptr, newptr + len);
         nrunes::copy(trunes, nrunes);
         return newdata;
-    }
-
-    static void dealloc_data(string_t::data_t* data)
-    {
-        data->m_arena->deallocate(data->m_ptr);
-        data->m_arena->deallocate(data);
     }
 
     static void resize(string_t::instance_t* str, s32 new_size)
@@ -388,7 +394,7 @@ namespace ncore
 
     static void find_remove(string_t::instance_t* _str, const string_t::instance_t* _find)
     {
-        string_t::instance_t* strvw = alloc_instance(_str->m_arena, {0, 0}, _str->m_data);
+        string_t::instance_t* strvw = alloc_instance({0, 0}, _str->m_data);
         string_t::range_t     sel   = find(strvw, _find);
         if (sel.is_empty() == false)
         {
@@ -682,29 +688,30 @@ namespace ncore
     //------------------------------------------------------------------------------
     string_t::data_t* string_t::data_t::detach()
     {
-        m_ref--;
-        if (m_ref == 0)
+        if (m_ref == 1)
         {
-            dealloc_data(this);
+            string_memory_t::s_string_alloc->deallocate(m_ptr);
+            string_memory_t::s_object_alloc->deallocate(this);
             return get_default_data();
         }
+        m_ref--;
         return this;
     }
 
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
-    string_t::instance_t* string_t::instance_t::clone_full(arena_t* instance_arena) const
+    string_t::instance_t* string_t::instance_t::clone_full() const
     {
-        string_t::instance_t* v = alloc_instance(instance_arena, m_range, m_data->attach());
+        string_t::instance_t* v = alloc_instance(m_range, m_data->attach());
         return v;
     }
 
-    string_t::instance_t* string_t::instance_t::clone_slice(arena_t* instance_arena, arena_t* data_arena) const
+    string_t::instance_t* string_t::instance_t::clone_slice() const
     {
         u32 const             strlen = m_range.get_length();
         string_t::data_t*     data   = unique_data(m_data, m_range.m_from, m_range.m_to);
-        string_t::instance_t* v      = alloc_instance(instance_arena, {0, strlen}, data);
+        string_t::instance_t* v      = alloc_instance({0, strlen}, data);
         return v;
     }
 
@@ -748,17 +755,9 @@ namespace ncore
         {
             if (!is_default_data(m_data))
             {
-                if (m_data->m_ref <= 1)
-                {
-                    dealloc_data(m_data);
-                    invalidate();
-                }
-                else
-                {
-                    m_data->m_ref--;
-                }
+                m_data->detach();
             }
-            m_arena->deallocate(this);
+            string_memory_t::s_object_alloc->deallocate(this);
         }
         return get_default_instance();
     }
@@ -778,7 +777,7 @@ namespace ncore
         if (m_item->size() > 0)
         {
             string_t::data_t*     data = unique_data(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
-            string_t::instance_t* item = alloc_instance(m_item->m_arena, {0, data->m_len}, data);
+            string_t::instance_t* item = alloc_instance({0, data->m_len}, data);
             return string_t(item);
         }
         return string_t();
@@ -788,7 +787,7 @@ namespace ncore
 
     string_t::string_t(string_t::instance_t* item) { m_item = item; }
 
-    string_t::string_t(arena_t* arena, const char* str)
+    string_t::string_t(const char* str)
     {
         crunes_t srcrunes(str);
 
@@ -799,8 +798,8 @@ namespace ncore
 
         if (strlen > 0)
         {
-            string_t::data_t* data = alloc_data(arena, strlen);
-            m_item                 = alloc_instance(arena, {from, to}, data);
+            string_t::data_t* data = alloc_data(strlen);
+            m_item                 = alloc_instance({from, to}, data);
             runes_t runes          = get_runes(m_item->m_data, from, to);
             nrunes::copy(srcrunes, runes);
         }
@@ -810,15 +809,15 @@ namespace ncore
         }
     }
 
-    string_t::string_t(arena_t* arena, s32 _len)
+    string_t::string_t(s32 _len)
         : m_item(nullptr)
     {
         const s32 strlen = _len;
 
         if (strlen > 0)
         {
-            string_t::data_t* data = alloc_data(arena, strlen);
-            m_item                 = alloc_instance(arena, {0, 0}, data);
+            string_t::data_t* data = alloc_data(strlen);
+            m_item                 = alloc_instance({0, 0}, data);
         }
         else
         {
@@ -826,19 +825,31 @@ namespace ncore
         }
     }
 
-    string_t::string_t(arena_t* arena, const string_t& other) { m_item = other.m_item->clone_full(arena); }
+    string_t::string_t(const string_t& other) { m_item = other.m_item->clone_full(); }
 
-    string_t::string_t(arena_t* arena, const string_t& left, const string_t& right)
+    string_t::string_t(const string_t& left, const string_t& right)
     {
         const u32 strlen = left.size() + right.size();
 
         crunes_t leftrunes  = get_crunes(left.m_item, left.m_item->m_range.m_from, left.m_item->m_range.m_to);
         crunes_t rightrunes = get_crunes(right.m_item, right.m_item->m_range.m_from, right.m_item->m_range.m_to);
 
-        string_t::data_t* data = alloc_data(arena, strlen);
-        m_item                 = alloc_instance(arena, {0, strlen}, data);
+        string_t::data_t* data = alloc_data(strlen);
+        m_item                 = alloc_instance({0, strlen}, data);
 
         runes_t result = get_runes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
+    }
+
+    string_t::string_t(string_t::instance_t* instance)
+    {
+        m_item = instance->clone_slice();
+    }
+
+    string_t::string_t(string_t::instance_t* instance, const string_t::range_t& range)
+    {
+        m_item = instance->clone_slice();
+        m_item->m_range.m_from += range.m_from;
+        m_item->m_range.m_to   = m_item->m_range.m_from + range.get_length();
     }
 
     string_t::~string_t() { release(); }
@@ -896,16 +907,14 @@ namespace ncore
     string_t& string_t::operator=(const char* other)
     {
         crunes_t srcrunes(other);
-
-        arena_t* arena  = m_item->m_arena;
         u32      strlen = srcrunes.size();
 
         release();
 
         if (strlen != 0)
         {
-            string_t::data_t*     data  = alloc_data(arena, strlen);
-            string_t::instance_t* item  = alloc_instance(arena, {0, strlen}, data);
+            string_t::data_t*     data  = alloc_data(strlen);
+            string_t::instance_t* item  = alloc_instance({0, strlen}, data);
             runes_t               runes = get_runes(m_item, m_item->m_range.m_from, m_item->m_range.m_to);
             nrunes::copy(srcrunes, runes);
         }
@@ -973,7 +982,7 @@ namespace ncore
         // If we are the only one in the list then it means we can deallocate 'string_data'
         if (!is_default_data(m_item->m_data))
         {
-            dealloc_data(m_item->m_data);
+            m_item->m_data = m_item->m_data->detach();
         }
         m_item->rem();
         m_item = m_item->release();
@@ -983,11 +992,11 @@ namespace ncore
     {
         crunes_t srcrunes = get_crunes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
 
-        string_t::data_t* data     = alloc_data(m_item->m_data->m_arena, srcrunes.size());
+        string_t::data_t* data     = alloc_data(srcrunes.size());
         runes_t           dstrunes = get_runes(data, 0, srcrunes.size());
         nrunes::copy(srcrunes, dstrunes);
 
-        string_t::instance_t* item = alloc_instance(m_item->m_arena, {0, srcrunes.size()}, data);
+        string_t::instance_t* item = alloc_instance({0, srcrunes.size()}, data);
         item->m_range.m_from       = 0;
         item->m_range.m_to         = srcrunes.size();
         item->add(this->m_item);
@@ -1089,7 +1098,7 @@ namespace ncore
     //------------------------------------------------------------------------------
     string_t string_t::select(u32 from, u32 to) const
     {
-        string_t::instance_t* item = m_item->clone_full(m_item->m_arena);
+        string_t::instance_t* item = m_item->clone_full();
         // TODO: clamp from and to to the size of the string
         item->m_range.m_from = m_item->m_range.m_from + from;
         item->m_range.m_to   = m_item->m_range.m_from + to;
@@ -1398,12 +1407,12 @@ namespace ncore
     {
         release();
 
-        s32 const argc = args.argc();
+        s32 const   argc = args.argc();
         va_t const* argv = args.argv();
-        const u32 len = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        const u32   len  = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
 
-        string_t::data_t*     data = alloc_data(format.m_item->m_arena, len);
-        string_t::instance_t* item = alloc_instance(format.m_item->m_arena, {0, len}, data);
+        string_t::data_t*     data = alloc_data(len);
+        string_t::instance_t* item = alloc_instance({0, len}, data);
 
         runes_t str = get_runes(item, 0, 0);
         sprintf_(str, get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
@@ -1413,9 +1422,9 @@ namespace ncore
 
     s32 string_t::formatAdd(const string_t& format, const va_list_t& args)
     {
-        s32 const argc = args.argc();
+        s32 const   argc = args.argc();
         va_t const* argv = args.argv();
-        const s32 len = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        const s32   len  = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
         resize(this->m_item, len);
         runes_t str       = get_runes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
         str.m_ascii.m_str = str.m_ascii.m_end;
@@ -1783,17 +1792,14 @@ namespace ncore
     //------------------------------------------------------------------------------
     static void user_case_for_string()
     {
-        arena_t* a;
+        string_t str("This is an ascii string that will be converted to UTF-32");
 
-        string_t str(a, "This is an ascii string that will be converted to UTF-32");
-
-        string_t strvw = str.slice();
-        string_t ascii;
-        ascii           = "ascii";
+        string_t strvw  = str.slice();
+        string_t ascii  = "ascii";
         string_t substr = strvw.find(ascii.slice());
         substr.toUpper();
 
-        string_t converted(a, "converted ");
+        string_t converted("converted ");
         strvw.find_remove(converted.slice());
     }
 
