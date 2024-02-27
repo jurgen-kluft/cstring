@@ -11,6 +11,15 @@ namespace ncore
     // Strings are stored in memory in UTF-16 format the internal encoding is more correctly described as UCS-2.
     // All code here assumes 2 bytes is one codepoint so only the Basic Multilingual Plane (BMP) is supported.
     // Strings are stored in the endian-ness appropriate for the current platform.
+    // holds the memory allocators for string_t
+    class string_memory_t
+    {
+    public:
+        static alloc_t* s_object_alloc;  // for instance_t and data_t
+        static alloc_t* s_string_alloc;  // for the actual string data
+
+        static void init(alloc_t* object_alloc = nullptr, alloc_t* string_alloc = nullptr);
+    };
 
     static alloc_t* s_object_alloc;  // for instance_t and data_t
     static alloc_t* s_string_alloc;  // for the actual string data
@@ -44,10 +53,10 @@ namespace ncore
         u32 m_from;
         u32 m_to;
 
-        inline s64  get_length() const { return m_to - m_from; }
         inline bool is_empty() const { return m_from == m_to; }
+        inline s64  size() const { return m_to - m_from; }
         inline bool is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
-    };    
+    };
 
     struct string_t::instance_t  // 24 bytes
     {
@@ -57,7 +66,7 @@ namespace ncore
 
         inline bool is_empty() const { return m_range.is_empty(); }
         inline s64  cap() const { return m_data->cap(); }
-        inline s64  size() const { return m_range.get_length(); }
+        inline s64  size() const { return m_range.size(); }
 
         string_t::instance_t* clone_full() const;
         string_t::instance_t* clone_slice() const;
@@ -73,8 +82,53 @@ namespace ncore
     static string_t::data_t     s_default_data;
     static uchar16              s_default_str[4] = {0, 0, 0, 0};
 
+    static inline bool              is_default_data(string_t::data_t* data) { return data == &s_default_data; }
     static inline string_t::data_t* get_default_data() { return &s_default_data; }
 
+    static string_t::data_t* alloc_data(s32 _strlen)
+    {
+        string_t::data_t* data = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(sizeof(string_t::data_t));
+        data->m_len            = _strlen;
+        data->m_ref            = 1;
+
+        utf16::prune strdata = (utf16::prune)string_memory_t::s_string_alloc->allocate(_strlen);
+        data->m_ptr          = strdata;
+
+        return data;
+    }
+
+    static void resize_data(string_t::data_t* data, s32 new_size)
+    {
+        if (data->m_len < new_size)
+        {
+            utf16::prune newptr = (utf16::prune)string_memory_t::s_string_alloc->allocate(new_size * sizeof(uchar16) + 1);
+            for (s32 i = 0; i < data->m_len; i++)
+            {
+                newptr[i] = data->m_ptr[i];
+            }
+            string_memory_t::s_string_alloc->deallocate(data->m_ptr);
+            data->m_ptr = newptr;
+            data->m_len = new_size;
+        }
+    }
+
+    static string_t::data_t* unique_data(string_t::data_t* data, s32 from, s32 to)
+    {
+        s32               len     = to - from;
+        string_t::data_t* newdata = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(len);
+        newdata->m_len            = len;
+        newdata->m_ref            = 1;
+        utf16::prune newptr       = (utf16::prune)string_memory_t::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
+        newdata->m_ptr            = newptr;
+        newdata->m_head           = nullptr;
+
+        runes_t trunes = get_runes(data, 0, data->m_len);
+        runes_t nrunes(newptr, newptr + len);
+        nrunes::copy(trunes, nrunes);
+        return newdata;
+    }
+
+    static inline bool           is_default_instance(string_t::instance_t* item) { return item == &s_default_item; }
     static string_t::instance_t* get_default_instance()
     {
         static string_t::instance_t* s_default_item_ptr = nullptr;
@@ -93,9 +147,6 @@ namespace ncore
         }
         return s_default_item_ptr;
     }
-
-    static inline bool is_default_instance(string_t::instance_t* item) { return item == &s_default_item; }
-    static inline bool is_default_data(string_t::data_t* data) { return data == &s_default_data; }
 
     string_t::instance_t* alloc_instance(string_t::range_t range, string_t::data_t* data)
     {
@@ -137,83 +188,6 @@ namespace ncore
         return r;
     }
     static inline runes_t get_runes(string_t::instance_t* inst, u32 from, u32 to) { return get_runes(inst->m_data, from, to); }
-
-    class arena_t
-    {
-        utf16::prune m_bos;
-        utf16::prune m_eos;
-
-    public:
-        arena_t(void* buffer, s32 _size)
-            : m_bos((utf16::prune)buffer)
-            , m_eos(m_bos + (_size / sizeof(utf16::rune)))
-        {
-        }
-
-        ~arena_t() {}
-
-        void* allocate(s32 size)
-        {
-            void* ptr = m_bos;
-            m_bos += size;
-            return ptr;
-        }
-
-        void deallocate(void* ptr) {}
-    };
-
-    static string_t::data_t* alloc_data(s32 _strlen)
-    {
-        string_t::data_t* data = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(sizeof(string_t::data_t));
-        data->m_len            = _strlen;
-        data->m_ref            = 1;
-
-        utf16::prune strdata = (utf16::prune)string_memory_t::s_string_alloc->allocate(_strlen);
-        data->m_ptr          = strdata;
-
-        return data;
-    }
-
-    static void resize_data(string_t::data_t* data, s32 new_size)
-    {
-        if (data->m_len != new_size)
-        {
-            data->m_len         = new_size;
-            utf16::prune newptr = (utf16::prune)string_memory_t::s_string_alloc->allocate(new_size);
-
-            runes_t trunes = get_runes(data, 0, data->m_len);
-            runes_t nrunes(newptr, newptr + new_size);
-            nrunes::copy(trunes, nrunes);
-        }
-    }
-
-    static string_t::data_t* unique_data(string_t::data_t* data, s32 from, s32 to)
-    {
-        s32               len     = to - from;
-        string_t::data_t* newdata = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(len);
-        newdata->m_len            = len;
-        newdata->m_ref            = 1;
-        utf16::prune newptr       = (utf16::prune)string_memory_t::s_string_alloc->allocate(len);
-        newdata->m_ptr            = newptr;
-        newdata->m_head           = nullptr;
-
-        runes_t trunes = get_runes(data, 0, data->m_len);
-        runes_t nrunes(newptr, newptr + len);
-        nrunes::copy(trunes, nrunes);
-        return newdata;
-    }
-
-    static void resize(string_t::instance_t* str, s32 new_size)
-    {
-        if (new_size > str->cap())
-        {
-            resize_data(str->m_data, new_size);
-        }
-        else
-        {
-            // TODO: What about shrinking ?
-        }
-    }
 
     static bool is_view_of(string_t::instance_t const* parent, string_t::instance_t const* slice) { return (parent->m_data == slice->m_data) && (slice->m_range.is_inside(parent->m_range)); }
 
@@ -298,13 +272,13 @@ namespace ncore
         if (insert->is_empty())
             return;
 
-        s32 const len = location.get_length();
+        s32 const len = location.size();
         s32       pos = location.m_from;
         if (len < insert->size())
         {
             // The string to insert is larger than the selection, so we have to insert some
             // space into the string.
-            resize(str, str->m_data->m_len + (insert->size() - len));
+            resize_data(str->m_data, str->m_data->m_len + (insert->size() - len));
             runes_t str_runes = get_runes(str->m_data, 0, str->m_data->m_len);
             insert_space(str_runes, pos, insert->size() - len);
 
@@ -343,7 +317,7 @@ namespace ncore
             //@TODO: it should be better to get an actual full view from the list of strings, currently we
             //       take the easy way and just take the whole allocated size as the full
             runes_t str_runes = get_runes(str->m_data, 0, str->m_data->m_len);
-            remove_space(str_runes, selection.m_from, selection.get_length());
+            remove_space(str_runes, selection.m_from, selection.size());
 
             // TODO: Decision to shrink the allocated memory of m_runes ?
             adjust_active_views(str, REMOVAL, selection.m_from, selection.m_to);
@@ -408,7 +382,7 @@ namespace ncore
         if (remove.is_empty() == false)
         {
             s32 const remove_from = remove.m_from;
-            s32 const remove_len  = remove.get_length();
+            s32 const remove_len  = remove.size();
             s32 const diff        = remove_len - replace->size();
             if (diff > 0)
             {
@@ -425,7 +399,7 @@ namespace ncore
             {
                 // The string to replace the selection with is longer, so we have to insert some
                 // space into the string.
-                resize(str, str->size() + (-diff));
+                resize_data(str->m_data, str->size() + (-diff));
                 runes_t str_runes = get_runes(str->m_data, str->m_range.m_from, str->m_range.m_to);
                 insert_space(str_runes, remove_from, -diff);
 
@@ -709,7 +683,7 @@ namespace ncore
 
     string_t::instance_t* string_t::instance_t::clone_slice() const
     {
-        u32 const             strlen = m_range.get_length();
+        u32 const             strlen = m_range.size();
         string_t::data_t*     data   = unique_data(m_data, m_range.m_from, m_range.m_to);
         string_t::instance_t* v      = alloc_instance({0, strlen}, data);
         return v;
@@ -831,25 +805,28 @@ namespace ncore
     {
         const u32 strlen = left.size() + right.size();
 
-        crunes_t leftrunes  = get_crunes(left.m_item, left.m_item->m_range.m_from, left.m_item->m_range.m_to);
-        crunes_t rightrunes = get_crunes(right.m_item, right.m_item->m_range.m_from, right.m_item->m_range.m_to);
-
         string_t::data_t* data = alloc_data(strlen);
         m_item                 = alloc_instance({0, strlen}, data);
 
-        runes_t result = get_runes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
+        // manually copy the left and right strings into the new string
+        uchar16* src = left.m_item->m_data->m_ptr + left.m_item->m_range.m_from;
+        uchar16* dst = m_item->m_data->m_ptr;
+        for (u32 i = 0; i < left.size(); i++)
+            *dst++ = *src++;
+        src = right.m_item->m_data->m_ptr + right.m_item->m_range.m_from;
+        for (u32 i = 0; i < right.size(); i++)
+            *dst++ = *src++;
+
+        m_item->m_range.m_to = strlen;
     }
 
-    string_t::string_t(string_t::instance_t* instance)
-    {
-        m_item = instance->clone_slice();
-    }
+    string_t::string_t(string_t::instance_t* instance) { m_item = instance->clone_slice(); }
 
     string_t::string_t(string_t::instance_t* instance, const string_t::range_t& range)
     {
         m_item = instance->clone_slice();
         m_item->m_range.m_from += range.m_from;
-        m_item->m_range.m_to   = m_item->m_range.m_from + range.get_length();
+        m_item->m_range.m_to = m_item->m_range.m_from + range.size();
     }
 
     string_t::~string_t() { release(); }
@@ -1020,10 +997,10 @@ namespace ncore
 
         static bool isEqual(const string_t& str, string_t::range_t strview, const string_t& rhs)
         {
-            if (strview.get_length() != rhs.size())
+            if (strview.size() != rhs.size())
                 return false;
 
-            for (s32 i = 0; i < strview.get_length(); i++)
+            for (s32 i = 0; i < strview.size(); i++)
             {
                 uchar32 const lc = get_char_unsafe(str, strview.m_from + i);
                 uchar32 const rc = get_char_unsafe(rhs, i);
@@ -1148,12 +1125,12 @@ namespace ncore
     string_t string_t::selectUntilEndExcludeSelection(const string_t& selection) const
     {
         string_t::range_t range = string_functions_t::selectAfter(m_item, selection.m_item);
-        return string_t(range, m_item);
+        return string_t(m_item, range);
     }
     string_t string_t::selectUntilEndIncludeSelection(const string_t& selection) const
     {
         string_t::range_t range = string_functions_t::selectAfterIncluded(m_item, selection.m_item);
-        return string_t(range, m_item);
+        return string_t(m_item, range);
     }
 
     bool string_t::isUpper() const
@@ -1425,7 +1402,7 @@ namespace ncore
         s32 const   argc = args.argc();
         va_t const* argv = args.argv();
         const s32   len  = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
-        resize(this->m_item, len);
+        resize_data(m_item->m_data, len);
         runes_t str       = get_runes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
         str.m_ascii.m_str = str.m_ascii.m_end;
         sprintf_(str, get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
@@ -1787,7 +1764,7 @@ namespace ncore
         return true;
     }
 
-    void concatenate(string_t& str, const string_t& con) { resize(str.m_item, str.size() + con.size() + 1); }
+    void concatenate(string_t& str, const string_t& con) { resize_data(str.m_item->m_data, str.size() + con.size() + 1); }
 
     //------------------------------------------------------------------------------
     static void user_case_for_string()

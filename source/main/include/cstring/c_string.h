@@ -15,16 +15,6 @@ namespace ncore
     class alloc_t;
     class arena_t;
 
-    // holds the memory allocators for string_t
-    class string_memory_t
-    {
-    public:
-        static alloc_t* s_object_alloc;  // for instance_t and data_t
-        static alloc_t* s_string_alloc;  // for the actual string data
-
-        static void init(alloc_t* object_alloc=nullptr, alloc_t* string_alloc=nullptr);
-    };
-
     class string_t
     {
     public:
