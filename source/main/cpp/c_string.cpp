@@ -54,7 +54,7 @@ namespace ncore
         u32 m_to;
 
         inline bool is_empty() const { return m_from == m_to; }
-        inline s64  size() const { return m_to - m_from; }
+        inline u32  size() const { return m_to - m_from; }
         inline bool is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
     };
 
@@ -122,9 +122,9 @@ namespace ncore
         newdata->m_ptr            = newptr;
         newdata->m_head           = nullptr;
 
-        runes_t trunes = get_runes(data, 0, data->m_len);
-        runes_t nrunes(newptr, newptr + len);
-        nrunes::copy(trunes, nrunes);
+        for (s32 i = 0; i < len; i++)
+            newptr[i] = data->m_ptr[from + i];
+
         return newdata;
     }
 
@@ -159,35 +159,35 @@ namespace ncore
         return v;
     }
 
-    static inline void get_from_to(crunes_t const& runes, u32& from, u32& to)
-    {
-        from = runes.m_ascii.m_str;
-        to   = runes.m_ascii.m_end;
-    }
+    // static inline void get_from_to(crunes_t const& runes, u32& from, u32& to)
+    // {
+    //     from = runes.m_ascii.m_str;
+    //     to   = runes.m_ascii.m_end;
+    // }
 
-    static inline crunes_t get_crunes(string_t::data_t const* data, u32 from, u32 to)
-    {
-        crunes_t r;
-        r.m_utf16.m_flags = utf16::TYPE;
-        r.m_utf16.m_bos   = (utf16::prune)data->m_ptr;
-        r.m_utf16.m_eos   = data->m_len;
-        r.m_utf16.m_str   = from;
-        r.m_utf16.m_end   = to;
-        return r;
-    }
-    static inline crunes_t get_crunes(string_t::instance_t const* inst, u32 from, u32 to) { return get_crunes(inst->m_data, from, to); }
+    // static inline crunes_t get_crunes(string_t::data_t const* data, u32 from, u32 to)
+    // {
+    //     crunes_t r;
+    //     r.m_utf16.m_flags = utf16::TYPE;
+    //     r.m_utf16.m_bos   = (utf16::prune)data->m_ptr;
+    //     r.m_utf16.m_eos   = data->m_len;
+    //     r.m_utf16.m_str   = from;
+    //     r.m_utf16.m_end   = to;
+    //     return r;
+    // }
+    // static inline crunes_t get_crunes(string_t::instance_t const* inst, u32 from, u32 to) { return get_crunes(inst->m_data, from, to); }
 
-    static inline runes_t get_runes(string_t::data_t* data, u32 from, u32 to)
-    {
-        runes_t r;
-        r.m_utf16.m_flags = utf16::TYPE;
-        r.m_utf16.m_bos   = (utf16::prune)data->m_ptr;
-        r.m_utf16.m_eos   = data->m_len;
-        r.m_utf16.m_str   = from;
-        r.m_utf16.m_end   = to;
-        return r;
-    }
-    static inline runes_t get_runes(string_t::instance_t* inst, u32 from, u32 to) { return get_runes(inst->m_data, from, to); }
+    // static inline runes_t get_runes(string_t::data_t* data, u32 from, u32 to)
+    // {
+    //     runes_t r;
+    //     r.m_utf16.m_flags = utf16::TYPE;
+    //     r.m_utf16.m_bos   = (utf16::prune)data->m_ptr;
+    //     r.m_utf16.m_eos   = data->m_len;
+    //     r.m_utf16.m_str   = from;
+    //     r.m_utf16.m_end   = to;
+    //     return r;
+    // }
+    // static inline runes_t get_runes(string_t::instance_t* inst, u32 from, u32 to) { return get_runes(inst->m_data, from, to); }
 
     static bool is_view_of(string_t::instance_t const* parent, string_t::instance_t const* slice) { return (parent->m_data == slice->m_data) && (slice->m_range.is_inside(parent->m_range)); }
 
@@ -236,30 +236,19 @@ namespace ncore
         return true;
     }
 
-    static void insert_space(runes_t& r, s32 pos, s32 len)
+    static void insert_space(uchar16* str, s32 strlen, s32 pos, s32 len)
     {
-        s32 src = r.size() - 1;
-        s32 dst = src + len;
-        while (src >= pos)
+        // insert space, need to start at the end to avoid overwriting
+        s32       src = strlen;
+        s32       dst = strlen + len;
+        s32 const end = pos + len;
+        while (src > end)
         {
-            r.m_utf16.m_bos[dst--] = r.m_utf16.m_bos[src--];
+            str[--dst] = str[--src];
         }
-        r.m_utf16.m_end += len;
-        r.m_utf16.m_bos[r.m_utf16.m_end] = '\0';
     }
 
-    static void remove_space(runes_t& r, s32 pos, s32 len)
-    {
-        s32       src = pos + len;
-        s32       dst = pos;
-        s32 const end = pos + len;
-        while (src < r.size())
-        {
-            r.m_utf16.m_bos[dst++] = r.m_utf16.m_bos[src++];
-        }
-        r.m_utf16.m_end -= len;
-        r.m_utf16.m_bos[r.m_utf16.m_end] = '\0';
-    }
+    static void remove_space(uchar16* str, s32 strlen, s32 pos, s32 len) {}
 
     static inline uchar16 get_char_unsafe(string_t::data_t* data, u32 from, u32 to, u32 index) { return data->m_ptr[from + index]; }
     static inline void    set_char_unsafe(string_t::data_t* data, u32 from, u32 to, u32 index, uchar16 c) { data->m_ptr[from + index] = c; }
@@ -279,8 +268,7 @@ namespace ncore
             // The string to insert is larger than the selection, so we have to insert some
             // space into the string.
             resize_data(str->m_data, str->m_data->m_len + (insert->size() - len));
-            runes_t str_runes = get_runes(str->m_data, 0, str->m_data->m_len);
-            insert_space(str_runes, pos, insert->size() - len);
+            insert_space(str->m_data->m_ptr, str->m_data->m_len, pos, insert->size() - len);
 
             adjust_active_views(str, INSERTION, pos, pos + insert->size() - len);
         }
@@ -288,8 +276,7 @@ namespace ncore
         {
             // The string to insert is smaller than the selection, so we have to remove some
             // space from the string.
-            runes_t str_runes = get_runes(str->m_data, 0, str->m_data->m_len);
-            remove_space(str_runes, pos, len - insert->size());
+            remove_space(str->m_data->m_ptr, str->m_data->m_len, pos, len - insert->size());
 
             adjust_active_views(str, REMOVAL, pos, pos + len - insert->size());
         }
@@ -316,8 +303,7 @@ namespace ncore
         {
             //@TODO: it should be better to get an actual full view from the list of strings, currently we
             //       take the easy way and just take the whole allocated size as the full
-            runes_t str_runes = get_runes(str->m_data, 0, str->m_data->m_len);
-            remove_space(str_runes, selection.m_from, selection.size());
+            remove_space(str->m_data->m_ptr, str->m_data->m_len, selection.m_from, selection.size());
 
             // TODO: Decision to shrink the allocated memory of m_runes ?
             adjust_active_views(str, REMOVAL, selection.m_from, selection.m_to);
@@ -388,8 +374,7 @@ namespace ncore
             {
                 // The string to replace the selection with is smaller, so we have to remove
                 // some space from the string.
-                runes_t str_runes = get_runes(str->m_data, str->m_range.m_from, str->m_range.m_to);
-                remove_space(str_runes, remove_from, diff);
+                remove_space(str->m_data->m_ptr, str->m_data->m_len, remove_from, diff);
 
                 // TODO: Decision to shrink the allocated memory of runes ?
 
@@ -400,8 +385,7 @@ namespace ncore
                 // The string to replace the selection with is longer, so we have to insert some
                 // space into the string.
                 resize_data(str->m_data, str->size() + (-diff));
-                runes_t str_runes = get_runes(str->m_data, str->m_range.m_from, str->m_range.m_to);
-                insert_space(str_runes, remove_from, -diff);
+                insert_space(str->m_data->m_ptr, str->m_data->m_len, remove_from, -diff);
 
                 adjust_active_views(str, INSERTION, remove_from, remove_from + -diff);
             }
@@ -774,8 +758,9 @@ namespace ncore
         {
             string_t::data_t* data = alloc_data(strlen);
             m_item                 = alloc_instance({from, to}, data);
-            runes_t runes          = get_runes(m_item->m_data, from, to);
-            nrunes::copy(srcrunes, runes);
+            while (*str != '\0')
+                *data->m_ptr++ = *str++;
+            *data->m_ptr = '\0';
         }
         else
         {
@@ -883,17 +868,19 @@ namespace ncore
 
     string_t& string_t::operator=(const char* other)
     {
-        crunes_t srcrunes(other);
-        u32      strlen = srcrunes.size();
+        u32 strlen = 0;
+        while (other[strlen] != '\0')
+            ++strlen;
 
         release();
 
         if (strlen != 0)
         {
-            string_t::data_t*     data  = alloc_data(strlen);
-            string_t::instance_t* item  = alloc_instance({0, strlen}, data);
-            runes_t               runes = get_runes(m_item, m_item->m_range.m_from, m_item->m_range.m_to);
-            nrunes::copy(srcrunes, runes);
+            string_t::data_t*     data = alloc_data(strlen);
+            string_t::instance_t* item = alloc_instance({0, strlen}, data);
+            while (*other != '\0')
+                *data->m_ptr++ = *other++;
+            *data->m_ptr = '\0';
         }
         else
         {
@@ -967,15 +954,17 @@ namespace ncore
 
     string_t string_t::clone() const
     {
-        crunes_t srcrunes = get_crunes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
+        u32 const         len  = m_item->m_range.size();
+        string_t::data_t* data = alloc_data(len);
 
-        string_t::data_t* data     = alloc_data(srcrunes.size());
-        runes_t           dstrunes = get_runes(data, 0, srcrunes.size());
-        nrunes::copy(srcrunes, dstrunes);
+        uchar16 const* src = m_item->m_data->m_ptr;
+        uchar16*       dst = data->m_ptr;
+        for (u32 i = 0; i < len; ++i)
+            *dst++ = *src++;
 
-        string_t::instance_t* item = alloc_instance({0, srcrunes.size()}, data);
+        string_t::instance_t* item = alloc_instance({0, len}, data);
         item->m_range.m_from       = 0;
-        item->m_range.m_to         = srcrunes.size();
+        item->m_range.m_to         = len;
         item->add(this->m_item);
 
         return string_t(item);
@@ -1246,15 +1235,24 @@ namespace ncore
 
     string_t string_t::find(const char* inFind) const
     {
-        crunes_t strfind(inFind);
-        crunes_t strstr = get_crunes(m_item, m_item->m_range.m_from, m_item->m_range.m_to);
-
-        crunes_t strfound = nrunes::find(strstr, strfind);
-        if (strfound.is_empty() == false)
+        uchar16 const* str = m_item->m_data->m_ptr;
+        for (s32 i = 0; i < size(); i++)
         {
-            u32 from, to;
-            get_from_to(strfound, from, to);
-            return select(from, to);
+            uchar32 const c = str[m_item->m_range.m_from + i];
+            if (c == *inFind)
+            {
+                s32 s = 1;
+                for (s32 j = i + 1; j < size(); j++, ++s)
+                {
+                    if (str[m_item->m_range.m_from + j] != inFind[s])
+                        break;
+                }
+                if (inFind[s] == '\0')
+                {
+                    // match
+                    return select(i, i + (s-1));
+                }
+            }
         }
         return string_t(get_default_instance());
     }
