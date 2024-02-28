@@ -1131,7 +1131,7 @@ namespace ncore
 
     bool string_t::isCapitalized() const
     {
-        s32 i = 0;
+        s32            i       = 0;
         uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         while (i < size())
         {
@@ -1180,14 +1180,14 @@ namespace ncore
 
     uchar32 string_t::firstChar() const
     {
-        s32 const first = 0;
+        s32 const      first   = 0;
         uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         return strdata[first];
     }
 
     uchar32 string_t::lastChar() const
     {
-        s32 const last = size() - 1;
+        s32 const      last    = size() - 1;
         uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         return strdata[last];
     }
@@ -1376,8 +1376,8 @@ namespace ncore
 
         s32 const   argc = args.argc();
         va_t const* argv = args.argv();
-        crunes_t fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
-        const u32   len  = cprintf_(fmt, argv, argc);
+        crunes_t    fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        const u32   len = cprintf_(fmt, argv, argc);
 
         string_t::data_t*     data = alloc_data(len);
         string_t::instance_t* item = alloc_instance({0, len}, data);
@@ -1385,7 +1385,7 @@ namespace ncore
         runes_t str(item->m_data->m_ptr, item->m_range.m_from, item->m_range.m_to, item->m_data->m_len);
         sprintf_(str, fmt, argv, argc);
         item->m_range.m_to = str.m_utf16.m_end;
-        
+
         m_item = item;
         return len;
     }
@@ -1394,8 +1394,8 @@ namespace ncore
     {
         s32 const   argc = args.argc();
         va_t const* argv = args.argv();
-        crunes_t fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
-        const s32   len  = cprintf_(fmt, argv, argc);
+        crunes_t    fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        const s32   len = cprintf_(fmt, argv, argc);
         resize_data(m_item->m_data, len);
         runes_t str(m_item->m_data->m_ptr, m_item->m_range.m_from, m_item->m_range.m_to, m_item->m_data->m_len);
         str.m_ascii.m_str = str.m_ascii.m_end;
@@ -1457,12 +1457,13 @@ namespace ncore
         if (ntimes == 0)
             ntimes = size();
 
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (u32 i = 0; i < size() && ntimes > 0;)
         {
             u32 const begin = i;
             for (; i < size() && ntimes > 0; ++i, --ntimes)
             {
-                uchar32 const d = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+                uchar32 const d = strdata[i];
                 if (!any.contains(d))
                     break;
             }
@@ -1475,45 +1476,49 @@ namespace ncore
     s32 string_t::replace_any(const string_t& any, uchar32 with, s32 ntimes)
     {
         // Replace any of the characters in @charset from @str with character @with
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0, j = 0; i < size() && j < ntimes; ++i)
         {
-            uchar32 const c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const c = strdata[i];
             if (any.contains(c))
             {
                 ++j;
-                set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, with);
+                strdata[i] = with;
             }
         }
     }
 
     void string_t::toUpper()
     {
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
-            c         = nrunes::to_upper(c);
-            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
+            uchar32 c  = strdata[i];
+            c          = nrunes::to_upper(c);
+            strdata[i] = c;
         }
     }
 
     void string_t::toLower()
     {
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
-            c         = nrunes::to_lower(c);
-            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
+            uchar32 c  = strdata[i];
+            c          = nrunes::to_lower(c);
+            strdata[i] = c;
         }
     }
 
     void string_t::capitalize()
     {
         // Standard separator is ' '
-        bool prev_is_space = true;
-        s32  i             = 0;
+        bool     prev_is_space = true;
+        s32      i             = 0;
+        uchar16* strdata       = m_item->m_data->m_ptr + m_item->m_range.m_from;
         while (i < size())
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 c = strdata[i];
             uchar32 d = c;
             if (nrunes::is_alpha(c))
             {
@@ -1533,7 +1538,7 @@ namespace ncore
 
             if (c != d)
             {
-                set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
+                strdata[i] = c;
             }
             i++;
         }
@@ -1541,11 +1546,12 @@ namespace ncore
 
     void string_t::capitalize(const string_t& separators)
     {
-        bool prev_is_space = false;
-        s32  i             = 0;
+        bool     prev_is_space = false;
+        s32      i             = 0;
+        uchar16* strdata       = m_item->m_data->m_ptr + m_item->m_range.m_from;
         while (i < size())
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 c = strdata[i];
             uchar32 d = c;
             if (nrunes::is_alpha(c))
             {
@@ -1572,7 +1578,7 @@ namespace ncore
             }
             if (c != d)
             {
-                set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, c);
+                strdata[i] = c;
             }
             i++;
         }
@@ -1588,9 +1594,10 @@ namespace ncore
 
     void string_t::trimLeft()
     {
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 c = strdata[i];
             if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
             {
                 if (i > 0)
@@ -1604,10 +1611,11 @@ namespace ncore
 
     void string_t::trimRight()
     {
-        s32 const last = size() - 1;
+        s32 const last    = size() - 1;
+        uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
+            uchar32 c = strdata[last - i];
             if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
             {
                 if (i > 0)
@@ -1627,9 +1635,10 @@ namespace ncore
 
     void string_t::trimLeft(uchar32 r)
     {
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 c = strdata[i];
             if (c != r)
             {
                 if (i > 0)
@@ -1643,10 +1652,11 @@ namespace ncore
 
     void string_t::trimRight(uchar32 r)
     {
-        s32 const last = size() - 1;
+        s32 const last    = size() - 1;
+        uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
+            uchar32 c = strdata[last - i];
             if (c != r)
             {
                 if (i > 0)
@@ -1666,9 +1676,10 @@ namespace ncore
 
     void string_t::trimLeft(const string_t& set)
     {
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 c = strdata[i];
             if (!set.contains(c))
             {
                 if (i > 0)
@@ -1682,10 +1693,11 @@ namespace ncore
 
     void string_t::trimRight(const string_t& set)
     {
-        s32 const last = size() - 1;
+        s32 const last    = size() - 1;
+        uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
+            uchar32 c = strdata[last - i];
             if (!set.contains(c))
             {
                 if (i > 0)
@@ -1708,13 +1720,14 @@ namespace ncore
 
     void string_t::reverse()
     {
-        s32 const last = size() - 1;
+        s32 const last    = size() - 1;
+        uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < (last - i); ++i)
         {
-            uchar32 l = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
-            uchar32 r = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i);
-            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i, r);
-            set_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last - i, l);
+            uchar32 l         = strdata[i];
+            uchar32 r         = strdata[last - i];
+            strdata[i]        = r;
+            strdata[last - i] = l;
         }
     }
 
