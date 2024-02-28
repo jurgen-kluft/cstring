@@ -103,12 +103,11 @@ namespace ncore
         {
             utf16::prune newptr = (utf16::prune)string_memory_t::s_string_alloc->allocate(new_size * sizeof(uchar16) + 1);
             for (s32 i = 0; i < data->m_len; i++)
-            {
                 newptr[i] = data->m_ptr[i];
-            }
             string_memory_t::s_string_alloc->deallocate(data->m_ptr);
-            data->m_ptr = newptr;
-            data->m_len = new_size;
+            data->m_ptr           = newptr;
+            data->m_len           = new_size;
+            data->m_ptr[new_size] = '\0';
         }
     }
 
@@ -116,11 +115,11 @@ namespace ncore
     {
         s32               len     = to - from;
         string_t::data_t* newdata = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(len);
-        newdata->m_len            = len;
-        newdata->m_ref            = 1;
-        utf16::prune newptr       = (utf16::prune)string_memory_t::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
+        utf16::prune      newptr  = (utf16::prune)string_memory_t::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
         newdata->m_ptr            = newptr;
         newdata->m_head           = nullptr;
+        newdata->m_len            = len;
+        newdata->m_ref            = 1;
 
         for (s32 i = 0; i < len; i++)
             newptr[i] = data->m_ptr[from + i];
@@ -138,7 +137,7 @@ namespace ncore
 
             s_default_data.m_ptr  = (utf16::prune)s_default_str;
             s_default_data.m_len  = 0;
-            s_default_data.m_ref  = 1;
+            s_default_data.m_ref  = 0;
             s_default_data.m_head = s_default_item_ptr;
 
             s_default_item.m_data  = get_default_data();
@@ -158,36 +157,6 @@ namespace ncore
         v->m_data               = data->attach();
         return v;
     }
-
-    // static inline void get_from_to(crunes_t const& runes, u32& from, u32& to)
-    // {
-    //     from = runes.m_ascii.m_str;
-    //     to   = runes.m_ascii.m_end;
-    // }
-
-    // static inline crunes_t get_crunes(string_t::data_t const* data, u32 from, u32 to)
-    // {
-    //     crunes_t r;
-    //     r.m_utf16.m_flags = utf16::TYPE;
-    //     r.m_utf16.m_bos   = (utf16::prune)data->m_ptr;
-    //     r.m_utf16.m_eos   = data->m_len;
-    //     r.m_utf16.m_str   = from;
-    //     r.m_utf16.m_end   = to;
-    //     return r;
-    // }
-    // static inline crunes_t get_crunes(string_t::instance_t const* inst, u32 from, u32 to) { return get_crunes(inst->m_data, from, to); }
-
-    // static inline runes_t get_runes(string_t::data_t* data, u32 from, u32 to)
-    // {
-    //     runes_t r;
-    //     r.m_utf16.m_flags = utf16::TYPE;
-    //     r.m_utf16.m_bos   = (utf16::prune)data->m_ptr;
-    //     r.m_utf16.m_eos   = data->m_len;
-    //     r.m_utf16.m_str   = from;
-    //     r.m_utf16.m_end   = to;
-    //     return r;
-    // }
-    // static inline runes_t get_runes(string_t::instance_t* inst, u32 from, u32 to) { return get_runes(inst->m_data, from, to); }
 
     static bool is_view_of(string_t::instance_t const* parent, string_t::instance_t const* slice) { return (parent->m_data == slice->m_data) && (slice->m_range.is_inside(parent->m_range)); }
 
@@ -250,9 +219,6 @@ namespace ncore
 
     static void remove_space(uchar16* str, s32 strlen, s32 pos, s32 len) {}
 
-    static inline uchar16 get_char_unsafe(string_t::data_t* data, u32 from, u32 to, u32 index) { return data->m_ptr[from + index]; }
-    static inline void    set_char_unsafe(string_t::data_t* data, u32 from, u32 to, u32 index, uchar16 c) { data->m_ptr[from + index] = c; }
-
     // forward declare
     static void adjust_active_views(string_t::instance_t* list, s32 op_code, s32 op_range_from, s32 op_range_to);
 
@@ -286,11 +252,13 @@ namespace ncore
             // selection with the new string.
         }
 
-        s32 src = 0;
+        s32            src         = 0;
+        uchar16 const* insert_data = insert->m_data->m_ptr + insert->m_range.m_from;
+        uchar16*       str_data    = str->m_data->m_ptr + str->m_range.m_from;
         while (src < insert->size())
         {
-            uchar32 const c = get_char_unsafe(insert->m_data, insert->m_range.m_from, insert->m_range.m_to, src);
-            set_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, pos, c);
+            uchar32 const c = insert_data[src];
+            str_data[pos]   = c;
             ++src;
             ++pos;
         }
@@ -321,17 +289,19 @@ namespace ncore
             s32 const findto   = _find->m_range.m_to;
             u32 const findsize = _find->m_range.m_to - _find->m_range.m_from;
 
-            s32 i = 0;
-            s32 r = -1;
+            s32            i        = 0;
+            s32            r        = -1;
+            uchar16 const* strdata  = str->m_data->m_ptr + strfrom;
+            uchar16 const* finddata = _find->m_data->m_ptr + findfrom;
             while (i < strsize)
             {
-                uchar32 const c = get_char_unsafe(str->m_data, strfrom, strto, i);
-                if (c == get_char_unsafe(_find->m_data, findfrom, findto, 0))
+                uchar32 const c = strdata[i];
+                if (c == finddata[0])
                 {
                     s32 j = 1;
                     while (j < findsize)
                     {
-                        if (get_char_unsafe(str->m_data, strfrom, strto, i + j) != get_char_unsafe(_find->m_data, findfrom, findto, j))
+                        if (strdata[i + j] != finddata[j])
                         {
                             break;
                         }
@@ -390,24 +360,26 @@ namespace ncore
                 adjust_active_views(str, INSERTION, remove_from, remove_from + -diff);
             }
             // Copy string 'remove' into the (now) same size selection space
-            s32          src  = 0;
-            s32          dst  = remove_from;
-            s32 const    end  = remove_from + replace->size();
-            utf32::prune pdst = (utf32::prune)str->m_data->m_ptr;
+            s32            src          = 0;
+            s32            dst          = remove_from;
+            s32 const      end          = remove_from + replace->size();
+            utf16::prune   pdst         = (utf16::prune)str->m_data->m_ptr;
+            uchar16 const* replace_data = replace->m_data->m_ptr + replace->m_range.m_from;
             while (src < replace->size())
             {
-                pdst[dst++] = get_char_unsafe(replace->m_data, replace->m_range.m_from, replace->m_range.m_to, src++);
+                pdst[dst++] = replace_data[src++];
             }
         }
     }
 
     static bool contains(const string_t::instance_t* str, uchar16 find)
     {
-        s32 len = str->size();
-        s32 i   = 0;
+        s32            len     = str->size();
+        s32            i       = 0;
+        uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
         while (i < len)
         {
-            uchar32 const c = get_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, i);
+            uchar32 const c = strdata[i];
             if (c == find)
                 return true;
         }
@@ -421,12 +393,13 @@ namespace ncore
         s32 const strto   = str->m_range.m_to;
         s32 const strsize = str->m_range.m_to - str->m_range.m_from;
 
-        s32 d = 0;
-        s32 i = 0;
-        s32 r = -1;
+        s32      d       = 0;
+        s32      i       = 0;
+        s32      r       = -1;
+        uchar16* strdata = str->m_data->m_ptr + strfrom;
         while (i < strsize)
         {
-            uchar16 const c = get_char_unsafe(str->m_data, strfrom, strto, i);
+            uchar16 const c = strdata[i];
             if (contains(any, c))
             {
                 if (r == -1)
@@ -447,7 +420,7 @@ namespace ncore
 
                 if (i > d)
                 {
-                    set_char_unsafe(str->m_data, strfrom, strto, d, c);
+                    strdata[d] = c;
                 }
                 i++;
                 d++;
@@ -459,16 +432,17 @@ namespace ncore
         {
             // We still need to move the rest of the string that is not in this view but is part of
             // of the full string.
+            uchar16* strdata = str->m_data->m_ptr + strfrom;
             while (i < str->m_data->m_len)
             {
-                uchar32 const c = get_char_unsafe(str->m_data, strfrom, strto, i);
-                set_char_unsafe(str->m_data, strfrom, strto, d, c);
+                uchar32 const c = strdata[i];
+                strdata[d]      = c;
                 i++;
                 d++;
             }
 
             str->m_data->m_len -= l;
-            utf32::prune pdst        = (utf32::prune)str->m_data->m_ptr;
+            utf16::prune pdst        = (utf16::prune)str->m_data->m_ptr;
             pdst[str->m_data->m_len] = '\0';
         }
     }
@@ -863,7 +837,8 @@ namespace ncore
     {
         if (index >= size())
             return '\0';
-        return get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, index);
+        uchar16 const* str = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        return str[index];
     }
 
     string_t& string_t::operator=(const char* other)
@@ -917,10 +892,13 @@ namespace ncore
     {
         if (size() != other.size())
             return false;
+
+        uchar16 const* l = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        uchar16 const* r = other.m_item->m_data->m_ptr + other.m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const lc = get_char_unsafe(m_item->m_data, this->m_item->m_range.m_from, this->m_item->m_range.m_to, i);
-            uchar32 const rc = get_char_unsafe(other.m_item->m_data, other.m_item->m_range.m_from, other.m_item->m_range.m_to, i);
+            uchar32 const lc = *l++;
+            uchar32 const rc = *r++;
             if (lc != rc)
                 return false;
         }
@@ -931,10 +909,13 @@ namespace ncore
     {
         if (size() != other.size())
             return true;
+
+        uchar16 const* l = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        uchar16 const* r = other.m_item->m_data->m_ptr + other.m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const lc = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
-            uchar32 const rc = get_char_unsafe(other.m_item->m_data, other.m_item->m_range.m_from, other.m_item->m_range.m_to, i);
+            uchar32 const lc = *l++;
+            uchar32 const rc = *r++;
             if (lc != rc)
                 return true;
         }
@@ -976,8 +957,6 @@ namespace ncore
     class string_functions_t : public string_t
     {
     public:
-        static inline uchar32 get_char_unsafe(const string_t& str, u32 index) { return ncore::get_char_unsafe(str.m_item->m_data, str.m_item->m_range.m_from, str.m_item->m_range.m_to, index); }
-
         // select parst of the string, return local view range
         static range_t selectBefore(const instance_t* str, const instance_t* sel) { return {str->m_range.m_from - str->m_range.m_from, sel->m_range.m_from - str->m_range.m_from}; }
         static range_t selectBeforeIncluded(const instance_t* str, const instance_t* sel) { return {str->m_range.m_from - str->m_range.m_from, sel->m_range.m_to - str->m_range.m_from}; }
@@ -989,10 +968,12 @@ namespace ncore
             if (strview.size() != rhs.size())
                 return false;
 
+            uchar16 const* strdata = str.m_item->m_data->m_ptr + strview.m_from;
+            uchar16 const* rhsdata = rhs.m_item->m_data->m_ptr + rhs.m_item->m_range.m_from;
             for (s32 i = 0; i < strview.size(); i++)
             {
-                uchar32 const lc = get_char_unsafe(str, strview.m_from + i);
-                uchar32 const rc = get_char_unsafe(rhs, i);
+                uchar32 const lc = strdata[i];
+                uchar32 const rc = rhsdata[i];
                 if (lc != rc)
                     return false;
             }
@@ -1001,9 +982,10 @@ namespace ncore
 
         static string_t::range_t selectUntil(const string_t& str, uchar32 find)
         {
+            uchar16 const* strdata = str.m_item->m_data->m_ptr + str.m_item->m_range.m_from;
             for (u32 i = 0; i < str.size(); i++)
             {
-                uchar32 const c = get_char_unsafe(str, i);
+                uchar32 const c = strdata[i];
                 if (c == find)
                 {
                     return {(u32)0, i};
@@ -1032,9 +1014,10 @@ namespace ncore
 
         static string_t::range_t selectUntilLast(const string_t& str, uchar32 find)
         {
+            uchar16 const* strdata = str.m_item->m_data->m_ptr + str.m_item->m_range.m_from;
             for (u32 i = str.size() - 1; i >= 0; --i)
             {
-                uchar32 const c = get_char_unsafe(str, i);
+                uchar32 const c = strdata[i];
                 if (c == find)
                 {
                     return {str.m_item->m_range.m_from, str.m_item->m_range.m_from + i};
@@ -1124,9 +1107,10 @@ namespace ncore
 
     bool string_t::isUpper() const
     {
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const c = strdata[i];
             if (nrunes::is_lower(c))
                 return false;
         }
@@ -1135,26 +1119,26 @@ namespace ncore
 
     bool string_t::isLower() const
     {
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const c = strdata[i];
             if (nrunes::is_upper(c))
                 return false;
         }
         return true;
     }
 
-    static bool isCapitalized(const string_t& s)
+    bool string_t::isCapitalized() const
     {
-        string_t::instance_t* str = s.m_item;
-
         s32 i = 0;
-        while (i < str->size())
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        while (i < size())
         {
             uchar32 c = '\0';
-            while (i < str->size())
+            while (i < size())
             {
-                c = get_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, i);
+                c = strdata[i];
                 if (!nrunes::is_space(c))
                     break;
                 i += 1;
@@ -1163,9 +1147,9 @@ namespace ncore
             if (nrunes::is_upper(c))
             {
                 i += 1;
-                while (i < str->size())
+                while (i < size())
                 {
-                    c = get_char_unsafe(str->m_data, str->m_range.m_from, str->m_range.m_to, i);
+                    c = strdata[i];
                     if (nrunes::is_space(c))
                         break;
                     if (nrunes::is_upper(c))
@@ -1197,13 +1181,15 @@ namespace ncore
     uchar32 string_t::firstChar() const
     {
         s32 const first = 0;
-        return get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, first);
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        return strdata[first];
     }
 
     uchar32 string_t::lastChar() const
     {
         s32 const last = size() - 1;
-        return get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, last);
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        return strdata[last];
     }
 
     bool string_t::startsWith(const string_t& start) const
@@ -1224,9 +1210,10 @@ namespace ncore
 
     string_t string_t::find(uchar32 find) const
     {
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const c = strdata[i];
             if (c == find)
                 return select(i, i + 1);
         }
@@ -1250,7 +1237,7 @@ namespace ncore
                 if (inFind[s] == '\0')
                 {
                     // match
-                    return select(i, i + (s-1));
+                    return select(i, i + (s - 1));
                 }
             }
         }
@@ -1293,9 +1280,10 @@ namespace ncore
 
     string_t string_t::findOneOf(const string_t& charset) const
     {
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const sc = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const sc = strdata[i];
             if (charset.contains(sc))
             {
                 return select(i, i + 1);
@@ -1306,9 +1294,10 @@ namespace ncore
 
     string_t string_t::findOneOfLast(const string_t& charset) const
     {
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = size() - 1; i >= 0; --i)
         {
-            uchar32 const sc = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const sc = strdata[i];
             if (charset.contains(sc))
             {
                 return select(i, i + 1);
@@ -1324,10 +1313,12 @@ namespace ncore
         if (size() > rhs.size())
             return 1;
 
+        uchar16 const* lhsdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        uchar16 const* rhsdata = rhs.m_item->m_data->m_ptr + rhs.m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const lc = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
-            uchar32 const rc = get_char_unsafe(rhs.m_item->m_data, rhs.m_item->m_range.m_from, rhs.m_item->m_range.m_to, i);
+            uchar32 const lc = lhsdata[i];
+            uchar32 const rc = rhsdata[i];
             if (lc < rc)
                 return -1;
             else if (lc > rc)
@@ -1355,9 +1346,10 @@ namespace ncore
 
     bool string_t::contains(uchar32 contains) const
     {
+        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const sc = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const sc = strdata[i];
             if (sc == contains)
             {
                 return true;
