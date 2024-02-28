@@ -1224,9 +1224,10 @@ namespace ncore
 
     string_t string_t::find(uchar32 find) const
     {
+        uchar16 const* str = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const c = get_char_unsafe(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to, i);
+            uchar32 const c = str[i];
             if (c == find)
                 return select(i, i + 1);
         }
@@ -1235,10 +1236,10 @@ namespace ncore
 
     string_t string_t::find(const char* inFind) const
     {
-        uchar16 const* str = m_item->m_data->m_ptr;
+        uchar16 const* str = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const c = str[m_item->m_range.m_from + i];
+            uchar32 const c = str[i];
             if (c == *inFind)
             {
                 s32 s = 1;
@@ -1384,14 +1385,17 @@ namespace ncore
 
         s32 const   argc = args.argc();
         va_t const* argv = args.argv();
-        const u32   len  = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        crunes_t fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        const u32   len  = cprintf_(fmt, argv, argc);
 
         string_t::data_t*     data = alloc_data(len);
         string_t::instance_t* item = alloc_instance({0, len}, data);
 
-        runes_t str = get_runes(item, 0, 0);
-        sprintf_(str, get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        runes_t str(item->m_data->m_ptr, item->m_range.m_from, item->m_range.m_to, item->m_data->m_len);
+        sprintf_(str, fmt, argv, argc);
         item->m_range.m_to = str.m_utf16.m_end;
+        
+        m_item = item;
         return len;
     }
 
@@ -1399,11 +1403,12 @@ namespace ncore
     {
         s32 const   argc = args.argc();
         va_t const* argv = args.argv();
-        const s32   len  = cprintf_(get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        crunes_t fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        const s32   len  = cprintf_(fmt, argv, argc);
         resize_data(m_item->m_data, len);
-        runes_t str       = get_runes(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
+        runes_t str(m_item->m_data->m_ptr, m_item->m_range.m_from, m_item->m_range.m_to, m_item->m_data->m_len);
         str.m_ascii.m_str = str.m_ascii.m_end;
-        sprintf_(str, get_crunes(format.m_item, format.m_item->m_range.m_from, format.m_item->m_range.m_to), argv, argc);
+        sprintf_(str, fmt, argv, argc);
         m_item->m_range.m_to = str.m_utf16.m_end;
         return len;
     }
