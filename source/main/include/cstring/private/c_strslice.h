@@ -16,69 +16,87 @@ namespace ncore
     //==============================================================================
     struct strslice_t
     {
-        struct data;
+        struct data_t;
 
         strslice_t();
         strslice_t(alloc_t* allocator, s32 _count);
-        strslice_t(data* data, s32 from, s32 to);
+        strslice_t(data_t* data_t, s32 from, s32 to);
 
         static void alloc(strslice_t& slice_t, alloc_t* allocator, s32 _count);
         strslice_t  construct(s32 _count) const;
 
-        s32        size() const;
-        s32        refcnt() const;
+        s32        size() const { return mTo - mFrom; }
+        s32        refcnt() const { return mData->mRefCount; }
         strslice_t obtain() const;
         void       release();
 
         void resize(s32 count);
-        void insert(s32 count);
-        void remove(s32 count);
+        void insert(s32 at, s32 count);
+        void remove(s32 at, s32 count);
+        void replace(s32 from, s32 to, strslice_t const& slice_t);
 
         strslice_t view(s32 from, s32 to) const;
-        bool       split(s32 mid, strslice_t& left, strslice_t& right) const;
+        bool       split(s32 before, s32 after, strslice_t& left, strslice_t& right) const;
 
-        uchar32*       begin();
-        uchar32 const* begin() const;
-        uchar32*       end();
-        uchar32 const* end() const;
-        uchar32 const* eos() const;
+        inline uchar16*       begin() { return mData->mArray + mFrom; }
+        inline uchar16 const* begin() const { return mData->mArray + mFrom; }
+        inline uchar16*       end() { return mData->mArray + mTo; }
+        inline uchar16 const* end() const { return mData->mArray + mTo; }
+        inline uchar16 const* eos() const { return mData->mArray + mData->mArrayCap; }
 
-        uchar32*       at(s32 index);
-        uchar32 const* at(s32 index) const;
+        inline uchar16*       at(s32 index) { return mData->mArray + index; }
+        inline uchar16 const* at(s32 index) const { return mData->mArray + index; }
 
         // ----------------------------------------------------------------------------------------
         //   SLICE REFERENCE COUNTED DATA
         // ----------------------------------------------------------------------------------------
-        struct data
+        struct data_t
         {
-            data();
-            data(s32 _count);
-            data(u8* data, s32 _count);
+            data_t();
+            data_t(s32 _cap, alloc_t* allocator);
+            data_t(uchar16* array, s32 _cap, alloc_t* allocator);
 
-            static data sNull;
+            static data_t sNull;
 
-            data* incref();
-            data* incref() const;
-            data* decref();
+            inline data_t* incref()
+            {
+                ++mRefCount;
+                return this;
+            }
+            data_t* incref() const
+            {
+                ++mRefCount;
+                return const_cast<data_t*>(this);
+            }
+            data_t* decref();
 
-            // This function makes a new 'slice_data_t' with content copied from this
-            data* copy(s32 from, s32 to);
+            // This function makes a new 'data_t' with content copied from this
+            data_t* copy(s32 from, s32 to);
 
-            // These functions 'reallocate' this
-            data* resize(s32 from, s32 to);
-            data* insert(s32 at, s32 count);
-            data* remove(s32 at, s32 count);
+            // These functions resize the array and return the new array
+            data_t* resize(s32 count);
 
-            static data* alloc(alloc_t* allocator, s32& to_count);
+            // These functions insert/remove rune(s) at the specified place
+            void insert(s32 at, s32 count);
+            void remove(s32 at, s32 count);
+            void replace(s32 from, s32 to, strslice_t const& slice_t);
 
-            mutable s32 mRefCount;
-            s32         mItemCount; /// Count of total items
-            alloc_t*    mAllocator;
-            uchar32*    mData;
+            inline uchar16*       at(s32 index) { return mArray + index; }
+            inline uchar16 const* at(s32 index) const { return mArray + index; }
+
+            static data_t* alloc(alloc_t* allocator, s32& to_count);
+
+            mutable s32 mRefCount;   // Reference count
+            s32         mArrayCap;   // Capacity of the array, will always point at a null-terminator
+            alloc_t*    mAllocator;  // Allocator used to allocate the uchar16 data_t
+            uchar16*    mArray;      // Array of runes (UCS-2, UTF-16)
         };
 
-        data* mData;
+        s32      mFrom;       // View window
+        s32      mTo;         // View window
+        data_t*  mData;       // Reference counted data_t
+        alloc_t* mAllocator;  // Allocator used to allocate strslice_t and data_t
     };
-} // namespace ncore
+}  // namespace ncore
 
 #endif

@@ -282,57 +282,33 @@ namespace ncore
     {
         if (_find->is_empty() == false)
         {
-            s32 const strfrom  = str->m_range.m_from;
-            s32 const strto    = str->m_range.m_to;
-            s32 const strsize  = str->m_range.m_to - str->m_range.m_from;
-            s32 const findfrom = _find->m_range.m_from;
-            s32 const findto   = _find->m_range.m_to;
-            u32 const findsize = _find->m_range.m_to - _find->m_range.m_from;
+            s32 const      strsize  = str->m_range.size();
+            u32 const      findsize = _find->m_range.size();
+            uchar16 const* strdata  = str->m_data->m_ptr + str->m_range.m_from;
+            uchar16 const* finddata = _find->m_data->m_ptr + _find->m_range.m_from;
 
-            s32            i        = 0;
-            s32            r        = -1;
-            uchar16 const* strdata  = str->m_data->m_ptr + strfrom;
-            uchar16 const* finddata = _find->m_data->m_ptr + findfrom;
+            u32 i = 0;
             while (i < strsize)
             {
-                uchar32 const c = strdata[i];
-                if (c == finddata[0])
+                if (strdata[i] == finddata[0])
                 {
-                    s32 j = 1;
+                    u32 j = 1;
                     while (j < findsize)
                     {
                         if (strdata[i + j] != finddata[j])
-                        {
-                            break;
-                        }
+                            goto continue_search;
                         j++;
                     }
-                    if (j == findsize)
-                    {
-                        r = i;
-                        break;
-                    }
+                    return {(u32)i, (u32)i + findsize};
                 }
+            continue_search:
                 i++;
             }
-
-            if (r >= 0)
-                return {(u32)r, (u32)r + findsize};
         }
         return {0, 0};
     }
 
-    static void find_remove(string_t::instance_t* _str, const string_t::instance_t* _find)
-    {
-        string_t::instance_t* strvw = alloc_instance({0, 0}, _str->m_data);
-        string_t::range_t     sel   = find(strvw, _find);
-        if (sel.is_empty() == false)
-        {
-            string_remove(_str, sel);
-        }
-    }
-
-    static void find_replace(string_t::instance_t* str, const string_t::instance_t* _find, const string_t::instance_t* replace)
+    static s32 s_find_replace(string_t::instance_t* str, const string_t::instance_t* _find, const string_t::instance_t* replace)
     {
         string_t::range_t remove = find(str, _find);
         if (remove.is_empty() == false)
@@ -369,7 +345,9 @@ namespace ncore
             {
                 pdst[dst++] = replace_data[src++];
             }
+            return 1;
         }
+        return 0;
     }
 
     static bool contains(const string_t::instance_t* str, uchar16 find)
@@ -1430,6 +1408,7 @@ namespace ncore
     {
         for (s32 i = 0; i < ntimes; i++)
         {
+            // @TODO Find the first occurrence of @find in @str and replace it with @replace
             string_t sel = find(_find);
             if (sel.is_empty())
                 return i + 1;
@@ -1442,12 +1421,8 @@ namespace ncore
     {
         for (s32 i = 0; i < ntimes; i++)
         {
-            string_t::range_t v = string_functions_t::selectUntil(*this, find);
-            if (v.is_empty())
+            if (s_find_replace(m_item, find.m_item, replace.m_item) == 0)
                 return i + 1;
-            v.m_from = v.m_to;
-            v.m_to   = v.m_to + find.size();
-            string_insert(m_item, v, replace.m_item);
         }
         return ntimes;
     }
