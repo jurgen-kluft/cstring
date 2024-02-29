@@ -23,7 +23,6 @@ namespace ncore
         struct range_t;
 
         string_t();
-        string_t();
         string_t(const char* str);
         string_t(s32 _len);
         string_t(const string_t& other);
@@ -109,7 +108,7 @@ namespace ncore
         void insert_before(const string_t& pos, const string_t& insert);
         void insert_after(const string_t& pos, const string_t& insert);
 
-        void remove(uchar32 c, s32 ntimes = 0);
+        s32 remove(uchar32 c, s32 ntimes = 0);
         s32  remove_any(const string_t& any, s32 ntimes = 0);
         s32  replace_any(const string_t& any, uchar32 with, s32 ntimes = 0);
 
@@ -135,6 +134,7 @@ namespace ncore
         bool selectBeforeAndAfterLast(const string_t& str, string_t& outBefore, string_t& outAfter) const;
 
         void concatenate(const string_t& con);
+        void concatenate(const string_t& strA, const string_t& strB);
         void concatenate_repeat(const string_t& con, s32 ntimes);
 
         // protected:

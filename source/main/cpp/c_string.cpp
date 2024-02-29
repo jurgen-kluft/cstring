@@ -21,8 +21,8 @@ namespace ncore
         static void init(alloc_t* object_alloc = nullptr, alloc_t* string_alloc = nullptr);
     };
 
-    static alloc_t* s_object_alloc;  // for instance_t and data_t
-    static alloc_t* s_string_alloc;  // for the actual string data
+    alloc_t* string_memory_t::s_object_alloc = nullptr;  // for instance_t and data_t
+    alloc_t* string_memory_t::s_string_alloc = nullptr;  // for the actual string data
 
     void string_memory_t::init(alloc_t* object_alloc, alloc_t* string_alloc)
     {
@@ -191,12 +191,12 @@ namespace ncore
         s32 const from = view.m_from + move;
 
         // Check if the move doesn't result in an out-of-bounds
-        if (from < str->m_range.m_from, str->m_range.m_from)
+        if (from < str->m_range.m_from || from > str->m_range.m_to)
             return false;
 
         // Check if the movement doesn't invalidate this view
         s32 const to = view.m_to + move;
-        if (to > str->m_range.m_from, str->m_range.m_to)
+        if (to < str->m_range.m_from || to > str->m_range.m_to)
             return false;
 
         // Movement is ok, new view is valid
@@ -221,6 +221,11 @@ namespace ncore
 
     // forward declare
     static void s_adjust_active_views(string_t::instance_t* list, s32 op_code, s32 op_range_from, s32 op_range_to);
+
+    static const s32 REMOVAL   = 0;
+    static const s32 INSERTION = 1;
+    static const s32 CLEARED   = 2;
+    static const s32 RELEASED  = 3;
 
     static void s_string_insert(string_t::instance_t* str, string_t::range_t location, string_t::instance_t const* insert)
     {
@@ -342,7 +347,7 @@ namespace ncore
         return 0;
     }
 
-    static bool contains(const string_t::instance_t* str, uchar16 find)
+    static bool s_contains(const string_t::instance_t* str, uchar16 find)
     {
         s32            len     = str->size();
         s32            i       = 0;
@@ -370,7 +375,7 @@ namespace ncore
         while (i < strsize)
         {
             uchar16 const c = strdata[i];
-            if (contains(any, c))
+            if (s_contains(any, c))
             {
                 if (r == -1)
                     r = i;
@@ -479,11 +484,7 @@ namespace ncore
     // Removal of text from a string may invalidate views that intersect with the range
     // of text that is removed.
     // Clear and Reset will invalidate all views on the string.
-    static const s32 REMOVAL   = 0;
-    static const s32 INSERTION = 1;
-    static const s32 CLEARED   = 2;
-    static const s32 RELEASED  = 3;
-    static void      s_adjust_active_view(string_t::instance_t* v, s32 op_code, s32 rhs_from, s32 rhs_to)
+    static void s_adjust_active_view(string_t::instance_t* v, s32 op_code, s32 rhs_from, s32 rhs_to)
     {
         s32 lhs_from = v->m_range.m_from;
         s32 lhs_to   = v->m_range.m_to;
@@ -674,20 +675,7 @@ namespace ncore
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
 
-    string_t string_t::clone() const
-    {
-        if (m_item->size() > 0)
-        {
-            string_t::data_t*     data = s_unique_data(m_item->m_data, m_item->m_range.m_from, m_item->m_range.m_to);
-            string_t::instance_t* item = s_alloc_instance({0, data->m_len}, data);
-            return string_t(item);
-        }
-        return string_t();
-    }
-
     string_t::string_t() { m_item = s_get_default_instance(); }
-
-    string_t::string_t(string_t::instance_t* item) { m_item = item; }
 
     string_t::string_t(const char* str)
     {
@@ -858,6 +846,22 @@ namespace ncore
         return *this;
     }
 
+    string_t& string_t::operator+=(const string_t& other)
+    {
+        if (other.size() > 0)
+        {
+            s32 const len = size() + other.size();
+            s_resize_data(m_item->m_data, len);
+
+            uchar16 const* src = other.m_item->m_data->m_ptr + other.m_item->m_range.m_from;
+            uchar16*       dst = m_item->m_data->m_ptr + m_item->m_range.m_to;
+            for (s32 i = 0; i < other.size(); i++)
+                *dst++ = *src++;
+            *dst = '\0';
+        }
+        return *this;
+    }
+
     bool string_t::operator==(const string_t& other) const
     {
         if (size() != other.size())
@@ -966,7 +970,9 @@ namespace ncore
 
         static string_t::range_t selectUntil(const string_t& str, const string_t& find)
         {
-            string_t::range_t v = {0, find.size()};
+            string_t::range_t v = {0, 0};
+            v.m_to              = find.size();
+
             while (!v.is_empty())
             {
                 if (string_functions_t::isEqual(str, v, find))
@@ -998,7 +1004,10 @@ namespace ncore
 
         static string_t::range_t selectUntilLast(const string_t& str, const string_t& find)
         {
-            string_t::range_t v = {str.size() - find.size(), str.size()};
+            string_t::range_t v = {0, 0};
+            v.m_from            = str.size() - find.size();
+            v.m_to              = str.size();
+
             while (!v.is_empty())
             {
                 if (isEqual(str, v, find))
@@ -1216,7 +1225,9 @@ namespace ncore
 
     string_t string_t::find(const string_t& find) const
     {
-        string_t::range_t v = {0, find.size()};
+        string_t::range_t v = {0, 0};
+        v.m_to              = find.size();
+
         while (!v.is_empty())
         {
             if (string_functions_t::isEqual(*this, v, find))
@@ -1233,7 +1244,10 @@ namespace ncore
 
     string_t string_t::findLast(const string_t& find) const
     {
-        string_t::range_t v = {size() - find.size(), size()};
+        string_t::range_t v = {0, 0};
+        v.m_from            = size() - find.size();
+        v.m_to              = size();
+
         while (!v.is_empty())
         {
             if (string_functions_t::isEqual(*this, v, find))
@@ -1301,7 +1315,9 @@ namespace ncore
 
     bool string_t::contains(const string_t& contains) const
     {
-        string_t::range_t v = {0, contains.size()};
+        string_t::range_t v = {0, 0};
+        v.m_to              = contains.size();
+
         while (!v.is_empty())
         {
             if (string_functions_t::isEqual(*this, v, contains))
@@ -1328,16 +1344,57 @@ namespace ncore
         return false;
     }
 
+    void string_t::concatenate(const string_t& con)
+    {
+        s32 const len = size() + con.size();
+        s_resize_data(m_item->m_data, len);
+
+        // manually append the incoming string to the end of the current string
+        uchar16 const* src = con.m_item->m_data->m_ptr + con.m_item->m_range.m_from;
+        uchar16*       dst = m_item->m_data->m_ptr + m_item->m_range.m_to;
+        for (s32 i = 0; i < con.size(); i++)
+            *dst++ = *src++;
+        *dst = '\0';
+
+        m_item->m_range.m_to = len;
+    }
+
+    void string_t::concatenate(const string_t& strA, const string_t& strB)
+    {
+        s32 const len = size() + strA.size() + strB.size();
+        s_resize_data(m_item->m_data, len);
+
+        // manually append the incoming strings to the end of the current string
+        uchar16*       dst = m_item->m_data->m_ptr + m_item->m_range.m_to;
+
+        uchar16 const* srcA = strA.m_item->m_data->m_ptr + strA.m_item->m_range.m_from;
+        for (s32 i = 0; i < strA.size(); i++)
+            *dst++ = *srcA++;
+
+        uchar16 const* srcB = strB.m_item->m_data->m_ptr + strB.m_item->m_range.m_from;
+        for (s32 i = 0; i < strB.size(); i++)
+            *dst++ = *srcB++;
+
+        *dst = '\0';
+
+        m_item->m_range.m_to = len;
+    }
+
+
     void string_t::concatenate_repeat(const string_t& con, s32 ntimes)
     {
-        s32 const len = size() + (con.size() * ntimes) + 1;
+        s32 const len = size() + (con.size() * ntimes);
+        s_resize_data(m_item->m_data, len);
 
-        // @TODO: resize the string to the new size
-
+        uchar16* dst = m_item->m_data->m_ptr + m_item->m_range.m_to;
         for (s32 i = 0; i < ntimes; ++i)
         {
-            concatenate(con);
+            uchar16 const* src = con.m_item->m_data->m_ptr + con.m_item->m_range.m_from;
+            for (s32 i = 0; i < con.size(); i++)
+                *dst++ = *src++;
         }
+        *dst = '\0';
+        m_item->m_range.m_to = len;
     }
 
     s32 string_t::format(const string_t& format, const va_list_t& args)
@@ -1398,7 +1455,9 @@ namespace ncore
 
     s32 string_t::find_remove(const string_t& _find, s32 ntimes)
     {
-        string_t::range_t v = {0, _find.size()};
+        string_t::range_t v = {0, 0};
+        v.m_to              = _find.size();
+
         for (s32 i = 0; i < ntimes; i++)
         {
             while (!v.is_empty())
@@ -1433,40 +1492,90 @@ namespace ncore
         return ntimes;
     }
 
+    s32 string_t::remove(uchar32 c, s32 ntimes)
+    {
+        u32 n = ntimes;
+        if (n == 0)
+            n = size();
+
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+
+        u32 i = 0;
+        u32 p = 0;
+        while (i < size())
+        {
+            if (n > 0 && strdata[i] == c)
+            {
+                --n;
+                ++i;
+                continue;
+            }
+            if (p < i)
+            {
+                strdata[p] = strdata[i];
+            }
+            ++p;
+            ++i;
+        }
+        if (p < i)
+            strdata[p] = '\0';
+
+        // adjust the 'to' of the string
+        m_item->m_range.m_to -= ntimes - n;
+
+        return ntimes - n;
+    }
+
     s32 string_t::remove_any(const string_t& any, s32 ntimes)
     {
-        if (ntimes == 0)
-            ntimes = size();
+        u32 n = ntimes;
+        if (n == 0)
+            n = size();
 
-        uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (u32 i = 0; i < size() && ntimes > 0;)
+        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+
+        u32 i = 0;
+        u32 p = 0;
+        while (i < size())
         {
-            u32 const begin = i;
-            for (; i < size() && ntimes > 0; ++i, --ntimes)
+            if (n > 0 && any.contains(strdata[i]))
             {
-                uchar32 const d = strdata[i];
-                if (!any.contains(d))
-                    break;
+                --n;
+                ++i;
+                continue;
             }
-            if (i > begin)
-                string_remove(m_item, {begin, i});
+            if (p < i)
+            {
+                strdata[p] = strdata[i];
+            }
+            ++p;
+            ++i;
         }
-        return ntimes;
+        if (p < i)
+            strdata[p] = '\0';
+
+        // adjust the 'to' of the string
+        m_item->m_range.m_to -= ntimes - n;
+
+        return ntimes - n;
     }
 
     s32 string_t::replace_any(const string_t& any, uchar32 with, s32 ntimes)
     {
         // Replace any of the characters in @charset from @str with character @with
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0, j = 0; i < size() && j < ntimes; ++i)
+        s32      n       = ntimes == 0 ? size() : ntimes;
+        for (s32 i = 0; i < size(); ++i)
         {
             uchar32 const c = strdata[i];
             if (any.contains(c))
             {
-                ++j;
+                if (--n == 0)
+                    break;
                 strdata[i] = with;
             }
         }
+        return n;
     }
 
     void string_t::toUpper()
@@ -1608,18 +1717,18 @@ namespace ncore
         }
     }
 
-    void string_t::trim(uchar32 r)
+    void string_t::trim(uchar32 c)
     {
-        trimLeft(r);
-        trimRight(r);
+        trimLeft(c);
+        trimRight(c);
     }
 
-    void string_t::trimLeft(uchar32 r)
+    void string_t::trimLeft(uchar32 c)
     {
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = strdata[i];
+            uchar32 const r = strdata[i];
             if (c != r)
             {
                 if (i > 0)
@@ -1631,13 +1740,13 @@ namespace ncore
         }
     }
 
-    void string_t::trimRight(uchar32 r)
+    void string_t::trimRight(uchar32 c)
     {
         s32 const last    = size() - 1;
         uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 c = strdata[last - i];
+            uchar32 const r = strdata[last - i];
             if (c != r)
             {
                 if (i > 0)
