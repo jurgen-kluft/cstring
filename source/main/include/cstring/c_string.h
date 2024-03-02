@@ -32,10 +32,10 @@ namespace ncore
         s32 format(const string_t& format, const va_t* argv, s32 argc);
         s32 formatAdd(const string_t& format, const va_t* argv, s32 argc);
 
-        s32      cap() const;
-        s32      size() const;
-        bool     is_slice() const;
-        bool     is_empty() const;
+        s32  cap() const;
+        s32  size() const;
+        bool is_slice() const;
+        bool is_empty() const;
 
         void     clear();
         string_t slice() const;
@@ -82,17 +82,21 @@ namespace ncore
         string_t select(u32 from, u32 to) const;
         string_t selectUntil(uchar32 find) const;
         string_t selectUntil(const string_t& find) const;
-
         string_t selectUntilLast(uchar32 find) const;
         string_t selectUntilLast(const string_t& find) const;
-
         string_t selectUntilIncluded(uchar32 find) const;
         string_t selectUntilIncluded(const string_t& selection) const;
-
         string_t selectUntilEndExcludeSelection(const string_t& selection) const;
         string_t selectUntilEndIncludeSelection(const string_t& selection) const;
 
-        void removeSelection(const string_t& selection);
+        bool selectBeforeAndAfter(const string_t& selection, string_t& outBefore, string_t& outAfter) const;
+        bool findCharSelectBeforeAndAfter(uchar32 find, string_t& outBefore, string_t& outAfter) const;
+        bool findStrSelectBeforeAndAfter(const string_t& find, string_t& outBefore, string_t& outAfter) const;
+        bool findCharLastSelectBeforeAndAfter(uchar32 find, string_t& outBefore, string_t& outAfter) const;
+        bool findStrLastSelectBeforeAndAfter(const string_t& find, string_t& outBefore, string_t& outAfter) const;
+        void insertReplaceSelection(const string_t& selection, const string_t& insert);
+        void insertBeforeSelection(const string_t& selection, const string_t& insert);
+        void insertAfterSelection(const string_t& selection, const string_t& insert);
 
         // Search/Replace
         string_t find(uchar32 find) const;
@@ -104,13 +108,10 @@ namespace ncore
         s32      findRemove(const string_t& find, s32 ntimes = 1);
         s32      findReplace(const string_t& find, const string_t& replace, s32 ntimes = 1);
 
-        void insertReplace(const string_t& pos, const string_t& insert);
-        void insertBefore(const string_t& pos, const string_t& insert);
-        void insertAfter(const string_t& pos, const string_t& insert);
-
-        s32 remove(uchar32 c, s32 ntimes = 0);
-        s32 removeAny(const string_t& any, s32 ntimes = 0);
-        s32 replaceAny(const string_t& any, uchar32 with, s32 ntimes = 0);
+        void removeSelection(const string_t& selection);
+        s32  removeChar(uchar32 c, s32 ntimes = 0);
+        s32  removeAnyChar(const string_t& any, s32 ntimes = 0);
+        s32  replaceAnyChar(const string_t& any, uchar32 with, s32 ntimes = 0);
 
         // Trimming
         void trim();
@@ -127,12 +128,6 @@ namespace ncore
         void trimDelimiters(uchar32 left, uchar32 right);
 
         void reverse();
-
-        bool selectBeforeAndAfter(const string_t& selection, string_t& outBefore, string_t& outAfter) const;
-        bool findCharSelectBeforeAndAfter(uchar32 find, string_t& outBefore, string_t& outAfter) const;
-        bool findStrSelectBeforeAndAfter(const string_t& find, string_t& outBefore, string_t& outAfter) const;
-        bool findCharLastSelectBeforeAndAfter(uchar32 find, string_t& outBefore, string_t& outAfter) const;
-        bool findStrLastSelectBeforeAndAfter(const string_t& find, string_t& outBefore, string_t& outAfter) const;
 
         void concatenate(const string_t& con);
         void concatenate(const string_t& strA, const string_t& strB);

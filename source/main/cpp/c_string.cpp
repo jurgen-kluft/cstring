@@ -889,8 +889,8 @@ namespace ncore
     string_t string_t::operator()(s32 _from, s32 _to) const
     {
         math::sort(_from, _to);
-        const s32 from = math::min(m_item->m_range.m_from + _from, m_item->m_range.m_to);
-        const s32 to   = math::min(m_item->m_range.m_from + _to, m_item->m_range.m_to);
+        const u32 from = math::min(m_item->m_range.m_from + _from, m_item->m_range.m_to);
+        const u32 to   = math::min(m_item->m_range.m_from + _to, m_item->m_range.m_to);
         return string_t(m_item, {from, to});
     }
 
@@ -1339,22 +1339,22 @@ namespace ncore
         return len;
     }
 
-    void string_t::insertReplace(const string_t& pos, const string_t& insert)
+    void string_t::insertReplaceSelection(const string_t& selection, const string_t& insert)
     {
-        string_t::range_t range = pos.m_item->m_range;
+        string_t::range_t range = selection.m_item->m_range;
         s_string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::insertBefore(const string_t& pos, const string_t& insert)
+    void string_t::insertBeforeSelection(const string_t& selection, const string_t& insert)
     {
-        string_t::range_t range = string_functions_t::selectAfterLocal(m_item, pos.m_item);
+        string_t::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
         range.m_from            = range.m_to;
         s_string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::insertAfter(const string_t& pos, const string_t& insert)
+    void string_t::insertAfterSelection(const string_t& selection, const string_t& insert)
     {
-        string_t::range_t range = string_functions_t::selectAfterLocal(m_item, pos.m_item);
+        string_t::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
         range.m_from            = range.m_to;
         s_string_insert(m_item, range, insert.m_item);
     }
@@ -1400,7 +1400,7 @@ namespace ncore
         return ntimes;
     }
 
-    s32 string_t::remove(uchar32 c, s32 ntimes)
+    s32 string_t::removeChar(uchar32 c, s32 ntimes)
     {
         u32 n = ntimes;
         if (n == 0)
@@ -1434,7 +1434,7 @@ namespace ncore
         return ntimes - n;
     }
 
-    s32 string_t::removeAny(const string_t& any, s32 ntimes)
+    s32 string_t::removeAnyChar(const string_t& any, s32 ntimes)
     {
         u32 n = ntimes;
         if (n == 0)
@@ -1468,7 +1468,7 @@ namespace ncore
         return ntimes - n;
     }
 
-    s32 string_t::replaceAny(const string_t& any, uchar32 with, s32 ntimes)
+    s32 string_t::replaceAnyChar(const string_t& any, uchar32 with, s32 ntimes)
     {
         // Replace any of the characters in @charset from @str with character @with
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;

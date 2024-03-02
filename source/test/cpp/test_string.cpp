@@ -31,7 +31,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             CHECK_EQUAL(str.size(), 0);
             CHECK_TRUE(str[0] == '\0');
 
-            string_t v1 = str(2);
+            string_t v1 = str(0,2);
             CHECK_TRUE(v1.is_empty());
             CHECK_EQUAL(v1.size(), 0);
             CHECK_TRUE(v1[0] == '\0');
@@ -218,7 +218,7 @@ UNITTEST_SUITE_BEGIN(test_string)
 
             // Now change the string so that it will resize
             string_t m("modified ");
-            str1.insert_before(v1, m);
+            str1.insertBeforeSelection(v1, m);
             CHECK_EQUAL(35 + 9, str1.size());
 
             CHECK_EQUAL(4, v1.size());
@@ -252,7 +252,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             // Now change the string so that it will resize
             string_t strr(" to remove something from");
             CHECK_EQUAL(25, strr.size());
-            str1.find_remove(strr);
+            str1.findRemove(strr);
             CHECK_EQUAL(37 - 25, str1.size());
 
             CHECK_TRUE(v1.is_empty());
@@ -279,7 +279,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             // Now change the string so that it will resize (smaller)
             string_t strr("fix");
             CHECK_EQUAL(3, strr.size());
-            thestr.find_replace(v1, strr);
+            thestr.findReplace(v1, strr);
             CHECK_EQUAL(35 + (3 - 6), thestr.size());
 
             CHECK_EQUAL(v2.size(), 2);
@@ -291,7 +291,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             // Now change the string so that it will resize (larger)
             string_t strr2("rectify");
             CHECK_EQUAL(7, strr2.size());
-            thestr.find_replace(strr, strr2);
+            thestr.findReplace(strr, strr2);
             CHECK_EQUAL(32 + (7 - 3), thestr.size());
 
             result = ("This is text to rectify something in");
@@ -312,7 +312,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             // Now change the string so that it will resize
             string_t strr("#$&");
             CHECK_EQUAL(3, strr.size());
-            str1.remove_any(strr);
+            str1.removeAnyChar(strr);
             CHECK_EQUAL(38 - 3, str1.size());
 
             CHECK_EQUAL(5, thing.size());
@@ -338,7 +338,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             // Now change the string so that it will resize
             string_t strr("#$&");
             CHECK_EQUAL(3, strr.size());
-            str1.remove_any(strr);
+            str1.removeAnyChar(strr);
             CHECK_EQUAL(41 - 6, str1.size());
 
             CHECK_EQUAL(5, thing.size());
