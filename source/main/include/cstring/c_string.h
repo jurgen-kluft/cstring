@@ -34,14 +34,13 @@ namespace ncore
 
         s32      cap() const;
         s32      size() const;
-        string_t clone() const;
         bool     is_slice() const;
         bool     is_empty() const;
 
         void     clear();
         string_t slice() const;
+        string_t clone() const;
 
-        string_t operator()(s32 from) const;
         string_t operator()(s32 from, s32 to) const;
         uchar32  operator[](s32 index) const;
 
@@ -109,8 +108,8 @@ namespace ncore
         void insert_after(const string_t& pos, const string_t& insert);
 
         s32 remove(uchar32 c, s32 ntimes = 0);
-        s32  remove_any(const string_t& any, s32 ntimes = 0);
-        s32  replace_any(const string_t& any, uchar32 with, s32 ntimes = 0);
+        s32 remove_any(const string_t& any, s32 ntimes = 0);
+        s32 replace_any(const string_t& any, uchar32 with, s32 ntimes = 0);
 
         // Trimming
         void trim();
