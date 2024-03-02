@@ -719,15 +719,15 @@ namespace ncore
             return 0;
         }
 
-        static bool isEqual(const string_t& lhs, string_t::range_t const& lhsview, const string_t& rhs)
+        static bool isEqual(const string_t::instance_t* lhs, string_t::range_t const& lhsview, const string_t::instance_t* rhs)
         {
-            return compare(lhs.m_item, lhsview, rhs.m_item) == 0;
+            return compare(lhs, lhsview, rhs) == 0;
         }
 
-        static string_t::range_t selectUntil(const string_t& str, uchar32 find)
+        static string_t::range_t findCharUntil(const string_t::instance_t* str, uchar32 find)
         {
-            uchar16 const* strdata = str.m_item->m_data->m_ptr + str.m_item->m_range.m_from;
-            for (u32 i = 0; i < str.size(); i++)
+            uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
+            for (u32 i = 0; i < str->size(); i++)
             {
                 uchar32 const c = strdata[i];
                 if (c == find)
@@ -738,10 +738,10 @@ namespace ncore
             return {0, 0};
         }
 
-        static string_t::range_t selectUntil(const string_t& str, const string_t& find)
+        static string_t::range_t findStrUntil(const string_t::instance_t* str, const string_t::instance_t* find)
         {
             string_t::range_t v = {0, 0};
-            v.m_to              = find.size();
+            v.m_to              = find->size();
 
             while (!v.is_empty())
             {
@@ -752,31 +752,31 @@ namespace ncore
                     // a string view that exist before view @v.
                     return {0, v.m_from};
                 }
-                if (!s_move_view(str.m_item, v, 1))
+                if (!s_move_view(str, v, 1))
                     break;
             }
             return {0, 0};
         }
 
-        static string_t::range_t selectUntilLast(const string_t& str, uchar32 find)
+        static string_t::range_t findCharUntilLast(const string_t::instance_t* str, uchar32 find)
         {
-            uchar16 const* strdata = str.m_item->m_data->m_ptr + str.m_item->m_range.m_from;
-            for (u32 i = str.size() - 1; i >= 0; --i)
+            uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
+            for (u32 i = str->size() - 1; i >= 0; --i)
             {
                 uchar32 const c = strdata[i];
                 if (c == find)
                 {
-                    return {str.m_item->m_range.m_from, str.m_item->m_range.m_from + i};
+                    return {str->m_range.m_from, str->m_range.m_from + i};
                 }
             }
             return {0, 0};
         }
 
-        static string_t::range_t selectUntilLast(const string_t& str, const string_t& find)
+        static string_t::range_t findStrUntilLast(const string_t::instance_t* str, const string_t::instance_t* find)
         {
             string_t::range_t v = {0, 0};
-            v.m_from            = str.size() - find.size();
-            v.m_to              = str.size();
+            v.m_from            = str->size() - find->size();
+            v.m_to              = str->size();
 
             while (!v.is_empty())
             {
@@ -784,7 +784,7 @@ namespace ncore
                 {
                     return {0, v.m_from};
                 }
-                if (!s_move_view(str.m_item, v, -1))
+                if (!s_move_view(str, v, -1))
                     break;
             }
             return {0, 0};
@@ -951,30 +951,18 @@ namespace ncore
 
     string_t& string_t::operator+=(const string_t& other)
     {
-        if (other.size() > 0)
-        {
-            s32 const len = size() + other.size();
-            s_resize_data(m_item->m_data, len);
-
-            uchar16 const* src = other.m_item->m_data->m_ptr + other.m_item->m_range.m_from;
-            uchar16 const* end = src + other.size();
-            uchar16*       dst = m_item->m_data->m_ptr + m_item->m_range.m_to;
-            while (src < end)
-                *dst++ = *src++;
-            *dst                 = '\0';
-            m_item->m_range.m_to = len;
-        }
+        concatenate(other);
         return *this;
     }
 
     bool string_t::operator==(const string_t& other) const
     {
-        return string_functions_t::isEqual(*this, m_item->m_range, other);
+        return string_functions_t::isEqual(m_item, m_item->m_range, other.m_item);
     }
 
     bool string_t::operator!=(const string_t& other) const
     {
-        return !string_functions_t::isEqual(*this, m_item->m_range, other);
+        return !string_functions_t::isEqual(m_item, m_item->m_range, other.m_item);
     }
 
     void string_t::release() { m_item = m_item->release(); }
@@ -984,8 +972,7 @@ namespace ncore
     //------------------------------------------------------------------------------
     string_t string_t::select(u32 from, u32 to) const
     {
-        string_t::instance_t* item = m_item->clone_full();
-        // TODO: clamp from and to to the size of the string
+        string_t::instance_t* item = m_item->clone_slice();
         item->m_range.m_from = m_item->m_range.m_from + from;
         item->m_range.m_to   = m_item->m_range.m_from + to;
         return string_t(item);
@@ -993,31 +980,15 @@ namespace ncore
 
     string_t string_t::selectUntil(uchar32 find) const
     {
-        string_t::range_t view = string_functions_t::selectUntil(*this, find);
-        if (view.is_empty())
-            return string_t(s_get_default_instance());
-        return select(0, view.m_to);
-    }
-
-    string_t string_t::selectUntil(const string_t& find) const
-    {
-        string_t::range_t view = string_functions_t::selectUntil(*this, find);
+        string_t::range_t view = string_functions_t::findCharUntil(m_item, find);
         if (view.is_empty())
             return string_t(s_get_default_instance());
         return select(view.m_from, view.m_to);
     }
 
-    string_t string_t::selectUntilLast(uchar32 find) const
+    string_t string_t::selectUntil(const string_t& selection) const
     {
-        string_t::range_t view = string_functions_t::selectUntilLast(*this, find);
-        if (view.is_empty())
-            return string_t(s_get_default_instance());
-        return select(view.m_from, view.m_to);
-    }
-
-    string_t string_t::selectUntilLast(const string_t& find) const
-    {
-        string_t::range_t view = string_functions_t::selectUntilLast(*this, find);
+        string_t::range_t view = string_functions_t::selectBeforeLocal(m_item, selection.m_item);
         if (view.is_empty())
             return string_t(s_get_default_instance());
         return select(view.m_from, view.m_to);
@@ -1025,7 +996,7 @@ namespace ncore
 
     string_t string_t::selectUntilIncluded(const string_t& find) const
     {
-        string_t::range_t view = string_functions_t::selectUntil(*this, find);
+        string_t::range_t view = string_functions_t::selectBeforeIncludedLocal(m_item, find.m_item);
         if (view.is_empty())
             return string_t(s_get_default_instance());
         return select(view.m_from, view.m_to + find.size());
@@ -1188,7 +1159,7 @@ namespace ncore
 
         while (!v.is_empty())
         {
-            if (string_functions_t::isEqual(*this, v, find))
+            if (string_functions_t::isEqual(m_item, v, find.m_item))
             {
                 // So here we have a view with the size of the @find string on
                 // string @str that matches the string @find.
@@ -1208,7 +1179,7 @@ namespace ncore
 
         while (!v.is_empty())
         {
-            if (string_functions_t::isEqual(*this, v, find))
+            if (string_functions_t::isEqual(m_item, v, find.m_item))
             {
                 // So here we have a view with the size of the @find string on
                 // string @str that matches the string @find.
@@ -1249,8 +1220,7 @@ namespace ncore
     }
 
     s32 string_t::compare(const string_t& rhs) const { return string_functions_t::compare(m_item, m_item->m_range, rhs.m_item); }
-
-    bool string_t::isEqual(const string_t& rhs) const { return compare(rhs) == 0; }
+    bool string_t::isEqual(const string_t& rhs) const { return string_functions_t::compare(m_item, m_item->m_range, rhs.m_item) == 0; }
 
     bool string_t::contains(const string_t& contains) const
     {
@@ -1259,7 +1229,7 @@ namespace ncore
 
         while (!v.is_empty())
         {
-            if (string_functions_t::isEqual(*this, v, contains))
+            if (string_functions_t::isEqual(m_item, v, contains.m_item))
             {
                 return true;
             }
@@ -1369,29 +1339,29 @@ namespace ncore
         return len;
     }
 
-    void string_t::insert_replace(const string_t& pos, const string_t& insert)
+    void string_t::insertReplace(const string_t& pos, const string_t& insert)
     {
         string_t::range_t range = pos.m_item->m_range;
         s_string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::insert_before(const string_t& pos, const string_t& insert)
+    void string_t::insertBefore(const string_t& pos, const string_t& insert)
     {
         string_t::range_t range = string_functions_t::selectAfterLocal(m_item, pos.m_item);
         range.m_from            = range.m_to;
         s_string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::insert_after(const string_t& pos, const string_t& insert)
+    void string_t::insertAfter(const string_t& pos, const string_t& insert)
     {
         string_t::range_t range = string_functions_t::selectAfterLocal(m_item, pos.m_item);
         range.m_from            = range.m_to;
         s_string_insert(m_item, range, insert.m_item);
     }
 
-    void string_t::remove_selection(const string_t& selection) { string_remove(m_item, selection.m_item->m_range); }
+    void string_t::removeSelection(const string_t& selection) { string_remove(m_item, selection.m_item->m_range); }
 
-    s32 string_t::find_remove(const string_t& find, s32 ntimes)
+    s32 string_t::findRemove(const string_t& find, s32 ntimes)
     {
         string_t::range_t v = {0, 0};
         v.m_to              = find.size();
@@ -1400,7 +1370,7 @@ namespace ncore
         {
             while (!v.is_empty())
             {
-                if (string_functions_t::isEqual(*this, v, find))
+                if (string_functions_t::isEqual(m_item, v, find.m_item))
                 {
                     // So here we have a view with the size of the @find string on
                     // string @str that matches the string @find.
@@ -1420,7 +1390,7 @@ namespace ncore
         return ntimes;
     }
 
-    s32 string_t::find_replace(const string_t& find, const string_t& replace, s32 ntimes)
+    s32 string_t::findReplace(const string_t& find, const string_t& replace, s32 ntimes)
     {
         for (s32 i = 0; i < ntimes; i++)
         {
@@ -1464,7 +1434,7 @@ namespace ncore
         return ntimes - n;
     }
 
-    s32 string_t::remove_any(const string_t& any, s32 ntimes)
+    s32 string_t::removeAny(const string_t& any, s32 ntimes)
     {
         u32 n = ntimes;
         if (n == 0)
@@ -1498,7 +1468,7 @@ namespace ncore
         return ntimes - n;
     }
 
-    s32 string_t::replace_any(const string_t& any, uchar32 with, s32 ntimes)
+    s32 string_t::replaceAny(const string_t& any, uchar32 with, s32 ntimes)
     {
         // Replace any of the characters in @charset from @str with character @with
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
@@ -1759,9 +1729,19 @@ namespace ncore
         }
     }
 
-    bool string_t::selectBeforeAndAfter(uchar32 inChar, string_t& outLeft, string_t& outRight) const
+    bool string_t::selectBeforeAndAfter(const string_t& selection, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectUntil(*this, inChar);
+        string_t::range_t range = string_functions_t::selectBeforeLocal(m_item, selection.m_item);
+        if (range.is_empty())
+            return false;
+        outLeft  = select(range.m_from, range.m_to);
+        outRight = select(range.m_to + selection.size(), size());
+        return true;
+    }
+
+    bool string_t::findCharSelectBeforeAndAfter(uchar32 find, string_t& outLeft, string_t& outRight) const
+    {
+        string_t::range_t range = string_functions_t::findCharUntil(m_item, find);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);
@@ -1769,19 +1749,9 @@ namespace ncore
         return true;
     }
 
-    bool string_t::selectBeforeAndAfter(const string_t& str, string_t& outLeft, string_t& outRight) const
+    bool string_t::findCharLastSelectBeforeAndAfter(uchar32 find, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectUntil(*this, str);
-        if (range.is_empty())
-            return false;
-        outLeft  = select(range.m_from, range.m_to);
-        outRight = select(range.m_to + str.size(), size());
-        return true;
-    }
-
-    bool string_t::selectBeforeAndAfterLast(uchar32 inChar, string_t& outLeft, string_t& outRight) const
-    {
-        string_t::range_t range = string_functions_t::selectUntilLast(*this, inChar);
+        string_t::range_t range = string_functions_t::findCharUntilLast(m_item, find);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);
@@ -1789,13 +1759,23 @@ namespace ncore
         return true;
     }
 
-    bool string_t::selectBeforeAndAfterLast(const string_t& inStr, string_t& outLeft, string_t& outRight) const
+    bool string_t::findStrSelectBeforeAndAfter(const string_t& find, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectUntilLast(*this, inStr);
+        string_t::range_t range = string_functions_t::findStrUntil(m_item, find.m_item);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);
-        outRight = select(range.m_to + inStr.size(), size());
+        outRight = select(range.m_to + find.size(), size());
+        return true;
+    }
+
+    bool string_t::findStrLastSelectBeforeAndAfter(const string_t& find, string_t& outLeft, string_t& outRight) const
+    {
+        string_t::range_t range = string_functions_t::findStrUntilLast(m_item, find.m_item);
+        if (range.is_empty())
+            return false;
+        outLeft  = select(range.m_from, range.m_to);
+        outRight = select(range.m_to + find.size(), size());
         return true;
     }
 
@@ -1812,7 +1792,7 @@ namespace ncore
         substr.toUpper();
 
         string_t converted("converted ");
-        strvw.find_remove(converted.slice());
+        strvw.findRemove(converted.slice());
     }
 
 }  // namespace ncore
