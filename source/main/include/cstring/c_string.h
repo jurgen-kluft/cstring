@@ -51,19 +51,6 @@ namespace ncore
         bool operator==(const string_t& other) const;
         bool operator!=(const string_t& other) const;
 
-        bool isUpper() const;
-        bool isLower() const;
-        bool isCapitalized() const;
-        bool isQuoted() const;
-        bool isQuoted(uchar32 quote) const;
-        bool isDelimited(uchar32 left, uchar32 right) const;
-
-        uchar32 firstChar() const;
-        uchar32 lastChar() const;
-
-        bool startsWith(const string_t& startStr) const;
-        bool endsWith(const string_t& endStr) const;
-
         ///@name Comparison
         s32  compare(const string_t& rhs) const;
         bool isEqual(const string_t& rhs) const;
@@ -72,11 +59,6 @@ namespace ncore
 
         s32 format(const string_t& format, const va_list_t& args);
         s32 formatAdd(const string_t& format, const va_list_t& args);
-
-        void toUpper();
-        void toLower();
-        void capitalize();
-        void capitalize(const string_t& seperators);
 
         // select
         string_t select(u32 from, u32 to) const;
@@ -112,6 +94,27 @@ namespace ncore
         s32  removeChar(uchar32 c, s32 ntimes = 0);
         s32  removeAnyChar(const string_t& any, s32 ntimes = 0);
         s32  replaceAnyChar(const string_t& any, uchar32 with, s32 ntimes = 0);
+
+        bool isUpper() const;
+        bool isLower() const;
+        bool isCapitalized() const;
+        bool isQuoted() const;
+        bool isQuoted(uchar32 quote) const;
+        bool isDelimited(uchar32 left, uchar32 right) const;
+
+        uchar32 firstChar() const;
+        uchar32 lastChar() const;
+
+        bool startsWith(uchar32 c) const { return firstChar() == c; }
+        bool endsWith(uchar32 c) const { return lastChar() == c; }
+
+        bool startsWith(const string_t& startStr) const;
+        bool endsWith(const string_t& endStr) const;
+
+        void toUpper();
+        void toLower();
+        void capitalize();
+        void capitalize(const string_t& seperators);
 
         // Trimming
         void trim();
