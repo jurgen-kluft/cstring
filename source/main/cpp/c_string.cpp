@@ -59,6 +59,7 @@ namespace ncore
         inline bool is_empty() const { return m_from == m_to; }
         inline u32  size() const { return m_to - m_from; }
         inline bool is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
+        inline range_t local() const { return {0, m_to - m_from}; }
     };
 
     struct string_t::instance_t  // 24 bytes
@@ -955,6 +956,10 @@ namespace ncore
     //------------------------------------------------------------------------------
     string_t string_t::select(u32 from, u32 to) const
     {
+        // Make sure we keep within the bounds of the string
+        from = math::min(from, (u32)size());
+        to   = math::min(to, (u32)size());
+
         string_t::instance_t* item = m_item->clone_slice();
         item->m_range.m_from       = m_item->m_range.m_from + from;
         item->m_range.m_to         = m_item->m_range.m_from + to;
@@ -999,10 +1004,10 @@ namespace ncore
     bool string_t::isUpper() const
     {
         uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); i++)
+        uchar16 const* strend  = m_item->m_data->m_ptr + m_item->m_range.m_to;
+        while (strdata < strend)
         {
-            uchar32 const c = strdata[i];
-            if (nrunes::is_lower(c))
+            if (nrunes::is_lower(*strdata++))
                 return false;
         }
         return true;
@@ -1011,10 +1016,10 @@ namespace ncore
     bool string_t::isLower() const
     {
         uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); i++)
+        uchar16 const* strend  = m_item->m_data->m_ptr + m_item->m_range.m_to;
+        while (strdata < strend)
         {
-            uchar32 const c = strdata[i];
-            if (nrunes::is_upper(c))
+            if (nrunes::is_upper(*strdata++))
                 return false;
         }
         return true;
@@ -1022,37 +1027,33 @@ namespace ncore
 
     bool string_t::isCapitalized() const
     {
-        s32            i       = 0;
         uchar16 const* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        while (i < size())
+        uchar16 const* strend  = m_item->m_data->m_ptr + m_item->m_range.m_to;
+        while (strdata < strend)
         {
-            uchar32 c = '\0';
-            while (i < size())
+            uchar32 c = *strdata++;
+            while (strdata < strend)
             {
-                c = strdata[i];
                 if (!nrunes::is_space(c))
                     break;
-                i += 1;
+                c = *strdata++;
             }
-
             if (nrunes::is_upper(c))
             {
-                i += 1;
-                while (i < size())
+                while (strdata < strend)
                 {
-                    c = strdata[i];
+                    c = *strdata;
                     if (nrunes::is_space(c))
                         break;
                     if (nrunes::is_upper(c))
                         return false;
-                    i += 1;
+                    strdata++;
                 }
             }
             else if (nrunes::is_alpha(c))
             {
                 return false;
             }
-            i += 1;
         }
         return true;
     }
@@ -1062,7 +1063,7 @@ namespace ncore
 
     bool string_t::isDelimited(uchar32 inLeft, uchar32 inRight) const
     {
-        if (is_empty())
+        if (m_item->m_range.is_empty())
             return false;
         uchar16 const l = m_item->m_data->m_ptr[m_item->m_range.m_from];
         uchar16 const r = m_item->m_data->m_ptr[m_item->m_range.m_to - 1];
@@ -1072,22 +1073,26 @@ namespace ncore
     uchar32 string_t::firstChar() const { return m_item->m_data->m_ptr[m_item->m_range.m_from]; }
     uchar32 string_t::lastChar() const
     {
-        if (is_empty())
+        if (m_item->m_range.is_empty())
             return '\0';
         return m_item->m_data->m_ptr[m_item->m_range.m_to - 1];
     }
 
     bool string_t::startsWith(const string_t& start) const
     {
-        string_t::range_t v = {0, 0};
-        v.m_to              = start.size();
-        if (!v.is_empty() && v.is_inside(m_item->m_range))
-            return string_functions_t::isEqual(m_item, v, start.m_item);
+        if (start.size() > 0)
+        {
+            string_t::range_t v = start.m_item->m_range.local();
+            if (v.is_inside(m_item->m_range))
+                return string_functions_t::isEqual(m_item, v, start.m_item);
+        }
         return false;
     }
 
     bool string_t::endsWith(const string_t& end) const
     {
+        if (end.size() > size())
+            return false;
         string_t::range_t v = {0, 0};
         v.m_from            = size() - end.size();
         v.m_to              = size();
@@ -1121,11 +1126,8 @@ namespace ncore
                 {
                     if (str[m_item->m_range.m_from + j] != inFind[s])
                         break;
-                }
-                if (inFind[s] == '\0')
-                {
-                    // match
-                    return select(i, i + (s - 1));
+                    if (inFind[s] == '\0')
+                        return select(i, i + s);
                 }
             }
         }
@@ -1134,9 +1136,11 @@ namespace ncore
 
     string_t string_t::find(const string_t& find) const
     {
+        if (find.size() > size())
+            return string_t(s_get_default_instance());
+
         string_t::range_t v = {0, 0};
         v.m_to              = find.size();
-
         while (!v.is_empty())
         {
             if (string_functions_t::isEqual(m_item, v, find.m_item))
@@ -1153,6 +1157,9 @@ namespace ncore
 
     string_t string_t::findLast(const string_t& find) const
     {
+        if (find.size() > size())
+            return string_t(s_get_default_instance());
+
         string_t::range_t v = {0, 0};
         v.m_from            = size() - find.size();
         v.m_to              = size();
@@ -1204,6 +1211,9 @@ namespace ncore
 
     bool string_t::contains(const string_t& contains) const
     {
+        if (contains.size() > size())
+            return false;
+
         string_t::range_t v = {0, 0};
         v.m_to              = contains.size();
 
@@ -1468,8 +1478,8 @@ namespace ncore
 
     void string_t::toUpper()
     {
-        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        uchar16 const* strend = m_item->m_data->m_ptr + m_item->m_range.m_to;
+        uchar16*       strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        uchar16 const* strend  = m_item->m_data->m_ptr + m_item->m_range.m_to;
         while (strdata < strend)
         {
             *strdata = nrunes::to_upper(*strdata);
@@ -1479,8 +1489,8 @@ namespace ncore
 
     void string_t::toLower()
     {
-        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        uchar16 const* strend = m_item->m_data->m_ptr + m_item->m_range.m_to;
+        uchar16*       strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        uchar16 const* strend  = m_item->m_data->m_ptr + m_item->m_range.m_to;
         while (strdata < strend)
         {
             *strdata = nrunes::to_lower(*strdata);
