@@ -18,10 +18,6 @@ namespace ncore
     class string_t
     {
     public:
-        struct instance_t;
-        struct data_t;
-        struct range_t;
-
         string_t();
         string_t(const char* str);
         string_t(s32 _len);
@@ -63,9 +59,9 @@ namespace ncore
         // select
         string_t select(u32 from, u32 to) const;
         string_t selectUntil(uchar32 find) const;
-        string_t selectUntil(const string_t& find) const;
+        string_t selectUntil(const string_t& selection) const;
         string_t selectUntilLast(uchar32 find) const;
-        string_t selectUntilLast(const string_t& find) const;
+        string_t selectUntilLast(const string_t& selection) const;
         string_t selectUntilIncluded(uchar32 find) const;
         string_t selectUntilIncluded(const string_t& selection) const;
         string_t selectUntilEndExcludeSelection(const string_t& selection) const;
@@ -82,6 +78,7 @@ namespace ncore
 
         // Search/Replace
         string_t find(uchar32 find) const;
+        string_t findLast(uchar32 find) const;
         string_t find(const char* find) const;
         string_t find(const string_t& find) const;
         string_t findLast(const string_t& find) const;
@@ -137,8 +134,10 @@ namespace ncore
         void concatenate_repeat(const string_t& con, s32 ntimes);
 
         // protected:
+        struct instance_t;
+
         string_t(instance_t* item);
-        string_t(instance_t* item, range_t const& range);
+        string_t(instance_t* item, s32 from, s32 to);
         friend class string_unprotected_t;
 
         void release();

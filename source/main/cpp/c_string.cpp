@@ -30,42 +30,45 @@ namespace ncore
         s_string_alloc = string_alloc;
     }
 
-    struct string_t::data_t  // 24 bytes
+    namespace nstring
     {
-        uchar16*              m_ptr;   // UCS-2
-        string_t::instance_t* m_head;  // The first view of this string, single linked list of instances
-        u32                   m_len;
-        s32                   m_ref;
-
-        inline s64 cap() const { return m_len; }
-
-        string_t::data_t* attach()
+        struct data_t  // 24 bytes
         {
-            m_ref++;
-            return this;
-        }
+            uchar16*              m_ptr;   // UCS-2
+            string_t::instance_t* m_head;  // The first view of this string, single linked list of instances
+            u32                   m_len;
+            s32                   m_ref;
 
-        string_t::data_t* detach();
+            inline s64 cap() const { return m_len; }
 
-        void addToList(string_t::instance_t* node);
-        void remFromList(string_t::instance_t* node);
-    };
+            data_t* attach()
+            {
+                m_ref++;
+                return this;
+            }
 
-    struct string_t::range_t
-    {
-        u32 m_from;
-        u32 m_to;
+            data_t* detach();
 
-        inline bool is_empty() const { return m_from == m_to; }
-        inline u32  size() const { return m_to - m_from; }
-        inline bool is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
-        inline range_t local() const { return {0, m_to - m_from}; }
-    };
+            void addToList(string_t::instance_t* node);
+            void remFromList(string_t::instance_t* node);
+        };
+
+        struct range_t
+        {
+            u32 m_from;
+            u32 m_to;
+
+            inline bool    is_empty() const { return m_from == m_to; }
+            inline u32     size() const { return m_to - m_from; }
+            inline bool    is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
+            inline range_t local() const { return {0, m_to - m_from}; }
+        };
+    }  // namespace nstring
 
     struct string_t::instance_t  // 24 bytes
     {
-        string_t::range_t     m_range;  // [from,to] view on the string data
-        string_t::data_t*     m_data;   // reference counted string data
+        nstring::range_t      m_range;  // [from,to] view on the string data
+        nstring::data_t*      m_data;   // reference counted string data
         string_t::instance_t* m_next;   // doubly linked list of instances that also own 'm_data'
         string_t::instance_t* m_prev;   // doubly linked list of instances that also own 'm_data'
 
@@ -81,7 +84,7 @@ namespace ncore
         void                  invalidate();
     };
 
-    void string_t::data_t::addToList(string_t::instance_t* node)
+    void nstring::data_t::addToList(string_t::instance_t* node)
     {
         if (m_head == nullptr)
         {
@@ -97,7 +100,7 @@ namespace ncore
         }
     }
 
-    void string_t::data_t::remFromList(string_t::instance_t* node)
+    void nstring::data_t::remFromList(string_t::instance_t* node)
     {
         if (m_head == node)
             m_head = node->m_next;
@@ -106,16 +109,16 @@ namespace ncore
     }
 
     static string_t::instance_t s_default_item;
-    static string_t::data_t     s_default_data;
+    static nstring::data_t      s_default_data;
     static uchar16              s_default_str[4] = {0, 0, 0, 0};
 
-    static inline bool              s_is_default_data(string_t::data_t* data) { return data == &s_default_data; }
-    static inline string_t::data_t* s_get_default_data() { return &s_default_data; }
+    static inline bool             s_is_default_data(nstring::data_t* data) { return data == &s_default_data; }
+    static inline nstring::data_t* s_get_default_data() { return &s_default_data; }
 
-    static string_t::data_t* s_alloc_data(s32 strlen)
+    static nstring::data_t* s_alloc_data(s32 strlen)
     {
-        string_t::data_t* data = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(sizeof(string_t::data_t));
-        data->m_ref            = 0;
+        nstring::data_t* data = (nstring::data_t*)string_memory_t::s_object_alloc->allocate(sizeof(nstring::data_t));
+        data->m_ref           = 0;
 
         utf16::prune strdata = (utf16::prune)string_memory_t::s_string_alloc->allocate(strlen);
         data->m_len          = strlen;
@@ -125,7 +128,7 @@ namespace ncore
         return data;
     }
 
-    static void s_resize_data(string_t::data_t* data, u32 new_size)
+    static void s_resize_data(nstring::data_t* data, u32 new_size)
     {
         if (data->m_len < new_size)
         {
@@ -139,16 +142,16 @@ namespace ncore
         }
     }
 
-    static string_t::data_t* s_unique_data(string_t::data_t* data, u32 from, u32 to)
+    static nstring::data_t* s_unique_data(nstring::data_t* data, u32 from, u32 to)
     {
         ASSERT(from <= to);
-        const u32         len     = to - from;
-        string_t::data_t* newdata = (string_t::data_t*)string_memory_t::s_object_alloc->allocate(len);
-        utf16::prune      newptr  = (utf16::prune)string_memory_t::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
-        newdata->m_ptr            = newptr;
-        newdata->m_head           = nullptr;
-        newdata->m_len            = len;
-        newdata->m_ref            = 0;
+        const u32        len     = to - from;
+        nstring::data_t* newdata = (nstring::data_t*)string_memory_t::s_object_alloc->allocate(len);
+        utf16::prune     newptr  = (utf16::prune)string_memory_t::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
+        newdata->m_ptr           = newptr;
+        newdata->m_head          = nullptr;
+        newdata->m_len           = len;
+        newdata->m_ref           = 0;
 
         for (u32 i = 0; i < len; i++)
             newptr[i] = data->m_ptr[from + i];
@@ -177,7 +180,7 @@ namespace ncore
         return s_default_item_ptr;
     }
 
-    static string_t::instance_t* s_alloc_instance(string_t::range_t range, string_t::data_t* data)
+    static string_t::instance_t* s_alloc_instance(nstring::range_t range, nstring::data_t* data)
     {
         if (data == nullptr)
             data = s_get_default_data();
@@ -216,7 +219,7 @@ namespace ncore
         return false;
     }
 
-    static bool s_move_view(string_t::instance_t const* str, string_t::range_t& view, s32 move)
+    static bool s_move_view(string_t::instance_t const* str, nstring::range_t& view, s32 move)
     {
         s32 const from = view.m_from + move;
 
@@ -265,7 +268,7 @@ namespace ncore
     static const s32 CLEARED   = 2;
     static const s32 RELEASED  = 3;
 
-    static void s_string_insert(string_t::instance_t* str, string_t::range_t location, string_t::instance_t const* insert)
+    static void s_string_insert(string_t::instance_t* str, nstring::range_t location, string_t::instance_t const* insert)
     {
         if (insert->is_empty())
             return;
@@ -305,7 +308,7 @@ namespace ncore
         }
     }
 
-    static void string_remove(string_t::instance_t* str, string_t::range_t selection)
+    static void string_remove(string_t::instance_t* str, nstring::range_t selection)
     {
         if (selection.is_empty())
             return;
@@ -319,7 +322,7 @@ namespace ncore
         }
     }
 
-    static string_t::range_t s_find(string_t::instance_t* str, const string_t::instance_t* find)
+    static nstring::range_t s_find(string_t::instance_t* str, const string_t::instance_t* find)
     {
         if (find->is_empty() == false)
         {
@@ -351,7 +354,7 @@ namespace ncore
 
     static bool s_find_replace(string_t::instance_t* str, const string_t::instance_t* find, const string_t::instance_t* replace)
     {
-        string_t::range_t remove = s_find(str, find);
+        nstring::range_t remove = s_find(str, find);
         if (remove.is_empty() == false)
         {
             u32 const remove_from = remove.m_from;
@@ -627,7 +630,7 @@ namespace ncore
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
     //------------------------------------------------------------------------------
-    string_t::data_t* string_t::data_t::detach()
+    nstring::data_t* nstring::data_t::detach()
     {
         if (m_ref == 1)
         {
@@ -648,7 +651,7 @@ namespace ncore
     string_t::instance_t* string_t::instance_t::clone_full() const
     {
         u32 const             strlen = m_range.size();
-        string_t::data_t*     data   = s_unique_data(m_data, m_range.m_from, m_range.m_to);
+        nstring::data_t*      data   = s_unique_data(m_data, m_range.m_from, m_range.m_to);
         string_t::instance_t* v      = s_alloc_instance({0, strlen}, data);
         return v;
     }
@@ -691,12 +694,12 @@ namespace ncore
     {
     public:
         // select parst of the string, return local view range
-        static range_t selectBeforeLocal(const instance_t* str, const instance_t* sel) { return {str->m_range.m_from - str->m_range.m_from, sel->m_range.m_from - str->m_range.m_from}; }
-        static range_t selectBeforeIncludedLocal(const instance_t* str, const instance_t* sel) { return {str->m_range.m_from - str->m_range.m_from, sel->m_range.m_to - str->m_range.m_from}; }
-        static range_t selectAfterLocal(const instance_t* str, const instance_t* sel) { return {sel->m_range.m_to - str->m_range.m_from, str->m_range.m_to - str->m_range.m_from}; }
-        static range_t selectAfterIncludedLocal(const instance_t* str, const instance_t* sel) { return {sel->m_range.m_from - str->m_range.m_from, str->m_range.m_to - str->m_range.m_from}; }
+        static nstring::range_t selectBeforeLocal(const instance_t* str, const instance_t* sel) { return {str->m_range.m_from - str->m_range.m_from, sel->m_range.m_from - str->m_range.m_from}; }
+        static nstring::range_t selectBeforeIncludedLocal(const instance_t* str, const instance_t* sel) { return {str->m_range.m_from - str->m_range.m_from, sel->m_range.m_to - str->m_range.m_from}; }
+        static nstring::range_t selectAfterLocal(const instance_t* str, const instance_t* sel) { return {sel->m_range.m_to - str->m_range.m_from, str->m_range.m_to - str->m_range.m_from}; }
+        static nstring::range_t selectAfterIncludedLocal(const instance_t* str, const instance_t* sel) { return {sel->m_range.m_from - str->m_range.m_from, str->m_range.m_to - str->m_range.m_from}; }
 
-        static s32 compare(const string_t::instance_t* lhs, string_t::range_t const& lhsview, const string_t::instance_t* rhs)
+        static s32 compare(const string_t::instance_t* lhs, nstring::range_t const& lhsview, const string_t::instance_t* rhs)
         {
             ASSERT(lhsview.is_inside(lhs->m_range));
 
@@ -719,9 +722,9 @@ namespace ncore
             return 0;
         }
 
-        static bool isEqual(const string_t::instance_t* lhs, string_t::range_t const& lhsview, const string_t::instance_t* rhs) { return compare(lhs, lhsview, rhs) == 0; }
+        static bool isEqual(const string_t::instance_t* lhs, nstring::range_t const& lhsview, const string_t::instance_t* rhs) { return compare(lhs, lhsview, rhs) == 0; }
 
-        static string_t::range_t findCharUntil(const string_t::instance_t* str, uchar32 find)
+        static nstring::range_t findCharUntil(const string_t::instance_t* str, uchar32 find)
         {
             uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
             for (u32 i = 0; i < str->size(); i++)
@@ -735,10 +738,10 @@ namespace ncore
             return {0, 0};
         }
 
-        static string_t::range_t findStrUntil(const string_t::instance_t* str, const string_t::instance_t* find)
+        static nstring::range_t findStrUntil(const string_t::instance_t* str, const string_t::instance_t* find)
         {
-            string_t::range_t v = {0, 0};
-            v.m_to              = find->size();
+            nstring::range_t v = {0, 0};
+            v.m_to             = find->size();
 
             while (!v.is_empty())
             {
@@ -755,7 +758,7 @@ namespace ncore
             return {0, 0};
         }
 
-        static string_t::range_t findCharUntilLast(const string_t::instance_t* str, uchar32 find)
+        static nstring::range_t findCharUntilLast(const string_t::instance_t* str, uchar32 find)
         {
             uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
             for (u32 i = str->size() - 1; i >= 0; --i)
@@ -769,11 +772,11 @@ namespace ncore
             return {0, 0};
         }
 
-        static string_t::range_t findStrUntilLast(const string_t::instance_t* str, const string_t::instance_t* find)
+        static nstring::range_t findStrUntilLast(const string_t::instance_t* str, const string_t::instance_t* find)
         {
-            string_t::range_t v = {0, 0};
-            v.m_from            = str->size() - find->size();
-            v.m_to              = str->size();
+            nstring::range_t v = {0, 0};
+            v.m_from           = str->size() - find->size();
+            v.m_to             = str->size();
 
             while (!v.is_empty())
             {
@@ -805,8 +808,8 @@ namespace ncore
 
         if (strlen > 0)
         {
-            string_t::data_t* data = s_alloc_data(strlen);
-            m_item                 = s_alloc_instance({from, to}, data);
+            nstring::data_t* data = s_alloc_data(strlen);
+            m_item                = s_alloc_instance({from, to}, data);
             while (*str != '\0')
                 *data->m_ptr++ = *str++;
             *data->m_ptr = '\0';
@@ -824,8 +827,8 @@ namespace ncore
 
         if (strlen > 0)
         {
-            string_t::data_t* data = s_alloc_data(strlen);
-            m_item                 = s_alloc_instance({0, 0}, data);
+            nstring::data_t* data = s_alloc_data(strlen);
+            m_item                = s_alloc_instance({0, 0}, data);
         }
         else
         {
@@ -839,8 +842,8 @@ namespace ncore
     {
         const u32 strlen = left.size() + right.size();
 
-        string_t::data_t* data = s_alloc_data(strlen);
-        m_item                 = s_alloc_instance({0, strlen}, data);
+        nstring::data_t* data = s_alloc_data(strlen);
+        m_item                = s_alloc_instance({0, strlen}, data);
 
         // manually copy the left and right strings into the new string
         uchar16* src = left.m_item->m_data->m_ptr + left.m_item->m_range.m_from;
@@ -856,11 +859,11 @@ namespace ncore
 
     string_t::string_t(string_t::instance_t* instance) { m_item = instance->clone_slice(); }
 
-    string_t::string_t(string_t::instance_t* instance, const string_t::range_t& range)
+    string_t::string_t(string_t::instance_t* instance, s32 from, s32 to)
     {
         m_item = instance->clone_slice();
-        m_item->m_range.m_from += range.m_from;
-        m_item->m_range.m_to = m_item->m_range.m_from + range.size();
+        m_item->m_range.m_from += from;
+        m_item->m_range.m_to = m_item->m_range.m_from + (to - from);
     }
 
     string_t::~string_t() { release(); }
@@ -901,7 +904,7 @@ namespace ncore
 
         if (strlen != 0)
         {
-            string_t::data_t*     data = s_alloc_data(strlen);
+            nstring::data_t*      data = s_alloc_data(strlen);
             string_t::instance_t* item = s_alloc_instance({0, strlen}, data);
             uchar16*              dst  = data->m_ptr;
             uchar16 const*        end  = dst + strlen;
@@ -968,7 +971,7 @@ namespace ncore
 
     string_t string_t::selectUntil(uchar32 find) const
     {
-        string_t::range_t view = string_functions_t::findCharUntil(m_item, find);
+        nstring::range_t view = string_functions_t::findCharUntil(m_item, find);
         if (view.is_empty())
             return string_t(s_get_default_instance());
         return select(view.m_from, view.m_to);
@@ -976,29 +979,46 @@ namespace ncore
 
     string_t string_t::selectUntil(const string_t& selection) const
     {
-        string_t::range_t view = string_functions_t::selectBeforeLocal(m_item, selection.m_item);
+        nstring::range_t view = string_functions_t::selectBeforeLocal(m_item, selection.m_item);
         if (view.is_empty())
             return string_t(s_get_default_instance());
         return select(view.m_from, view.m_to);
     }
 
-    string_t string_t::selectUntilIncluded(const string_t& find) const
+    string_t string_t::selectUntilLast(uchar32 find) const 
     {
-        string_t::range_t view = string_functions_t::selectBeforeIncludedLocal(m_item, find.m_item);
+        nstring::range_t view = string_functions_t::findCharUntilLast(m_item, find);
         if (view.is_empty())
             return string_t(s_get_default_instance());
-        return select(view.m_from, view.m_to + find.size());
+        return select(view.m_from, view.m_to);
+    }
+
+    string_t string_t::selectUntilLast(const string_t& selection) const 
+    { 
+        // TODO What if 'selection' is not part of this string ?
+        nstring::range_t view = string_functions_t::selectBeforeLocal(m_item, selection.m_item);
+        if (view.is_empty())
+            return string_t(s_get_default_instance());
+        return select(view.m_from, view.m_to);
+    }
+
+    string_t string_t::selectUntilIncluded(const string_t& selection) const
+    {
+        nstring::range_t view = string_functions_t::selectBeforeIncludedLocal(m_item, selection.m_item);
+        if (view.is_empty())
+            return string_t(s_get_default_instance());
+        return select(view.m_from, view.m_to + selection.size());
     }
 
     string_t string_t::selectUntilEndExcludeSelection(const string_t& selection) const
     {
-        string_t::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
-        return string_t(m_item, range);
+        nstring::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
+        return string_t(m_item, range.m_from, range.m_to);
     }
     string_t string_t::selectUntilEndIncludeSelection(const string_t& selection) const
     {
-        string_t::range_t range = string_functions_t::selectAfterIncludedLocal(m_item, selection.m_item);
-        return string_t(m_item, range);
+        nstring::range_t range = string_functions_t::selectAfterIncludedLocal(m_item, selection.m_item);
+        return string_t(m_item, range.m_from, range.m_to);
     }
 
     bool string_t::isUpper() const
@@ -1082,7 +1102,7 @@ namespace ncore
     {
         if (start.size() > 0)
         {
-            string_t::range_t v = start.m_item->m_range.local();
+            nstring::range_t v = start.m_item->m_range.local();
             if (v.is_inside(m_item->m_range))
                 return string_functions_t::isEqual(m_item, v, start.m_item);
         }
@@ -1093,9 +1113,9 @@ namespace ncore
     {
         if (end.size() > size())
             return false;
-        string_t::range_t v = {0, 0};
-        v.m_from            = size() - end.size();
-        v.m_to              = size();
+        nstring::range_t v = {0, 0};
+        v.m_from           = size() - end.size();
+        v.m_to             = size();
         if (!v.is_empty())
             return string_functions_t::isEqual(m_item, v, end.m_item);
         return false;
@@ -1109,6 +1129,23 @@ namespace ncore
             uchar32 const c = strdata[i];
             if (c == find)
                 return select(i, i + 1);
+        }
+        return string_t(s_get_default_instance());
+    }
+
+    string_t string_t::findLast(uchar32 find) const
+    {
+        if (size() == 0)
+            return string_t(s_get_default_instance());
+
+        uchar16 const* strbegin = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        uchar16 const* strdata  = m_item->m_data->m_ptr + m_item->m_range.m_to - 1;
+        while (strdata >= strbegin)
+        {
+            uchar32 const c = *strdata;
+            if (c == find)
+                return select(strdata - strbegin, (strdata + 1) - strbegin);
+            strdata++;
         }
         return string_t(s_get_default_instance());
     }
@@ -1139,8 +1176,8 @@ namespace ncore
         if (find.size() > size())
             return string_t(s_get_default_instance());
 
-        string_t::range_t v = {0, 0};
-        v.m_to              = find.size();
+        nstring::range_t v = {0, 0};
+        v.m_to             = find.size();
         while (!v.is_empty())
         {
             if (string_functions_t::isEqual(m_item, v, find.m_item))
@@ -1160,9 +1197,9 @@ namespace ncore
         if (find.size() > size())
             return string_t(s_get_default_instance());
 
-        string_t::range_t v = {0, 0};
-        v.m_from            = size() - find.size();
-        v.m_to              = size();
+        nstring::range_t v = {0, 0};
+        v.m_from           = size() - find.size();
+        v.m_to             = size();
 
         while (!v.is_empty())
         {
@@ -1214,8 +1251,8 @@ namespace ncore
         if (contains.size() > size())
             return false;
 
-        string_t::range_t v = {0, 0};
-        v.m_to              = contains.size();
+        nstring::range_t v = {0, 0};
+        v.m_to             = contains.size();
 
         while (!v.is_empty())
         {
@@ -1304,7 +1341,7 @@ namespace ncore
         crunes_t    fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
         const u32   len = cprintf_(fmt, argv, argc);
 
-        string_t::data_t*     data = s_alloc_data(len);
+        nstring::data_t*      data = s_alloc_data(len);
         string_t::instance_t* item = s_alloc_instance({0, len}, data);
 
         runes_t str(item->m_data->m_ptr, item->m_range.m_from, item->m_range.m_to, item->m_data->m_len);
@@ -1331,21 +1368,21 @@ namespace ncore
 
     void string_t::insertReplaceSelection(const string_t& selection, const string_t& insert)
     {
-        string_t::range_t range = selection.m_item->m_range;
+        nstring::range_t range = selection.m_item->m_range;
         s_string_insert(m_item, range, insert.m_item);
     }
 
     void string_t::insertBeforeSelection(const string_t& selection, const string_t& insert)
     {
-        string_t::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
-        range.m_from            = range.m_to;
+        nstring::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
+        range.m_from           = range.m_to;
         s_string_insert(m_item, range, insert.m_item);
     }
 
     void string_t::insertAfterSelection(const string_t& selection, const string_t& insert)
     {
-        string_t::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
-        range.m_from            = range.m_to;
+        nstring::range_t range = string_functions_t::selectAfterLocal(m_item, selection.m_item);
+        range.m_from           = range.m_to;
         s_string_insert(m_item, range, insert.m_item);
     }
 
@@ -1353,8 +1390,8 @@ namespace ncore
 
     s32 string_t::findRemove(const string_t& find, s32 ntimes)
     {
-        string_t::range_t v = {0, 0};
-        v.m_to              = find.size();
+        nstring::range_t v = {0, 0};
+        v.m_to             = find.size();
 
         for (s32 i = 0; i < ntimes; i++)
         {
@@ -1721,7 +1758,7 @@ namespace ncore
 
     bool string_t::selectBeforeAndAfter(const string_t& selection, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::selectBeforeLocal(m_item, selection.m_item);
+        nstring::range_t range = string_functions_t::selectBeforeLocal(m_item, selection.m_item);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);
@@ -1731,7 +1768,7 @@ namespace ncore
 
     bool string_t::findCharSelectBeforeAndAfter(uchar32 find, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::findCharUntil(m_item, find);
+        nstring::range_t range = string_functions_t::findCharUntil(m_item, find);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);
@@ -1741,7 +1778,7 @@ namespace ncore
 
     bool string_t::findCharLastSelectBeforeAndAfter(uchar32 find, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::findCharUntilLast(m_item, find);
+        nstring::range_t range = string_functions_t::findCharUntilLast(m_item, find);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);
@@ -1751,7 +1788,7 @@ namespace ncore
 
     bool string_t::findStrSelectBeforeAndAfter(const string_t& find, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::findStrUntil(m_item, find.m_item);
+        nstring::range_t range = string_functions_t::findStrUntil(m_item, find.m_item);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);
@@ -1761,7 +1798,7 @@ namespace ncore
 
     bool string_t::findStrLastSelectBeforeAndAfter(const string_t& find, string_t& outLeft, string_t& outRight) const
     {
-        string_t::range_t range = string_functions_t::findStrUntilLast(m_item, find.m_item);
+        nstring::range_t range = string_functions_t::findStrUntilLast(m_item, find.m_item);
         if (range.is_empty())
             return false;
         outLeft  = select(range.m_from, range.m_to);

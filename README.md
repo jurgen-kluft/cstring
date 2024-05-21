@@ -2,8 +2,9 @@
 
 Cross platform string library (BETA; still under construction)
 
-This string can deal with ascii and UTF-32, it is reference counted and
-supports modifying whereby other reference strings will be corrected.
+This string internally uses UTF-16 and only the Basic Multilingual Plane (BMP) 
+is supported, it is reference counted and supports modifying whereby other reference 
+strings will be corrected.
 Since we now can have multiple views on the string we can do away with the user
 managing indices. However the string may re-allocate when an operation is causing
 it to resize; this includes 'insert', 'replace' and 'remove'.
@@ -14,11 +15,14 @@ the slice is watching.
 Instead we can do things like this:
 
 ``` c++
-string_t str("This is an ascii converted to UTF-32 when constructed");
-str_slice_t sl = str.slice();
-str_slice_t tofind = sl(11,16); // select "ascii"
+string_t str("This is an ascii converted to UTF-16 when constructed");
+string_t sl = str.slice();
 
-str_slice_t ascii_subslice = find(sl, tofind);
+string_t tofind = sl(11,16); // select "ascii"
+// or
+string_t tofind = s1.find("ascii");
+
+string_t ascii_subslice = find(sl, tofind);
 upper(ascii_subslice);    // 'ascii' to 'ASCII'
 
 // This inserts " string" into the main string at the location indicated by @ascii_subslice
@@ -26,7 +30,7 @@ upper(ascii_subslice);    // 'ascii' to 'ASCII'
 string_t toinsert(" string");
 ascii_subslice = insert_after(sl, ascii_subslice, toinsert.slice());
 
-// So now @str = "This is an ASCII string converted to UTF-32 when constructed"
+// So now @str = "This is an ASCII string converted to UTF-16 when constructed"
 // And @ascii_subslice = "ASCII"
 ```
 
@@ -39,14 +43,14 @@ You can clone a string (string data is copied):
 
 ``` c++
 string_t a_copy = str.clone();
-str_slice_t a_slice = a_copy.slice();
+string_t a_slice = a_copy.slice();
 string_t tofind2(" when constructed")
-str_slice_t to_remove = find(a_slice, tofind2.slice());
+string_t to_remove = find(a_slice, tofind2.slice());
 remove(a_slice, to_remove);  // This removes the substring from the main string
-// So now @a_copy = "This is an ASCII string converted to UTF-32"
+// So now @a_copy = "This is an ASCII string converted to UTF-16"
 // @to_remove is invalidated since that part does not exist anymore.
 
 // If you want to lower-case the first letter of 'This'
-str_slice_t to_lower = a_slice(1);
+string_t to_lower = a_slice(1);
 lower(to_lower);
 ```
