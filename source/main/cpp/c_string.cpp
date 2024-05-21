@@ -1002,6 +1002,14 @@ namespace ncore
         return select(view.m_from, view.m_to);
     }
 
+    string_t string_t::selectUntilIncluded(uchar32 find) const
+    {
+        nstring::range_t view = string_functions_t::findCharUntil(m_item, find);
+        if (view.is_empty())
+            return string_t(s_get_default_instance());
+        return select(view.m_from, view.m_to + 1);
+    }
+
     string_t string_t::selectUntilIncluded(const string_t& selection) const
     {
         nstring::range_t view = string_functions_t::selectBeforeIncludedLocal(m_item, selection.m_item);
