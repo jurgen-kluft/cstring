@@ -36,10 +36,10 @@ namespace ncore
         {
             uchar16*              m_ptr;   // UCS-2
             string_t::instance_t* m_head;  // The first view of this string, single linked list of instances
-            u32                   m_len;
+            s32                   m_len;
             s32                   m_ref;
 
-            inline s64 cap() const { return m_len; }
+            inline s32 cap() const { return m_len; }
 
             data_t* attach()
             {
@@ -55,11 +55,15 @@ namespace ncore
 
         struct range_t
         {
-            u32 m_from;
-            u32 m_to;
+            s32 m_from;
+            s32 m_to;
 
             inline bool    is_empty() const { return m_from == m_to; }
-            inline u32     size() const { return m_to - m_from; }
+            inline s32  size() const
+            {
+                ASSERT(m_from <= m_to);
+                return m_to - m_from;
+            }
             inline bool    is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
             inline range_t local() const { return {0, m_to - m_from}; }
         };
@@ -74,8 +78,8 @@ namespace ncore
 
         inline bool is_empty() const { return m_range.is_empty(); }
         inline bool is_slice() const { return m_data->m_head != nullptr; }
-        inline s64  cap() const { return m_data->cap(); }
-        inline s64  size() const { return m_range.size(); }
+        inline s32  cap() const { return m_data->cap(); }
+        inline s32  size() const { return m_range.size(); }
 
         string_t::instance_t* clone_full() const;
         string_t::instance_t* clone_slice() const;
@@ -128,7 +132,7 @@ namespace ncore
         return data;
     }
 
-    static void s_resize_data(nstring::data_t* data, u32 new_size)
+    static void s_resize_data(nstring::data_t* data, s32 new_size)
     {
         if (data->m_len < new_size)
         {
@@ -145,7 +149,7 @@ namespace ncore
     static nstring::data_t* s_unique_data(nstring::data_t* data, u32 from, u32 to)
     {
         ASSERT(from <= to);
-        const u32        len     = to - from;
+        const s32        len     = to - from;
         nstring::data_t* newdata = (nstring::data_t*)string_memory_t::s_object_alloc->allocate(len);
         utf16::prune     newptr  = (utf16::prune)string_memory_t::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
         newdata->m_ptr           = newptr;
@@ -153,7 +157,7 @@ namespace ncore
         newdata->m_len           = len;
         newdata->m_ref           = 0;
 
-        for (u32 i = 0; i < len; i++)
+        for (s32 i = 0; i < len; i++)
             newptr[i] = data->m_ptr[from + i];
 
         return newdata;
@@ -326,24 +330,24 @@ namespace ncore
     {
         if (find->is_empty() == false)
         {
-            u32 const      strsize  = str->m_range.size();
-            u32 const      findsize = find->m_range.size();
+            s32 const      strsize  = str->m_range.size();
+            s32 const      findsize = find->m_range.size();
             uchar16 const* strdata  = str->m_data->m_ptr + str->m_range.m_from;
             uchar16 const* finddata = find->m_data->m_ptr + find->m_range.m_from;
 
-            u32 i = 0;
+            s32 i = 0;
             while (i < strsize)
             {
                 if (strdata[i] == finddata[0])
                 {
-                    u32 j = 1;
+                    s32 j = 1;
                     while (j < findsize)
                     {
                         if (strdata[i + j] != finddata[j])
                             goto continue_search;
                         j++;
                     }
-                    return {(u32)i, (u32)i + findsize};
+                    return {i, i + findsize};
                 }
             continue_search:
                 i++;
@@ -357,8 +361,8 @@ namespace ncore
         nstring::range_t remove = s_find(str, find);
         if (remove.is_empty() == false)
         {
-            u32 const remove_from = remove.m_from;
-            u32 const remove_len  = remove.size();
+            s32 const remove_from = remove.m_from;
+            s32 const remove_len  = remove.size();
             s32 const diff        = remove_len - replace->size();
             if (diff > 0)  // The string to replace the selection with is smaller, so we have to remove some space from the string.
             {
@@ -405,9 +409,9 @@ namespace ncore
     static void s_remove_any(string_t::instance_t* str, const string_t::instance_t* any)
     {
         // Remove any of the characters in @charset from @str
-        u32 const strfrom = str->m_range.m_from;
-        u32 const strto   = str->m_range.m_to;
-        u32 const strsize = str->m_range.m_to - str->m_range.m_from;
+        s32 const strfrom = str->m_range.m_from;
+        s32 const strto   = str->m_range.m_to;
+        s32 const strsize = str->m_range.m_to - str->m_range.m_from;
 
         s32      d       = 0;
         s32      i       = 0;
@@ -650,7 +654,7 @@ namespace ncore
     //------------------------------------------------------------------------------
     string_t::instance_t* string_t::instance_t::clone_full() const
     {
-        u32 const             strlen = m_range.size();
+        s32 const             strlen = m_range.size();
         nstring::data_t*      data   = s_unique_data(m_data, m_range.m_from, m_range.m_to);
         string_t::instance_t* v      = s_alloc_instance({0, strlen}, data);
         return v;
@@ -727,12 +731,12 @@ namespace ncore
         static nstring::range_t findCharUntil(const string_t::instance_t* str, uchar32 find)
         {
             uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
-            for (u32 i = 0; i < str->size(); i++)
+            for (s32 i = 0; i < str->size(); i++)
             {
                 uchar32 const c = strdata[i];
                 if (c == find)
                 {
-                    return {(u32)0, i};
+                    return {0, i};
                 }
             }
             return {0, 0};
@@ -761,7 +765,7 @@ namespace ncore
         static nstring::range_t findCharUntilLast(const string_t::instance_t* str, uchar32 find)
         {
             uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
-            for (u32 i = str->size() - 1; i >= 0; --i)
+            for (s32 i = str->size() - 1; i >= 0; --i)
             {
                 uchar32 const c = strdata[i];
                 if (c == find)
@@ -801,10 +805,10 @@ namespace ncore
     {
         crunes_t srcrunes(str);
 
-        u32 const strlen = srcrunes.size();
+        s32 const strlen = srcrunes.size();
 
-        u32 from = 0;
-        u32 to   = strlen;
+        s32 from = 0;
+        s32 to   = strlen;
 
         if (strlen > 0)
         {
@@ -840,7 +844,7 @@ namespace ncore
 
     string_t::string_t(const string_t& left, const string_t& right)
     {
-        const u32 strlen = left.size() + right.size();
+        const s32 strlen = left.size() + right.size();
 
         nstring::data_t* data = s_alloc_data(strlen);
         m_item                = s_alloc_instance({0, strlen}, data);
@@ -848,10 +852,10 @@ namespace ncore
         // manually copy the left and right strings into the new string
         uchar16* src = left.m_item->m_data->m_ptr + left.m_item->m_range.m_from;
         uchar16* dst = m_item->m_data->m_ptr;
-        for (u32 i = 0; i < left.size(); i++)
+        for (s32 i = 0; i < left.size(); i++)
             *dst++ = *src++;
         src = right.m_item->m_data->m_ptr + right.m_item->m_range.m_from;
-        for (u32 i = 0; i < right.size(); i++)
+        for (s32 i = 0; i < right.size(); i++)
             *dst++ = *src++;
 
         m_item->m_range.m_to = strlen;
@@ -896,7 +900,7 @@ namespace ncore
 
     string_t& string_t::operator=(const char* other)
     {
-        u32 strlen = 0;
+        s32 strlen = 0;
         while (other[strlen] != '\0')
             ++strlen;
 
@@ -1152,7 +1156,7 @@ namespace ncore
         {
             uchar32 const c = *strdata;
             if (c == find)
-                return select(strdata - strbegin, (strdata + 1) - strbegin);
+                return select((s32)(strdata - strbegin), (s32)((strdata + 1) - strbegin));
             strdata++;
         }
         return string_t(s_get_default_instance());
@@ -1347,7 +1351,7 @@ namespace ncore
         s32 const   argc = args.argc();
         va_t const* argv = args.argv();
         crunes_t    fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
-        const u32   len = cprintf_(fmt, argv, argc);
+        const s32   len = cprintf_(fmt, argv, argc);
 
         nstring::data_t*      data = s_alloc_data(len);
         string_t::instance_t* item = s_alloc_instance({0, len}, data);
@@ -1437,14 +1441,14 @@ namespace ncore
 
     s32 string_t::removeChar(uchar32 c, s32 ntimes)
     {
-        u32 n = ntimes;
+        s32 n = ntimes;
         if (n == 0)
             n = size();
 
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
 
-        u32 i = 0;
-        u32 p = 0;
+        s32 i = 0;
+        s32 p = 0;
         while (i < size())
         {
             if (n > 0 && strdata[i] == c)
@@ -1471,14 +1475,14 @@ namespace ncore
 
     s32 string_t::removeAnyChar(const string_t& any, s32 ntimes)
     {
-        u32 n = ntimes;
+        s32 n = ntimes;
         if (n == 0)
             n = size();
 
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
 
-        u32 i = 0;
-        u32 p = 0;
+        s32 i = 0;
+        s32 p = 0;
         while (i < size())
         {
             if (n > 0 && any.contains(strdata[i]))

@@ -63,19 +63,19 @@ UNITTEST_SUITE_BEGIN(test_string)
             CHECK_TRUE(c1[0] == '\0');
         }
 
-        UNITTEST_TEST(test_construct_1_from_ascii_string_destruct) { string_t str("This is an ASCII string converted to UTF-32"); }
+        UNITTEST_TEST(test_construct_1_from_ascii_string_destruct) { string_t str("This is an ASCII string converted to UTF-16"); }
 
         UNITTEST_TEST(test_construct_2_from_ascii_string_destruct) { string_t str("ASCII"); }
 
         UNITTEST_TEST(test_construct_3_from_ascii_string_destruct)
         {
-            string_t str("This is an ASCII string converted to UTF-32");
+            string_t str("This is an ASCII string converted to UTF-16");
             string_t ascii("ASCII");
         }
 
         UNITTEST_TEST(test_select)
         {
-            string_t str("This is an ASCII string converted to UTF-32");
+            string_t str("This is an ASCII string converted to UTF-16");
             string_t ascii("ASCII");
 
             string_t c1 = str.find(ascii);
@@ -90,7 +90,7 @@ UNITTEST_SUITE_BEGIN(test_string)
 
         UNITTEST_TEST(test_selectUntil)
         {
-            string_t str("This is an ASCII string converted to UTF-32");
+            string_t str("This is an ASCII string converted to UTF-16");
             string_t ascii("ASCII");
 
             string_t c1 = str.selectUntil(ascii);
@@ -101,7 +101,7 @@ UNITTEST_SUITE_BEGIN(test_string)
 
         UNITTEST_TEST(test_selectUntilIncluded)
         {
-            string_t str("This is an ASCII string converted to UTF-32");
+            string_t str("This is an ASCII string converted to UTF-16");
             string_t ascii("ASCII");
 
             string_t c1 = str.selectUntilIncluded(ascii);
