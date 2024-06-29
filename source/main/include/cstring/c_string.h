@@ -7,6 +7,7 @@
 
 #include "ccore/c_debug.h"
 #include "cbase/c_runes.h"
+#include "cbase/c_va_list.h"
 
 namespace ncore
 {
@@ -14,6 +15,13 @@ namespace ncore
     class va_list_t;
     class alloc_t;
     class arena_t;
+
+    namespace nstring
+    {
+        struct range_t;
+        struct data_t;
+        struct instance_t;
+    }  // namespace nstring
 
     class string_t
     {
@@ -24,9 +32,6 @@ namespace ncore
         string_t(const string_t& other);
         string_t(const string_t& other, const string_t& concat);
         ~string_t();
-
-        s32 format(const string_t& format, const va_t* argv, s32 argc);
-        s32 formatAdd(const string_t& format, const va_t* argv, s32 argc);
 
         s32  cap() const;
         s32  size() const;
@@ -47,14 +52,29 @@ namespace ncore
         bool operator==(const string_t& other) const;
         bool operator!=(const string_t& other) const;
 
-        ///@name Comparison
         s32  compare(const string_t& rhs) const;
         bool isEqual(const string_t& rhs) const;
         bool contains(uchar32 contains) const;
         bool contains(const string_t& contains) const;
 
-        s32 format(const string_t& format, const va_list_t& args);
-        s32 formatAdd(const string_t& format, const va_list_t& args);
+        s32 format(const string_t& format, const va_t* argv, s32 argc);
+        s32 formatAdd(const string_t& format, const va_t* argv, s32 argc);
+
+        template <typename... Args>
+        inline s32 format(const string_t& format, Args&&... _args)
+        {
+            const va_t argv[] = {_args...};
+            const s32  argc   = sizeof(argv) / sizeof(argv[0]);
+            return format(format, argv, argc);
+        }
+
+        template <typename... Args>
+        inline s32 formatAdd(const string_t& format, Args&&... _args)
+        {
+            const va_t argv[] = {_args...};
+            const s32  argc   = sizeof(argv) / sizeof(argv[0]);
+            return formatAdd(format, argv, argc);
+        }
 
         // select
         string_t select(u32 from, u32 to) const;
@@ -133,18 +153,16 @@ namespace ncore
         void concatenate(const string_t& strA, const string_t& strB);
         void concatenate_repeat(const string_t& con, s32 ntimes);
 
-        // protected:
-        struct instance_t;
+    protected:
 
-        string_t(instance_t* item);
-        string_t(instance_t* item, s32 from, s32 to);
-        friend class string_unprotected_t;
+        string_t(nstring::instance_t* item);
+        string_t(nstring::instance_t* item, s32 from, s32 to);
 
         void release();
 
-        mutable instance_t* m_item;
+        mutable nstring::instance_t* m_item;
     };
 
 }  // namespace ncore
 
-#endif  ///< __CSTRING_STRING_H__
+#endif

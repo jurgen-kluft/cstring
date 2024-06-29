@@ -26,10 +26,8 @@ func GetPackage() *denv.Package {
 	mainlib.Dependencies = append(mainlib.Dependencies, cbasepkg.GetMainLib())
 
 	// 'cstring' unittest project
-	maintest := denv.SetupDefaultCppTestProject("cstring_test", "github.com\\jurgen-kluft\\cstring")
+	maintest := denv.SetupDefaultCppTestProject("cstring"+"_test", "github.com\\jurgen-kluft\\cstring")
 	maintest.Dependencies = append(maintest.Dependencies, unittestpkg.GetMainLib())
-	maintest.Dependencies = append(maintest.Dependencies, ccorepkg.GetMainLib())
-	maintest.Dependencies = append(maintest.Dependencies, cbasepkg.GetMainLib())
 	maintest.Dependencies = append(maintest.Dependencies, mainlib)
 
 	mainpkg.AddMainLib(mainlib)
