@@ -23,6 +23,11 @@ namespace ncore
         struct instance_t;
     }  // namespace nstring
 
+    namespace nstring_memory
+    {
+        void init(alloc_t* object_alloc = nullptr, alloc_t* string_alloc = nullptr);
+    }
+
     class string_t
     {
     public:
@@ -153,10 +158,11 @@ namespace ncore
         void concatenate(const string_t& strA, const string_t& strB);
         void concatenate_repeat(const string_t& con, s32 ntimes);
 
-    protected:
+        void toAscii(char* str, s32 maxlen) const;
 
-        string_t(nstring::instance_t* item);
-        string_t(nstring::instance_t* item, s32 from, s32 to);
+    protected:
+        string_t(nstring::instance_t* item, s32 weird);
+        string_t(nstring::instance_t* item, s32 from, s32 to, s32 weird);
 
         void release();
 

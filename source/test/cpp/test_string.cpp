@@ -3,13 +3,21 @@
 #include "cstring/c_string.h"
 #include "cunittest/cunittest.h"
 
+#include "cstring/test_allocator.h"
+
 using namespace ncore;
 
 UNITTEST_SUITE_BEGIN(test_string)
 {
     UNITTEST_FIXTURE(main)
     {
-        UNITTEST_FIXTURE_SETUP() {}
+        UNITTEST_ALLOCATOR;
+
+        UNITTEST_FIXTURE_SETUP()
+        {
+            nstring_memory::init(Allocator, Allocator);
+        }
+
         UNITTEST_FIXTURE_TEARDOWN() {}
 
         UNITTEST_TEST(test_index_op)
@@ -63,14 +71,34 @@ UNITTEST_SUITE_BEGIN(test_string)
             CHECK_TRUE(c1[0] == '\0');
         }
 
-        UNITTEST_TEST(test_construct_1_from_ascii_string_destruct) { string_t str("This is an ASCII string converted to UTF-16"); }
+        UNITTEST_TEST(test_construct_1_from_ascii_string_destruct)
+        {
+            string_t str("This is an ASCII string converted to UTF-16");
+            CHECK_FALSE(str.is_empty());
+            CHECK_EQUAL(str.size(), 43);
+            CHECK_TRUE(str[0] == 'T');
+        }
 
-        UNITTEST_TEST(test_construct_2_from_ascii_string_destruct) { string_t str("ASCII"); }
+        UNITTEST_TEST(test_construct_2_from_ascii_string_destruct)
+        {
+            string_t str("ASCII");
+            CHECK_FALSE(str.is_empty());
+            CHECK_EQUAL(str.size(), 5);
+            CHECK_TRUE(str[0] == 'A');
+        }
 
         UNITTEST_TEST(test_construct_3_from_ascii_string_destruct)
         {
             string_t str("This is an ASCII string converted to UTF-16");
             string_t ascii("ASCII");
+
+            CHECK_FALSE(str.is_empty());
+            CHECK_EQUAL(str.size(), 43);
+            CHECK_TRUE(str[0] == 'T');
+
+            CHECK_FALSE(ascii.is_empty());
+            CHECK_EQUAL(ascii.size(), 5);
+            CHECK_TRUE(ascii[0] == 'A');
         }
 
         UNITTEST_TEST(test_select)
@@ -93,7 +121,21 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str("This is an ASCII string converted to UTF-16");
             string_t ascii("ASCII");
 
+            // Select until ASCII string will fail because 'ascii' is not a selection of 'str'
             string_t c1 = str.selectUntil(ascii);
+            CHECK_TRUE(c1.is_empty());
+            CHECK_EQUAL(c1.size(), 0);
+            CHECK_TRUE(c1[0] == '\0');
+        }
+
+        UNITTEST_TEST(test_selectUntil_correct_use)
+        {
+            string_t str("This is an ASCII string converted to UTF-16");
+            string_t ascii("ASCII");
+
+            // Select until ASCII string will fail because 'ascii' is not a selection of 'str'
+            string_t selection = str.find(ascii);
+            string_t c1 = str.selectUntil(selection); // c1 should be "This is an "
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 11);
             CHECK_TRUE(c1[0] == 'T');
@@ -104,7 +146,8 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str("This is an ASCII string converted to UTF-16");
             string_t ascii("ASCII");
 
-            string_t c1 = str.selectUntilIncluded(ascii);
+            string_t selection = str.find(ascii);
+            string_t c1 = str.selectUntilIncluded(selection);
             CHECK_FALSE(c1.is_empty());
             CHECK_EQUAL(c1.size(), 16);
             CHECK_TRUE(c1[11] == 'A');
@@ -119,13 +162,13 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str1("THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
             CHECK_TRUE(str1.isUpper());
             string_t str2("this is a lowercase string with numbers 1234");
-            CHECK_TRUE(!str2.isUpper());
+            CHECK_FALSE(str2.isUpper());
         }
 
         UNITTEST_TEST(test_isLower)
         {
             string_t str1("THIS IS AN UPPERCASE STRING WITH NUMBERS 1234");
-            CHECK_TRUE(!str1.isLower());
+            CHECK_FALSE(str1.isLower());
             string_t str2("this is a lowercase string with numbers 1234");
             CHECK_TRUE(str2.isLower());
         }
@@ -135,7 +178,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str1("This Is A Capitalized String With Numbers 1234");
             CHECK_TRUE(str1.isCapitalized());
             string_t str2("this is a lowercase string with numbers 1234");
-            CHECK_TRUE(!str2.isCapitalized());
+            CHECK_FALSE(str2.isCapitalized());
         }
 
         UNITTEST_TEST(test_isQuoted)
@@ -143,7 +186,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str1("\"a quoted piece of text\"");
             CHECK_TRUE(str1.isQuoted());
             string_t str2("just a piece of text");
-            CHECK_TRUE(!str2.isQuoted());
+            CHECK_FALSE(str2.isQuoted());
         }
 
         UNITTEST_TEST(test_isQuoted2)
@@ -151,7 +194,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str1("$a quoted piece of text$");
             CHECK_TRUE(str1.isQuoted('$'));
             string_t str2("just a piece of text");
-            CHECK_TRUE(!str2.isQuoted('$'));
+            CHECK_FALSE(str2.isQuoted('$'));
         }
 
         UNITTEST_TEST(test_isDelimited)
@@ -159,7 +202,7 @@ UNITTEST_SUITE_BEGIN(test_string)
             string_t str1("[a delimited piece of text]");
             CHECK_TRUE(str1.isDelimited('[', ']'));
             string_t str2("just a piece of text");
-            CHECK_TRUE(!str2.isDelimited('[', ']'));
+            CHECK_FALSE(str2.isDelimited('[', ']'));
         }
 
         UNITTEST_TEST(test_firstChar)
@@ -233,9 +276,15 @@ UNITTEST_SUITE_BEGIN(test_string)
             CHECK_TRUE(v2[1] == 'i');
             CHECK_TRUE(v2[2] == 'n');
 
-            string_t str2("This is modified text to change something in");
+            char const* constAsciiStr = "This is modified text to change something in";
+
+            string_t str2(constAsciiStr);
             CHECK_EQUAL(str2.size(), str1.size());
             CHECK_TRUE(str1 == str2);
+
+            char asciiStr[256];
+            str1.toAscii(asciiStr, 256);
+            CHECK_TRUE(ascii::compare(asciiStr, constAsciiStr) == 0);
         }
 
         UNITTEST_TEST(test_find_remove)

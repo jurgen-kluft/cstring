@@ -8,23 +8,17 @@
 
 namespace ncore
 {
-    class string_memory_t
+    namespace nstring_memory
     {
-    public:
-        static alloc_t* s_object_alloc;  // for instance_t and data_t
-        static alloc_t* s_string_alloc;  // for the actual string data
+        static alloc_t* s_object_alloc = nullptr;  // for instance_t and data_t, object-size = 32 bytes
+        static alloc_t* s_string_alloc = nullptr;  // for the actual string data
 
-        static void init(alloc_t* object_alloc = nullptr, alloc_t* string_alloc = nullptr);
-    };
-
-    alloc_t* string_memory_t::s_object_alloc = nullptr;  // for instance_t and data_t, object-size = 32 bytes
-    alloc_t* string_memory_t::s_string_alloc = nullptr;  // for the actual string data
-
-    void string_memory_t::init(alloc_t* object_alloc, alloc_t* string_alloc)
-    {
-        s_object_alloc = object_alloc;
-        s_string_alloc = string_alloc;
-    }
+        void init(alloc_t* object_alloc, alloc_t* string_alloc)
+        {
+            s_object_alloc = object_alloc;
+            s_string_alloc = string_alloc;
+        }
+    };  // namespace nstring_memory
 
     // Strings are stored in memory in UTF-16 format the internal encoding is more correctly described as UCS-2.
     // All code here assumes 2 bytes is one codepoint so only the Basic Multilingual Plane (BMP) is supported.
@@ -50,6 +44,8 @@ namespace ncore
 
             void addToList(instance_t* node);
             void remFromList(instance_t* node);
+
+            static data_t s_default;
         };
 
         struct range_t
@@ -84,6 +80,8 @@ namespace ncore
 
             instance_t* release();
             void        invalidate();
+
+            static instance_t s_default;
         };
 
         void data_t::addToList(instance_t* node)
@@ -105,24 +103,34 @@ namespace ncore
         void nstring::data_t::remFromList(nstring::instance_t* node)
         {
             if (m_head == node)
+            {
                 m_head = node->m_next;
+            }
+
             node->m_next->m_prev = node->m_prev;
             node->m_prev->m_next = node->m_next;
+
+            if (m_head == node)
+            {
+                m_head = nullptr;
+            }
         }
 
-        static nstring::instance_t s_default_item;
-        static nstring::data_t     s_default_data;
-        static uchar16             s_default_str[4] = {0, 0, 0, 0};
+        static uchar16 s_default_str[4]      = {0, 0, 0, 0};
+        instance_t     instance_t::s_default = {{0, 0}, &data_t::s_default, &instance_t::s_default, &instance_t::s_default};
+        data_t         data_t::s_default     = {s_default_str, &instance_t::s_default, 0, 1};
 
-        static inline bool             s_is_default_data(nstring::data_t* data) { return data == &s_default_data; }
-        static inline nstring::data_t* s_get_default_data() { return &s_default_data; }
+        static inline bool             s_is_default_data(nstring::data_t* data) { return data == &data_t::s_default; }
+        static inline nstring::data_t* s_get_default_data() { return &data_t::s_default; }
+        static inline bool             s_is_default_instance(nstring::instance_t* item) { return item == &instance_t::s_default; }
+        static nstring::instance_t*    s_get_default_instance() { return &instance_t::s_default; }
 
         static nstring::data_t* s_alloc_data(s32 strlen)
         {
-            nstring::data_t* data = (nstring::data_t*)string_memory_t::s_object_alloc->allocate(sizeof(nstring::data_t));
+            nstring::data_t* data = (nstring::data_t*)nstring_memory::s_object_alloc->allocate(sizeof(nstring::data_t));
             data->m_ref           = 0;
 
-            utf16::prune strdata = (utf16::prune)string_memory_t::s_string_alloc->allocate(strlen);
+            utf16::prune strdata = (utf16::prune)nstring_memory::s_string_alloc->allocate((strlen + 1) * sizeof(utf16::rune));
             data->m_len          = strlen;
             data->m_ptr          = strdata;
             data->m_head         = nullptr;
@@ -134,10 +142,10 @@ namespace ncore
         {
             if (data->m_len < new_size)
             {
-                utf16::prune newptr = (utf16::prune)string_memory_t::s_string_alloc->allocate(new_size * sizeof(uchar16) + 1);
+                utf16::prune newptr = (utf16::prune)nstring_memory::s_string_alloc->allocate((new_size + 1) * sizeof(uchar16));
                 for (s32 i = 0; i < data->m_len; i++)
                     newptr[i] = data->m_ptr[i];
-                string_memory_t::s_string_alloc->deallocate(data->m_ptr);
+                nstring_memory::s_string_alloc->deallocate(data->m_ptr);
                 data->m_ptr           = newptr;
                 data->m_len           = new_size;
                 data->m_ptr[new_size] = '\0';
@@ -148,8 +156,8 @@ namespace ncore
         {
             ASSERT(from <= to);
             const s32        len     = to - from;
-            nstring::data_t* newdata = (nstring::data_t*)string_memory_t::s_object_alloc->allocate(len);
-            utf16::prune     newptr  = (utf16::prune)string_memory_t::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
+            nstring::data_t* newdata = (nstring::data_t*)nstring_memory::s_object_alloc->allocate(len);
+            utf16::prune     newptr  = (utf16::prune)nstring_memory::s_string_alloc->allocate(len * sizeof(uchar16) + 1);
             newdata->m_ptr           = newptr;
             newdata->m_head          = nullptr;
             newdata->m_len           = len;
@@ -161,36 +169,12 @@ namespace ncore
             return newdata;
         }
 
-        static inline bool          s_is_default_instance(nstring::instance_t* item) { return item == &s_default_item; }
-        static nstring::instance_t* s_get_default_instance()
-        {
-            static nstring::instance_t* s_default_item_ptr = nullptr;
-            if (s_default_item_ptr == nullptr)
-            {
-                s_default_item_ptr = &s_default_item;
-
-                s_default_data.m_ptr  = (utf16::prune)s_default_str;
-                s_default_data.m_len  = 0;
-                s_default_data.m_ref  = 0;
-                s_default_data.m_head = s_default_item_ptr;
-
-                s_default_item.m_data  = s_get_default_data();
-                s_default_item.m_range = {0, 0};
-                s_default_item.m_next  = s_default_item_ptr;
-                s_default_item.m_prev  = s_default_item_ptr;
-            }
-            return s_default_item_ptr;
-        }
-
         static nstring::instance_t* s_alloc_instance(nstring::range_t range, nstring::data_t* data)
         {
-            if (data == nullptr)
-                data = s_get_default_data();
-
-            nstring::instance_t* v = (nstring::instance_t*)string_memory_t::s_object_alloc->allocate(sizeof(nstring::instance_t));
+            nstring::instance_t* v = (nstring::instance_t*)nstring_memory::s_object_alloc->allocate(sizeof(nstring::instance_t));
             v->m_range             = range;
             v->m_data              = data->attach();
-            data->addToList(v);
+            v->m_data->addToList(v);
             return v;
         }
 
@@ -243,12 +227,12 @@ namespace ncore
         static void s_insert_space(uchar16* str, s32 strlen, s32 pos, s32 len)
         {
             // insert space, need to start at the end to avoid overwriting
-            s32       src = strlen;
-            s32       dst = strlen + len;
-            s32 const end = pos + len;
+            uchar16 const* src = str + strlen;
+            uchar16*       dst = str + strlen + len;
+            uchar16 const* end = str + pos;
             while (src > end)
             {
-                str[--dst] = str[--src];
+                *(--dst) = *(--src);
             }
         }
 
@@ -270,27 +254,28 @@ namespace ncore
         static const s32 CLEARED   = 2;
         static const s32 RELEASED  = 3;
 
-        static void s_string_insert(nstring::instance_t* str, nstring::range_t location, nstring::instance_t const* insert)
+        static void s_string_insert(nstring::instance_t* item, nstring::range_t selection, nstring::instance_t const* insert)
         {
-            if (insert->is_empty())
+            s32 const insertionLength = insert->size();
+            if (insertionLength == 0)
                 return;
 
-            s32 const len = location.size();
-            s32       pos = location.m_from;
-            if (len < insert->size())
+            s32 const selectionLength = selection.size();
+            s32       insertionPos    = selection.m_from;
+            if (selectionLength < insertionLength)
             {
                 // The string to insert is larger than the selection, so we have to insert some
                 // space into the string.
-                s_resize_data(str->m_data, str->m_data->m_len + (insert->size() - len));
-                s_insert_space(str->m_data->m_ptr, str->m_data->m_len, pos, insert->size() - len);
-                s_adjust_active_views(str, INSERTION, pos, pos + insert->size() - len);
+                s_resize_data(item->m_data, item->m_data->m_len + (insertionLength - selectionLength));
+                s_insert_space(item->m_data->m_ptr, item->m_data->m_len, insertionPos, insertionLength - selectionLength);
+                s_adjust_active_views(item, INSERTION, insertionPos, insertionPos + insertionLength - selectionLength);
             }
-            else if (len > insert->size())
+            else if (selectionLength > insertionLength)
             {
                 // The string to insert is smaller than the selection, so we have to remove some
                 // space from the string.
-                s_remove_space(str->m_data->m_ptr, str->m_data->m_len, pos, len - insert->size());
-                s_adjust_active_views(str, REMOVAL, pos, pos + len - insert->size());
+                s_remove_space(item->m_data->m_ptr, item->m_data->m_len, insertionPos, selectionLength - insertionLength);
+                s_adjust_active_views(item, REMOVAL, insertionPos, insertionPos + selectionLength - insertionLength);
             }
             else
             {
@@ -300,14 +285,10 @@ namespace ncore
 
             s32            src         = 0;
             uchar16 const* insert_data = insert->m_data->m_ptr + insert->m_range.m_from;
-            uchar16*       str_data    = str->m_data->m_ptr + str->m_range.m_from;
-            while (src < insert->size())
-            {
-                uchar32 const c = insert_data[src];
-                str_data[pos]   = c;
-                ++src;
-                ++pos;
-            }
+            uchar16 const* insert_end  = insert_data + insertionLength;
+            uchar16*       str_data    = item->m_data->m_ptr + item->m_range.m_from + insertionPos;
+            while (insert_data < insert_end)
+                *str_data++ = *insert_data++;
         }
 
         static void string_remove(nstring::instance_t* str, nstring::range_t selection)
@@ -529,8 +510,8 @@ namespace ncore
         // Clear and Reset will invalidate all views on the string.
         static void s_adjust_active_view(nstring::instance_t* v, s32 op_code, s32 rhs_from, s32 rhs_to)
         {
-            s32 lhs_from = v->m_range.m_from;
-            s32 lhs_to   = v->m_range.m_to;
+            s32& lhs_from = v->m_range.m_from;
+            s32& lhs_to   = v->m_range.m_to;
 
             switch (op_code)
             {
@@ -639,11 +620,14 @@ namespace ncore
                 if (s_is_default_data(this))
                     return this;
 
-                string_memory_t::s_string_alloc->deallocate(m_ptr);
-                string_memory_t::s_object_alloc->deallocate(this);
+                nstring_memory::s_string_alloc->deallocate(m_ptr);
+                nstring_memory::s_object_alloc->deallocate(this);
                 return s_get_default_data();
             }
-            m_ref--;
+            else if (m_ref > 0)
+            {
+                m_ref--;
+            }
             return this;
         }
 
@@ -652,9 +636,17 @@ namespace ncore
         //------------------------------------------------------------------------------
         nstring::instance_t* nstring::instance_t::clone_full() const
         {
-            s32 const            strlen = m_range.size();
-            nstring::data_t*     data   = s_unique_data(m_data, m_range.m_from, m_range.m_to);
-            nstring::instance_t* v      = s_alloc_instance({0, strlen}, data);
+            s32 const        strlen = m_range.size();
+            nstring::data_t* data;
+            if (s_is_default_data(m_data))
+            {
+                data = m_data->attach();
+            }
+            else
+            {
+                data = s_unique_data(m_data, m_range.m_from, m_range.m_to);
+            }
+            nstring::instance_t* v = s_alloc_instance({0, strlen}, data);
             return v;
         }
 
@@ -673,7 +665,7 @@ namespace ncore
                     m_data->remFromList(this);
                     m_data->detach();
                 }
-                string_memory_t::s_object_alloc->deallocate(this);
+                nstring_memory::s_object_alloc->deallocate(this);
             }
             return s_get_default_instance();
         }
@@ -706,17 +698,15 @@ namespace ncore
                 return -1;
             if (lhsview.size() > rhs->size())
                 return 1;
-            uchar16 const* lhsdata = lhs->m_data->m_ptr + lhs->m_range.m_from;
+            uchar16 const* lhsdata = lhs->m_data->m_ptr + lhs->m_range.m_from + lhsview.m_from;
             uchar16 const* rhsdata = rhs->m_data->m_ptr + rhs->m_range.m_from;
             uchar16 const* lhsend  = lhsdata + lhsview.size();
             while (lhsdata < lhsend)
             {
                 uchar32 const lc = *lhsdata++;
                 uchar32 const rc = *rhsdata++;
-                if (lc < rc)
-                    return -1;
-                else if (lc > rc)
-                    return 1;
+                if (lc != rc)
+                    return (lc < rc) ? -1 : 1;
             }
             return 0;
         }
@@ -788,6 +778,23 @@ namespace ncore
             }
             return {0, 0};
         }
+
+        static void toAscii(const nstring::instance_t* str, char* dst, s32 dstMaxLen)
+        {
+            s32 const len = str->size();
+            s32       i   = 0;
+            dstMaxLen -= 1;
+            for (; i < len && i < dstMaxLen; ++i)
+            {
+                uchar16 c16 = str->m_data->m_ptr[str->m_range.m_from + i];
+                uchar8  c8  = c16;
+                if (c16 > 127)
+                    c8 = '?';
+                dst[i] = c8;
+            }
+            dst[i] = '\0';
+        }
+
     };  // namespace nstring
 
     //------------------------------------------------------------------------------
@@ -809,9 +816,10 @@ namespace ncore
         {
             nstring::data_t* data = nstring::s_alloc_data(strlen);
             m_item                = nstring::s_alloc_instance({from, to}, data);
+            uchar16* dst          = data->m_ptr;
             while (*str != '\0')
-                *data->m_ptr++ = *str++;
-            *data->m_ptr = '\0';
+                *dst++ = *str++;
+            *dst = '\0';
         }
         else
         {
@@ -856,11 +864,11 @@ namespace ncore
         m_item->m_range.m_to = strlen;
     }
 
-    string_t::string_t(nstring::instance_t* instance) { m_item = instance->clone_slice(); }
+    string_t::string_t(nstring::instance_t* instance, s32 weird) { m_item = instance; }
 
-    string_t::string_t(nstring::instance_t* instance, s32 from, s32 to)
+    string_t::string_t(nstring::instance_t* instance, s32 from, s32 to, s32 weird)
     {
-        m_item = instance->clone_slice();
+        m_item = instance;
         m_item->m_range.m_from += from;
         m_item->m_range.m_to = m_item->m_range.m_from + (to - from);
     }
@@ -874,15 +882,20 @@ namespace ncore
     bool     string_t::is_empty() const { return m_item->is_empty(); }
     bool     string_t::is_slice() const { return m_item->is_slice(); }
     void     string_t::clear() { release(); }
-    string_t string_t::slice() const { return string_t(m_item); }
-    string_t string_t::clone() const { return string_t(m_item->clone_full()); }
+    string_t string_t::slice() const
+    {
+        nstring::instance_t* item = m_item->clone_slice();
+        return string_t(item, m_item->m_range.m_from, m_item->m_range.m_to, 8888);
+    }
+    string_t string_t::clone() const { return string_t(m_item->clone_full(), 8888); }
 
     string_t string_t::operator()(s32 _from, s32 _to) const
     {
         math::sort(_from, _to);
-        const u32 from = math::min(m_item->m_range.m_from + _from, m_item->m_range.m_to);
-        const u32 to   = math::min(m_item->m_range.m_from + _to, m_item->m_range.m_to);
-        return string_t(m_item, {from, to});
+        const u32            from = math::min(m_item->m_range.m_from + _from, m_item->m_range.m_to);
+        const u32            to   = math::min(m_item->m_range.m_from + _to, m_item->m_range.m_to);
+        nstring::instance_t* item = m_item->clone_slice();
+        return string_t(item, from, to, 8888);
     }
 
     uchar32 string_t::operator[](s32 index) const
@@ -965,14 +978,17 @@ namespace ncore
         nstring::instance_t* item = m_item->clone_slice();
         item->m_range.m_from      = m_item->m_range.m_from + from;
         item->m_range.m_to        = m_item->m_range.m_from + to;
-        return string_t(item);
+
+        string_t str;
+        str.m_item = item;
+        return str;
     }
 
     string_t string_t::selectUntil(uchar32 find) const
     {
         nstring::range_t view = nstring::findCharUntil(m_item, find);
         if (view.is_empty())
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
         return select(view.m_from, view.m_to);
     }
 
@@ -980,7 +996,7 @@ namespace ncore
     {
         nstring::range_t view = nstring::selectBeforeLocal(m_item, selection.m_item);
         if (view.is_empty())
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
         return select(view.m_from, view.m_to);
     }
 
@@ -988,7 +1004,7 @@ namespace ncore
     {
         nstring::range_t view = nstring::findCharUntilLast(m_item, find);
         if (view.is_empty())
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
         return select(view.m_from, view.m_to);
     }
 
@@ -997,7 +1013,7 @@ namespace ncore
         // TODO What if 'selection' is not part of this string ?
         nstring::range_t view = nstring::selectBeforeLocal(m_item, selection.m_item);
         if (view.is_empty())
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
         return select(view.m_from, view.m_to);
     }
 
@@ -1005,7 +1021,7 @@ namespace ncore
     {
         nstring::range_t view = nstring::findCharUntil(m_item, find);
         if (view.is_empty())
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
         return select(view.m_from, view.m_to + 1);
     }
 
@@ -1013,19 +1029,21 @@ namespace ncore
     {
         nstring::range_t view = nstring::selectBeforeIncludedLocal(m_item, selection.m_item);
         if (view.is_empty())
-            return string_t(nstring::s_get_default_instance());
-        return select(view.m_from, view.m_to + selection.size());
+            return string_t(nstring::s_get_default_instance(), 8888);
+        return select(view.m_from, view.m_to);
     }
 
     string_t string_t::selectUntilEndExcludeSelection(const string_t& selection) const
     {
-        nstring::range_t range = nstring::selectAfterLocal(m_item, selection.m_item);
-        return string_t(m_item, range.m_from, range.m_to);
+        nstring::range_t     range = nstring::selectAfterLocal(m_item, selection.m_item);
+        nstring::instance_t* item  = m_item->clone_slice();
+        return string_t(item, range.m_from, range.m_to, 8888);
     }
     string_t string_t::selectUntilEndIncludeSelection(const string_t& selection) const
     {
-        nstring::range_t range = nstring::selectAfterIncludedLocal(m_item, selection.m_item);
-        return string_t(m_item, range.m_from, range.m_to);
+        nstring::range_t     range = nstring::selectAfterIncludedLocal(m_item, selection.m_item);
+        nstring::instance_t* item  = m_item->clone_slice();
+        return string_t(item, range.m_from, range.m_to, 8888);
     }
 
     bool string_t::isUpper() const
@@ -1137,13 +1155,13 @@ namespace ncore
             if (c == find)
                 return select(i, i + 1);
         }
-        return string_t(nstring::s_get_default_instance());
+        return string_t(nstring::s_get_default_instance(), 8888);
     }
 
     string_t string_t::findLast(uchar32 find) const
     {
         if (size() == 0)
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
 
         uchar16 const* strbegin = m_item->m_data->m_ptr + m_item->m_range.m_from;
         uchar16 const* strdata  = m_item->m_data->m_ptr + m_item->m_range.m_to - 1;
@@ -1154,34 +1172,37 @@ namespace ncore
                 return select((s32)(strdata - strbegin), (s32)((strdata + 1) - strbegin));
             strdata++;
         }
-        return string_t(nstring::s_get_default_instance());
+        return string_t(nstring::s_get_default_instance(), 8888);
     }
 
     string_t string_t::find(const char* inFind) const
     {
         uchar16 const* str = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); i++)
+        s32 const      len = size();
+        for (s32 i = 0; i < len; i++)
         {
             uchar32 const c = str[i];
             if (c == *inFind)
             {
                 s32 s = 1;
-                for (s32 j = i + 1; j < size(); j++, ++s)
+                for (s32 j = i + 1; j < len; j++, ++s)
                 {
-                    if (str[m_item->m_range.m_from + j] != inFind[s])
-                        break;
                     if (inFind[s] == '\0')
-                        return select(i, i + s);
+                        return select(m_item->m_range.m_from + i, m_item->m_range.m_from + j);
+                    if (str[j] != inFind[s])
+                        break;
                 }
+                if (inFind[s] == '\0')
+                    return select(m_item->m_range.m_from + i, m_item->m_range.m_from + len);
             }
         }
-        return string_t(nstring::s_get_default_instance());
+        return string_t(nstring::s_get_default_instance(), 8888);
     }
 
     string_t string_t::find(const string_t& find) const
     {
         if (find.size() > size())
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
 
         nstring::range_t v = {0, 0};
         v.m_to             = find.size();
@@ -1196,13 +1217,13 @@ namespace ncore
             if (!s_move_view(m_item, v, 1))
                 break;
         }
-        return string_t(nstring::s_get_default_instance());
+        return string_t(nstring::s_get_default_instance(), 8888);
     }
 
     string_t string_t::findLast(const string_t& find) const
     {
         if (find.size() > size())
-            return string_t(nstring::s_get_default_instance());
+            return string_t(nstring::s_get_default_instance(), 8888);
 
         nstring::range_t v = {0, 0};
         v.m_from           = size() - find.size();
@@ -1219,7 +1240,7 @@ namespace ncore
             if (!s_move_view(m_item, v, -1))
                 break;
         }
-        return string_t(nstring::s_get_default_instance());
+        return string_t(nstring::s_get_default_instance(), 8888);
     }
 
     string_t string_t::findOneOf(const string_t& charset) const
@@ -1233,7 +1254,7 @@ namespace ncore
                 return select(i, i + 1);
             }
         }
-        return string_t(nstring::s_get_default_instance());
+        return string_t(nstring::s_get_default_instance(), 8888);
     }
 
     string_t string_t::findOneOfLast(const string_t& charset) const
@@ -1247,7 +1268,7 @@ namespace ncore
                 return select(i, i + 1);
             }
         }
-        return string_t(nstring::s_get_default_instance());
+        return string_t(nstring::s_get_default_instance(), 8888);
     }
 
     s32  string_t::compare(const string_t& rhs) const { return nstring::compare(m_item, m_item->m_range, rhs.m_item); }
@@ -1343,8 +1364,8 @@ namespace ncore
     {
         release();
 
-        crunes_t    fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
-        const s32   len = cprintf_(fmt, argv, argc);
+        crunes_t  fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        const s32 len = cprintf_(fmt, argv, argc);
 
         nstring::data_t*     data = nstring::s_alloc_data(len);
         nstring::instance_t* item = nstring::s_alloc_instance({0, len}, data);
@@ -1359,8 +1380,8 @@ namespace ncore
 
     s32 string_t::formatAdd(const string_t& format, const va_t* argv, s32 argc)
     {
-        crunes_t    fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
-        const s32   len = cprintf_(fmt, argv, argc);
+        crunes_t  fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        const s32 len = cprintf_(fmt, argv, argc);
         s_resize_data(m_item->m_data, len);
         runes_t str(m_item->m_data->m_ptr, m_item->m_range.m_from, m_item->m_range.m_to, m_item->m_data->m_len);
         str.m_ascii.m_str = str.m_ascii.m_end;
@@ -1377,8 +1398,8 @@ namespace ncore
 
     void string_t::insertBeforeSelection(const string_t& selection, const string_t& insert)
     {
-        nstring::range_t range = nstring::selectAfterLocal(m_item, selection.m_item);
-        range.m_from           = range.m_to;
+        nstring::range_t range(selection.m_item->m_range);
+        range.m_to = range.m_from;
         s_string_insert(m_item, range, insert.m_item);
     }
 
@@ -1466,36 +1487,26 @@ namespace ncore
 
     s32 string_t::removeAnyChar(const string_t& any, s32 ntimes)
     {
-        s32 n = ntimes;
-        if (n == 0)
-            n = size();
-
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
+        s32 len = size();
+
+        if (ntimes == 0)
+            ntimes = len;
 
         s32 i = 0;
-        s32 p = 0;
-        while (i < size())
+        s32 n = 0;
+        while (i < len)
         {
-            if (n > 0 && any.contains(strdata[i]))
+            if (n < ntimes && any.contains(strdata[i]))
             {
-                --n;
-                ++i;
+                string_remove(m_item, {i, i + 1});
+                --len;
+                ++n;
                 continue;
             }
-            if (p < i)
-            {
-                strdata[p] = strdata[i];
-            }
-            ++p;
             ++i;
         }
-        if (p < i)
-            strdata[p] = '\0';
-
-        // adjust the 'to' of the string
-        m_item->m_range.m_to -= ntimes - n;
-
-        return ntimes - n;
+        return n;
     }
 
     s32 string_t::replaceAnyChar(const string_t& any, uchar32 with, s32 ntimes)
@@ -1808,6 +1819,8 @@ namespace ncore
         outRight = select(range.m_to + find.size(), size());
         return true;
     }
+
+    void string_t::toAscii(char* str, s32 maxlen) const { nstring::toAscii(m_item, str, maxlen); }
 
     //------------------------------------------------------------------------------
     static void user_case_for_string()
