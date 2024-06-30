@@ -25,6 +25,9 @@ namespace ncore
     // Strings are stored in the endian-ness appropriate for the current platform.
     namespace nstring
     {
+        struct range_t;
+        struct data_t;
+
         struct data_t  // 24 bytes
         {
             uchar16*    m_ptr;   // UCS-2
@@ -1488,7 +1491,7 @@ namespace ncore
     s32 string_t::removeAnyChar(const string_t& any, s32 ntimes)
     {
         uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        s32 len = size();
+        s32      len     = size();
 
         if (ntimes == 0)
             ntimes = len;
@@ -1623,133 +1626,99 @@ namespace ncore
         }
     }
 
+    static void sTrimLeft(nstring::instance_t* item, uchar16 const* any, s32 num)
+    {
+        uchar16 const* end   = item->m_data->m_ptr + item->m_range.m_to;
+        uchar16 const* begin = item->m_data->m_ptr + item->m_range.m_from;
+    trim_continue:
+        while (begin < end)
+        {
+            uchar16 const c = *begin;
+            for (s32 j = 0; j < num; ++j)
+            {
+                if (c == any[j])
+                {
+                    ++begin;
+                    goto trim_continue;
+                }
+            }
+            break;
+        }
+        item->m_range.m_from = begin - item->m_data->m_ptr;
+    }
+
+    static void sTrimRight(nstring::instance_t* item, uchar16 const* any, s32 num)
+    {
+        uchar16 const* end  = item->m_data->m_ptr + item->m_range.m_to;
+        uchar16 const* begin = item->m_data->m_ptr + item->m_range.m_from;
+    trim_continue:
+        while (end > begin)
+        {
+            uchar16 const c = end[-1];
+            for (s32 j = 0; j < num; ++j)
+            {
+                if (c == any[j])
+                {
+                    --end;
+                    goto trim_continue;
+                }
+            }
+            break;
+        }
+        item->m_range.m_to = end - item->m_data->m_ptr;
+    }
+
+    static const uchar16 sTrimWhiteSpace[] = {' ', '\t', '\r', '\n'};
+
     // Trim does nothing more than narrowing the <from, to>, nothing is actually removed
     // from the actual underlying string string_data.
     void string_t::trim()
     {
-        trimLeft();
-        trimRight();
+        sTrimLeft(m_item, sTrimWhiteSpace, sizeof(sTrimWhiteSpace) / sizeof(sTrimWhiteSpace[0]));
+        sTrimRight(m_item, sTrimWhiteSpace, sizeof(sTrimWhiteSpace) / sizeof(sTrimWhiteSpace[0]));
     }
 
-    void string_t::trimLeft()
-    {
-        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); ++i)
-        {
-            uchar32 c = strdata[i];
-            if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
-            {
-                if (i > 0)
-                {
-                    s_narrow_view(m_item, -i);
-                }
-                return;
-            }
-        }
-    }
-
-    void string_t::trimRight()
-    {
-        s32 const last    = size() - 1;
-        uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); ++i)
-        {
-            uchar32 c = strdata[last - i];
-            if (c != ' ' && c != '\t' && c != '\r' && c != '\n')
-            {
-                if (i > 0)
-                {
-                    s_narrow_view(m_item, i);
-                }
-                return;
-            }
-        }
-    }
+    void string_t::trimLeft() { sTrimLeft(m_item, sTrimWhiteSpace, sizeof(sTrimWhiteSpace) / sizeof(sTrimWhiteSpace[0])); }
+    void string_t::trimRight() { sTrimRight(m_item, sTrimWhiteSpace, sizeof(sTrimWhiteSpace) / sizeof(sTrimWhiteSpace[0])); }
 
     void string_t::trim(uchar32 c)
     {
-        trimLeft(c);
-        trimRight(c);
+        uchar16 const any[1] = {c};
+        sTrimLeft(m_item, any, 1);
+        sTrimRight(m_item, any, 1);
     }
 
     void string_t::trimLeft(uchar32 c)
     {
-        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); ++i)
-        {
-            uchar32 const r = strdata[i];
-            if (c != r)
-            {
-                if (i > 0)
-                {
-                    s_narrow_view(m_item, -i);
-                }
-                return;
-            }
-        }
+        uchar16 const any[1] = {c};
+        sTrimLeft(m_item, any, 1);
     }
 
     void string_t::trimRight(uchar32 c)
     {
-        s32 const last    = size() - 1;
-        uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); ++i)
-        {
-            uchar32 const r = strdata[last - i];
-            if (c != r)
-            {
-                if (i > 0)
-                {
-                    s_narrow_view(m_item, i);
-                }
-                return;
-            }
-        }
+        uchar16 const any[1] = {c};
+        sTrimRight(m_item, any, 1);
     }
 
     void string_t::trim(const string_t& set)
     {
-        trimLeft(set);
-        trimRight(set);
+        sTrimLeft(m_item, set.m_item->m_data->m_ptr, set.size());
+        sTrimRight(m_item, set.m_item->m_data->m_ptr, set.size());
     }
 
-    void string_t::trimLeft(const string_t& set)
+    void string_t::trimLeft(const string_t& set) { sTrimLeft(m_item, set.m_item->m_data->m_ptr, set.size()); }
+    void string_t::trimRight(const string_t& set) { sTrimRight(m_item, set.m_item->m_data->m_ptr, set.size()); }
+
+    void string_t::trimQuotes()
     {
-        uchar16* strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); ++i)
-        {
-            uchar32 c = strdata[i];
-            if (!set.contains(c))
-            {
-                if (i > 0)
-                {
-                    s_narrow_view(m_item, -i);
-                }
-                return;
-            }
-        }
+        trimLeft('"');
+        trimRight('"');
     }
-
-    void string_t::trimRight(const string_t& set)
+    void string_t::trimQuotes(uchar32 quote)
     {
-        s32 const last    = size() - 1;
-        uchar16*  strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        for (s32 i = 0; i < size(); ++i)
-        {
-            uchar32 c = strdata[last - i];
-            if (!set.contains(c))
-            {
-                if (i > 0)
-                {
-                    s_narrow_view(m_item, i);
-                }
-                return;
-            }
-        }
+        trimLeft(quote);
+        trimRight(quote);
     }
-
-    void string_t::trimQuotes() { trimDelimiters('"', '"'); }
-    void string_t::trimQuotes(uchar32 quote) { trimDelimiters(quote, quote); }
 
     void string_t::trimDelimiters(uchar32 left, uchar32 right)
     {

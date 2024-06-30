@@ -12,14 +12,11 @@
 namespace ncore
 {
     class va_t;
-    class va_list_t;
     class alloc_t;
     class arena_t;
 
     namespace nstring
     {
-        struct range_t;
-        struct data_t;
         struct instance_t;
     }  // namespace nstring
 
