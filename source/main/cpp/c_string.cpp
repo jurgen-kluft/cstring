@@ -62,6 +62,16 @@ namespace ncore
                 ASSERT(m_from <= m_to);
                 return m_to - m_from;
             }
+            inline void move_left()
+            {
+                --m_from;
+                --m_to;
+            }
+            inline void move_right()
+            {
+                m_from++;
+                m_to++;
+            }
             inline bool    is_inside(range_t const& parent) const { return m_from >= parent.m_from && m_to <= parent.m_to; }
             inline range_t local() const { return {0, m_to - m_from}; }
         };
@@ -208,7 +218,10 @@ namespace ncore
             return false;
         }
 
-        static bool s_move_view(nstring::instance_t const* str, nstring::range_t& view, s32 move)
+        static inline s32 s_move_view_right_count(nstring::instance_t const* str, nstring::range_t& view) { return str->m_range.m_to - view.m_to; }
+        static inline s32 s_move_view_left_count(nstring::instance_t const* str, nstring::range_t& view) { return view.m_from - str->m_range.m_from; }
+
+        static inline bool s_move_view(nstring::instance_t const* str, nstring::range_t& view, s32 move)
         {
             s32 const from = view.m_from + move;
 
@@ -374,21 +387,20 @@ namespace ncore
             return false;
         }
 
-        static bool s_contains(const nstring::instance_t* str, uchar32 find)
+        static bool s_contains(const uchar16* str, s32 strLen, uchar32 find)
         {
-            u32            len     = str->size();
-            u32            i       = 0;
-            uchar16 const* strdata = str->m_data->m_ptr + str->m_range.m_from;
-            while (i < len)
+            uchar16 const* strData = str;
+            uchar16 const* strEnd = str + strLen;
+            while (strData < strEnd)
             {
-                uchar32 const c = strdata[i];
+                uchar32 const c = *strData++;
                 if (c == find)
                     return true;
             }
             return false;
         }
 
-        static void s_remove_any(nstring::instance_t* str, const nstring::instance_t* any)
+        static void s_remove_any(nstring::instance_t* str, const uchar16* any, s32 any_count)
         {
             // Remove any of the characters in @charset from @str
             s32 const strfrom = str->m_range.m_from;
@@ -402,7 +414,7 @@ namespace ncore
             while (i < strsize)
             {
                 uchar16 const c = strdata[i];
-                if (s_contains(any, c))
+                if (s_contains(any, any_count, c))
                 {
                     if (r == -1)
                         r = i;
@@ -732,20 +744,13 @@ namespace ncore
 
         static nstring::range_t findStrUntil(const nstring::instance_t* str, const nstring::instance_t* find)
         {
-            nstring::range_t v = {0, 0};
-            v.m_to             = find->size();
-
-            while (!v.is_empty())
+            nstring::range_t view  = {0, find->size()};
+            s32 const        count = s_move_view_right_count(str, view);
+            for (s32 m = 0; m < count; m++)
             {
-                if (nstring::isEqual(str, v, find))
-                {
-                    // So here we have a view with the size of the @find string on
-                    // string @str that matches the string @find and we need to return
-                    // a string view that exist before view @v.
-                    return {0, v.m_from};
-                }
-                if (!s_move_view(str, v, 1))
-                    break;
+                if (nstring::isEqual(str, view, find))
+                    return {0, view.m_from};
+                view.move_right();
             }
             return {0, 0};
         }
@@ -766,18 +771,15 @@ namespace ncore
 
         static nstring::range_t findStrUntilLast(const nstring::instance_t* str, const nstring::instance_t* find)
         {
-            nstring::range_t v = {0, 0};
-            v.m_from           = str->size() - find->size();
-            v.m_to             = str->size();
-
-            while (!v.is_empty())
+            nstring::range_t view = {0, 0};
+            view.m_from           = str->size() - find->size();
+            view.m_to             = str->size();
+            s32 const count       = s_move_view_left_count(str, view);
+            for (s32 m = 0; m < count; m++)
             {
-                if (isEqual(str, v, find))
-                {
-                    return {0, v.m_from};
-                }
-                if (!s_move_view(str, v, -1))
-                    break;
+                if (isEqual(str, view, find))
+                    return {0, view.m_from};
+                view.move_left();
             }
             return {0, 0};
         }
@@ -1207,20 +1209,11 @@ namespace ncore
         if (find.size() > size())
             return string_t(nstring::s_get_default_instance(), 8888);
 
-        nstring::range_t v = {0, 0};
-        v.m_to             = find.size();
-        while (!v.is_empty())
-        {
-            if (nstring::isEqual(m_item, v, find.m_item))
-            {
-                // So here we have a view with the size of the @find string on
-                // string @str that matches the string @find.
-                return select(v.m_from, v.m_to);
-            }
-            if (!s_move_view(m_item, v, 1))
-                break;
-        }
-        return string_t(nstring::s_get_default_instance(), 8888);
+        nstring::range_t v = nstring::s_find(m_item, find.m_item);
+        if (v.is_empty())
+            return string_t(nstring::s_get_default_instance(), 8888);
+
+        return select(v.m_from, v.m_to);
     }
 
     string_t string_t::findLast(const string_t& find) const
@@ -1649,7 +1642,7 @@ namespace ncore
 
     static void sTrimRight(nstring::instance_t* item, uchar16 const* any, s32 num)
     {
-        uchar16 const* end  = item->m_data->m_ptr + item->m_range.m_to;
+        uchar16 const* end   = item->m_data->m_ptr + item->m_range.m_to;
         uchar16 const* begin = item->m_data->m_ptr + item->m_range.m_from;
     trim_continue:
         while (end > begin)
@@ -1790,19 +1783,5 @@ namespace ncore
     }
 
     void string_t::toAscii(char* str, s32 maxlen) const { nstring::toAscii(m_item, str, maxlen); }
-
-    //------------------------------------------------------------------------------
-    static void user_case_for_string()
-    {
-        string_t str("This is an ascii string that will be converted to UTF-32");
-
-        string_t strvw  = str.slice();
-        string_t ascii  = "ascii";
-        string_t substr = strvw.find(ascii.slice());
-        substr.toUpper();
-
-        string_t converted("converted ");
-        strvw.findRemove(converted.slice());
-    }
 
 }  // namespace ncore
