@@ -18,7 +18,7 @@ namespace ncore
     namespace nstring
     {
         struct instance_t;
-    }  // namespace nstring
+    }
 
     namespace nstring_memory
     {
