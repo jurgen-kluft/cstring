@@ -1686,20 +1686,26 @@ namespace ncore
 
     void string_t::trim(uchar32 c)
     {
-        ucs2::rune const any[1] = {c};
+        ucs2::rune any[2];
+        any[0].value = c;
+        any[1].value = '\0';
         sTrimLeft(m_item, any, 1);
         sTrimRight(m_item, any, 1);
     }
 
     void string_t::trimLeft(uchar32 c)
     {
-        ucs2::rune const any[1] = {c};
+        ucs2::rune any[2];
+        any[0].value = c;
+        any[1].value = '\0';
         sTrimLeft(m_item, any, 1);
     }
 
     void string_t::trimRight(uchar32 c)
     {
-        ucs2::rune const any[1] = {c};
+        ucs2::rune any[2];
+        any[0].value = c;
+        any[1].value = '\0';
         sTrimRight(m_item, any, 1);
     }
 
