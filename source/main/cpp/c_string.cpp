@@ -161,7 +161,7 @@ namespace ncore
                 nstring_memory::s_string_alloc->deallocate(data->m_ptr);
                 data->m_ptr                 = newptr;
                 data->m_len                 = new_size;
-                data->m_ptr[new_size].value = '\0';
+                data->m_ptr[new_size].r = '\0';
             }
         }
 
@@ -259,7 +259,7 @@ namespace ncore
             ucs2::pcrune end = str + strlen;
             while (src < end)
                 *dst++ = *src++;
-            dst->value = '\0';
+            dst->r = '\0';
         }
 
         // forward declare
@@ -413,7 +413,7 @@ namespace ncore
             ucs2::prune strdata = str->m_data->m_ptr + strfrom;
             while (i < strsize)
             {
-                uchar32 const c = strdata[i].value;
+                uchar32 const c = strdata[i].r;
                 if (s_contains(any, any_count, c))
                 {
                     if (r == -1)
@@ -434,7 +434,7 @@ namespace ncore
 
                     if (i > d)
                     {
-                        strdata[d].value = c;
+                        strdata[d].r = c;
                     }
                     i++;
                     d++;
@@ -449,15 +449,15 @@ namespace ncore
                 ucs2::prune strdata = str->m_data->m_ptr + strfrom;
                 while (i < str->m_data->m_len)
                 {
-                    uchar32 const c  = strdata[i].value;
-                    strdata[d].value = c;
+                    uchar32 const c  = strdata[i].r;
+                    strdata[d].r = c;
                     i++;
                     d++;
                 }
 
                 str->m_data->m_len -= l;
                 ucs2::prune pdst               = (ucs2::prune)str->m_data->m_ptr;
-                pdst[str->m_data->m_len].value = '\0';
+                pdst[str->m_data->m_len].r = '\0';
             }
         }
 
@@ -721,7 +721,7 @@ namespace ncore
                 ucs2::rune const lc = *lhsdata++;
                 ucs2::rune const rc = *rhsdata++;
                 if (lc != rc)
-                    return (lc.value < rc.value) ? -1 : 1;
+                    return (lc.r < rc.r) ? -1 : 1;
             }
             return 0;
         }
@@ -733,7 +733,7 @@ namespace ncore
             ucs2::pcrune strdata = str->m_data->m_ptr + str->m_range.m_from;
             for (s32 i = 0; i < str->size(); i++)
             {
-                uchar32 const c = strdata[i].value;
+                uchar32 const c = strdata[i].r;
                 if (c == find)
                 {
                     return {0, i};
@@ -760,7 +760,7 @@ namespace ncore
             ucs2::pcrune strdata = str->m_data->m_ptr + str->m_range.m_from;
             for (s32 i = str->size() - 1; i >= 0; --i)
             {
-                uchar32 const c = strdata[i].value;
+                uchar32 const c = strdata[i].r;
                 if (c == find)
                 {
                     return {str->m_range.m_from, str->m_range.m_from + i};
@@ -792,8 +792,8 @@ namespace ncore
             for (; i < len && i < dstMaxLen; ++i)
             {
                 ucs2::rune c16 = str->m_data->m_ptr[str->m_range.m_from + i];
-                uchar8     c8  = c16.value;
-                if (c16.value > 127)
+                uchar8     c8  = (uchar8)c16.r;
+                if (c16.r > 127)
                     c8 = '?';
                 dst[i] = c8;
             }
@@ -825,10 +825,10 @@ namespace ncore
             while (*str != '\0')
             {
                 ucs2::rune r;
-                r.value = *str++;
+                r.r = *str++;
                 *dst++  = r;
             }
-            dst->value = '\0';
+            dst->r = '\0';
         }
         else
         {
@@ -912,7 +912,7 @@ namespace ncore
         if (index >= size())
             return '\0';
         ucs2::pcrune str = m_item->m_data->m_ptr + m_item->m_range.m_from;
-        return str[index].value;
+        return str[index].r;
     }
 
     string_t& string_t::operator=(const char* other)
@@ -932,10 +932,10 @@ namespace ncore
             while (dst < end)
             {
                 ucs2::rune r;
-                r.value = *other;
+                r.r = *other;
                 *dst++  = r;
             }
-            dst->value             = '\0';
+            dst->r             = '\0';
             m_item                 = item;
             m_item->m_range.m_from = 0;
             m_item->m_range.m_to   = strlen;
@@ -1066,7 +1066,7 @@ namespace ncore
         while (strdata < strend)
         {
             ucs2::rune r = *strdata++;
-            if (nrunes::is_lower(r.value))
+            if (nrunes::is_lower(r.r))
                 return false;
         }
         return true;
@@ -1079,7 +1079,7 @@ namespace ncore
         while (strdata < strend)
         {
             ucs2::rune r = *strdata++;
-            if (nrunes::is_upper(r.value))
+            if (nrunes::is_upper(r.r))
                 return false;
         }
         return true;
@@ -1094,23 +1094,23 @@ namespace ncore
             ucs2::rune c = *strdata++;
             while (strdata < strend)
             {
-                if (!nrunes::is_space(c.value))
+                if (!nrunes::is_space(c.r))
                     break;
                 c = *strdata++;
             }
-            if (nrunes::is_upper(c.value))
+            if (nrunes::is_upper(c.r))
             {
                 while (strdata < strend)
                 {
                     c = *strdata;
-                    if (nrunes::is_space(c.value))
+                    if (nrunes::is_space(c.r))
                         break;
-                    if (nrunes::is_upper(c.value))
+                    if (nrunes::is_upper(c.r))
                         return false;
                     strdata++;
                 }
             }
-            else if (nrunes::is_alpha(c.value))
+            else if (nrunes::is_alpha(c.r))
             {
                 return false;
             }
@@ -1127,15 +1127,15 @@ namespace ncore
             return false;
         ucs2::rune const l = m_item->m_data->m_ptr[m_item->m_range.m_from];
         ucs2::rune const r = m_item->m_data->m_ptr[m_item->m_range.m_to - 1];
-        return (l.value == inLeft && r.value == inRight);
+        return (l.r == inLeft && r.r == inRight);
     }
 
-    uchar32 string_t::firstChar() const { return m_item->m_data->m_ptr[m_item->m_range.m_from].value; }
+    uchar32 string_t::firstChar() const { return m_item->m_data->m_ptr[m_item->m_range.m_from].r; }
     uchar32 string_t::lastChar() const
     {
         if (m_item->m_range.is_empty())
             return '\0';
-        return m_item->m_data->m_ptr[m_item->m_range.m_to - 1].value;
+        return m_item->m_data->m_ptr[m_item->m_range.m_to - 1].r;
     }
 
     bool string_t::startsWith(const string_t& start) const
@@ -1166,7 +1166,7 @@ namespace ncore
         ucs2::pcrune strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const c = strdata[i].value;
+            uchar32 const c = strdata[i].r;
             if (c == find)
                 return select(i, i + 1);
         }
@@ -1182,7 +1182,7 @@ namespace ncore
         ucs2::pcrune strdata  = m_item->m_data->m_ptr + m_item->m_range.m_to - 1;
         while (strdata >= strbegin)
         {
-            uchar32 const c = strdata->value;
+            uchar32 const c = strdata->r;
             if (c == find)
                 return select((s32)(strdata - strbegin), (s32)((strdata + 1) - strbegin));
             strdata++;
@@ -1196,7 +1196,7 @@ namespace ncore
         s32 const    len = size();
         for (s32 i = 0; i < len; i++)
         {
-            uchar32 const c = str[i].value;
+            uchar32 const c = str[i].r;
             if (c == *inFind)
             {
                 s32 s = 1;
@@ -1204,7 +1204,7 @@ namespace ncore
                 {
                     if (inFind[s] == '\0')
                         return select(m_item->m_range.m_from + i, m_item->m_range.m_from + j);
-                    if (str[j].value != inFind[s])
+                    if (str[j].r != inFind[s])
                         break;
                 }
                 if (inFind[s] == '\0')
@@ -1254,7 +1254,7 @@ namespace ncore
         ucs2::pcrune strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const sc = strdata[i].value;
+            uchar32 const sc = strdata[i].r;
             if (charset.contains(sc))
             {
                 return select(i, i + 1);
@@ -1268,7 +1268,7 @@ namespace ncore
         ucs2::pcrune strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = size() - 1; i >= 0; --i)
         {
-            uchar32 const sc = strdata[i].value;
+            uchar32 const sc = strdata[i].r;
             if (charset.contains(sc))
             {
                 return select(i, i + 1);
@@ -1305,7 +1305,7 @@ namespace ncore
         ucs2::pcrune strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < size(); i++)
         {
-            uchar32 const sc = strdata[i].value;
+            uchar32 const sc = strdata[i].r;
             if (sc == contains)
             {
                 return true;
@@ -1324,7 +1324,7 @@ namespace ncore
         ucs2::prune  dst = m_item->m_data->m_ptr + m_item->m_range.m_to;
         for (s32 i = 0; i < con.size(); i++)
             *dst++ = *src++;
-        dst->value = '\0';
+        dst->r = '\0';
 
         m_item->m_range.m_to = len;
     }
@@ -1345,7 +1345,7 @@ namespace ncore
         for (s32 i = 0; i < strB.size(); i++)
             *dst++ = *srcB++;
 
-        dst->value = '\0';
+        dst->r = '\0';
 
         m_item->m_range.m_to = len;
     }
@@ -1362,7 +1362,7 @@ namespace ncore
             for (s32 i = 0; i < con.size(); i++)
                 *dst++ = *src++;
         }
-        dst->value           = '\0';
+        dst->r           = '\0';
         m_item->m_range.m_to = len;
     }
 
@@ -1469,7 +1469,7 @@ namespace ncore
         s32 p = 0;
         while (i < size())
         {
-            if (n > 0 && strdata[i].value == c)
+            if (n > 0 && strdata[i].r == c)
             {
                 --n;
                 ++i;
@@ -1483,7 +1483,7 @@ namespace ncore
             ++i;
         }
         if (p < i)
-            strdata[p].value = '\0';
+            strdata[p].r = '\0';
 
         // adjust the 'to' of the string
         m_item->m_range.m_to -= ntimes - n;
@@ -1503,7 +1503,7 @@ namespace ncore
         s32 n = 0;
         while (i < len)
         {
-            if (n < ntimes && any.contains(strdata[i].value))
+            if (n < ntimes && any.contains(strdata[i].r))
             {
                 string_remove(m_item, {i, i + 1});
                 --len;
@@ -1522,12 +1522,12 @@ namespace ncore
         s32         n       = ntimes == 0 ? size() : ntimes;
         for (s32 i = 0; i < size(); ++i)
         {
-            uchar32 const c = strdata[i].value;
+            uchar32 const c = strdata[i].r;
             if (any.contains(c))
             {
                 if (--n == 0)
                     break;
-                strdata[i].value = with;
+                strdata[i].r = with;
             }
         }
         return n;
@@ -1539,7 +1539,7 @@ namespace ncore
         ucs2::pcrune strend  = m_item->m_data->m_ptr + m_item->m_range.m_to;
         while (strdata < strend)
         {
-            strdata->value = nrunes::to_upper(strdata->value);
+            strdata->r = nrunes::to_upper(strdata->r);
             ++strdata;
         }
     }
@@ -1550,7 +1550,7 @@ namespace ncore
         ucs2::pcrune strend  = m_item->m_data->m_ptr + m_item->m_range.m_to;
         while (strdata < strend)
         {
-            strdata->value = nrunes::to_lower(strdata->value);
+            strdata->r = nrunes::to_lower(strdata->r);
             ++strdata;
         }
     }
@@ -1563,7 +1563,7 @@ namespace ncore
         ucs2::prune strdata       = m_item->m_data->m_ptr + m_item->m_range.m_from;
         while (i < size())
         {
-            uchar32 c = strdata[i].value;
+            uchar32 c = strdata[i].r;
             uchar32 d = c;
             if (nrunes::is_alpha(c))
             {
@@ -1583,7 +1583,7 @@ namespace ncore
 
             if (c != d)
             {
-                strdata[i].value = c;
+                strdata[i].r = c;
             }
             i++;
         }
@@ -1596,7 +1596,7 @@ namespace ncore
         ucs2::prune strdata       = m_item->m_data->m_ptr + m_item->m_range.m_from;
         while (i < size())
         {
-            uchar32 c = strdata[i].value;
+            uchar32 c = strdata[i].r;
             uchar32 d = c;
             if (nrunes::is_alpha(c))
             {
@@ -1623,7 +1623,7 @@ namespace ncore
             }
             if (c != d)
             {
-                strdata[i].value = c;
+                strdata[i].r = c;
             }
             i++;
         }
@@ -1636,10 +1636,10 @@ namespace ncore
     trim_continue:
         while (begin < end)
         {
-            uchar16 const c = begin->value;
+            uchar16 const c = begin->r;
             for (s32 j = 0; j < num; ++j)
             {
-                if (c == any[j].value)
+                if (c == any[j].r)
                 {
                     ++begin;
                     goto trim_continue;
@@ -1647,7 +1647,7 @@ namespace ncore
             }
             break;
         }
-        item->m_range.m_from = begin - item->m_data->m_ptr;
+        item->m_range.m_from = (u32)(begin - item->m_data->m_ptr);
     }
 
     static void sTrimRight(nstring::instance_t* item, ucs2::pcrune any, s32 num)
@@ -1657,10 +1657,10 @@ namespace ncore
     trim_continue:
         while (end > begin)
         {
-            uchar16 const c = end[-1].value;
+            uchar16 const c = end[-1].r;
             for (s32 j = 0; j < num; ++j)
             {
-                if (c == any[j].value)
+                if (c == any[j].r)
                 {
                     --end;
                     goto trim_continue;
@@ -1668,7 +1668,7 @@ namespace ncore
             }
             break;
         }
-        item->m_range.m_to = end - item->m_data->m_ptr;
+        item->m_range.m_to = (u32)(end - item->m_data->m_ptr);
     }
 
     static const ucs2::rune sTrimWhiteSpace[] = {' ', '\t', '\r', '\n'};
@@ -1687,8 +1687,8 @@ namespace ncore
     void string_t::trim(uchar32 c)
     {
         ucs2::rune any[2];
-        any[0].value = c;
-        any[1].value = '\0';
+        any[0].r = c;
+        any[1].r = '\0';
         sTrimLeft(m_item, any, 1);
         sTrimRight(m_item, any, 1);
     }
@@ -1696,16 +1696,16 @@ namespace ncore
     void string_t::trimLeft(uchar32 c)
     {
         ucs2::rune any[2];
-        any[0].value = c;
-        any[1].value = '\0';
+        any[0].r = c;
+        any[1].r = '\0';
         sTrimLeft(m_item, any, 1);
     }
 
     void string_t::trimRight(uchar32 c)
     {
         ucs2::rune any[2];
-        any[0].value = c;
-        any[1].value = '\0';
+        any[0].r = c;
+        any[1].r = '\0';
         sTrimRight(m_item, any, 1);
     }
 
@@ -1741,10 +1741,10 @@ namespace ncore
         ucs2::prune strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < (last - i); ++i)
         {
-            uchar32 l               = strdata[i].value;
-            uchar32 r               = strdata[last - i].value;
-            strdata[i].value        = r;
-            strdata[last - i].value = l;
+            uchar32 l               = strdata[i].r;
+            uchar32 r               = strdata[last - i].r;
+            strdata[i].r        = r;
+            strdata[last - i].r = l;
         }
     }
 
