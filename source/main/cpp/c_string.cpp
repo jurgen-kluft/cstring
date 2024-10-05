@@ -159,8 +159,8 @@ namespace ncore
                 for (s32 i = 0; i < data->m_len; i++)
                     newptr[i] = data->m_ptr[i];
                 nstring_memory::s_string_alloc->deallocate(data->m_ptr);
-                data->m_ptr                 = newptr;
-                data->m_len                 = new_size;
+                data->m_ptr             = newptr;
+                data->m_len             = new_size;
                 data->m_ptr[new_size].r = '\0';
             }
         }
@@ -333,12 +333,12 @@ namespace ncore
                 s32 i = 0;
                 while (i < strsize)
                 {
-                    if (strdata[i] == finddata[0])
+                    if (strdata[i].r == finddata[0].r)
                     {
                         s32 j = 1;
                         while (j < findsize)
                         {
-                            if (strdata[i + j] != finddata[j])
+                            if (strdata[i + j].r != finddata[j].r)
                                 goto continue_search;
                             j++;
                         }
@@ -449,14 +449,14 @@ namespace ncore
                 ucs2::prune strdata = str->m_data->m_ptr + strfrom;
                 while (i < str->m_data->m_len)
                 {
-                    uchar32 const c  = strdata[i].r;
-                    strdata[d].r = c;
+                    uchar32 const c = strdata[i].r;
+                    strdata[d].r    = c;
                     i++;
                     d++;
                 }
 
                 str->m_data->m_len -= l;
-                ucs2::prune pdst               = (ucs2::prune)str->m_data->m_ptr;
+                ucs2::prune pdst           = (ucs2::prune)str->m_data->m_ptr;
                 pdst[str->m_data->m_len].r = '\0';
             }
         }
@@ -720,7 +720,7 @@ namespace ncore
             {
                 ucs2::rune const lc = *lhsdata++;
                 ucs2::rune const rc = *rhsdata++;
-                if (lc != rc)
+                if (lc.r != rc.r)
                     return (lc.r < rc.r) ? -1 : 1;
             }
             return 0;
@@ -810,23 +810,19 @@ namespace ncore
 
     string_t::string_t(const char* str)
     {
-        crunes_t srcrunes(str);
+        const char* end;
+        s32 const   byteslen = ascii::strlen(str, &end, nullptr);
 
-        s32 const strlen = srcrunes.size();
-
-        s32 from = 0;
-        s32 to   = strlen;
-
-        if (strlen > 0)
+        if (byteslen > 0)
         {
-            nstring::data_t* data = nstring::s_alloc_data(strlen);
-            m_item                = nstring::s_alloc_instance({from, to}, data);
-            ucs2::prune dst       = data->m_ptr;
+            nstring::data_t*       data  = nstring::s_alloc_data((byteslen + 1) * sizeof(uchar16));
+            nstring::range_t const range = {0, byteslen};
+            m_item                       = nstring::s_alloc_instance(range, data);
+            ucs2::prune dst              = data->m_ptr;
             while (*str != '\0')
             {
-                ucs2::rune r;
-                r.r = *str++;
-                *dst++  = r;
+                dst->r = *str++;
+                dst++;
             }
             dst->r = '\0';
         }
@@ -932,10 +928,10 @@ namespace ncore
             while (dst < end)
             {
                 ucs2::rune r;
-                r.r = *other;
-                *dst++  = r;
+                r.r    = *other;
+                *dst++ = r;
             }
-            dst->r             = '\0';
+            dst->r                 = '\0';
             m_item                 = item;
             m_item->m_range.m_from = 0;
             m_item->m_range.m_to   = strlen;
@@ -1362,7 +1358,7 @@ namespace ncore
             for (s32 i = 0; i < con.size(); i++)
                 *dst++ = *src++;
         }
-        dst->r           = '\0';
+        dst->r               = '\0';
         m_item->m_range.m_to = len;
     }
 
@@ -1370,13 +1366,13 @@ namespace ncore
     {
         release();
 
-        crunes_t  fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        crunes_t  fmt = make_crunes(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
         const s32 len = cprintf_(fmt, argv, argc);
 
         nstring::data_t*     data = nstring::s_alloc_data(len);
         nstring::instance_t* item = nstring::s_alloc_instance({0, len}, data);
 
-        runes_t str(item->m_data->m_ptr, item->m_range.m_from, item->m_range.m_to, item->m_data->m_len);
+        runes_t str = make_runes(item->m_data->m_ptr, item->m_range.m_from, item->m_range.m_to, item->m_data->m_len);
         sprintf_(str, fmt, argv, argc);
         item->m_range.m_to = str.m_end;
 
@@ -1386,11 +1382,11 @@ namespace ncore
 
     s32 string_t::formatAdd(const string_t& format, const va_t* argv, s32 argc)
     {
-        crunes_t  fmt(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
+        crunes_t  fmt = make_crunes(format.m_item->m_data->m_ptr, format.m_item->m_range.m_from, format.m_item->m_range.m_to, format.m_item->m_data->m_len);
         const s32 len = cprintf_(fmt, argv, argc);
         s_resize_data(m_item->m_data, len);
-        runes_t str(m_item->m_data->m_ptr, m_item->m_range.m_from, m_item->m_range.m_to, m_item->m_data->m_len);
-        str.m_str = str.m_end;
+        runes_t str = make_runes(m_item->m_data->m_ptr, m_item->m_range.m_from, m_item->m_range.m_to, m_item->m_data->m_len);
+        str.m_str   = str.m_end;
         sprintf_(str, fmt, argv, argc);
         m_item->m_range.m_to = str.m_end;
         return len;
@@ -1741,8 +1737,8 @@ namespace ncore
         ucs2::prune strdata = m_item->m_data->m_ptr + m_item->m_range.m_from;
         for (s32 i = 0; i < (last - i); ++i)
         {
-            uchar32 l               = strdata[i].r;
-            uchar32 r               = strdata[last - i].r;
+            uchar32 l           = strdata[i].r;
+            uchar32 r           = strdata[last - i].r;
             strdata[i].r        = r;
             strdata[last - i].r = l;
         }
