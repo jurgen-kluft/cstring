@@ -3,8 +3,6 @@
 #include "cstring/c_string.h"
 #include "cunittest/cunittest.h"
 
-#include "cstring/test_allocator.h"
-
 using namespace ncore;
 
 UNITTEST_SUITE_BEGIN(test_string)
