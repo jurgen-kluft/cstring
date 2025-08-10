@@ -6,14 +6,11 @@
 #endif
 
 #include "ccore/c_debug.h"
-#include "cbase/c_runes.h"
 #include "cbase/c_va_list.h"
 
 namespace ncore
 {
-    class va_t;
     class alloc_t;
-    class arena_t;
 
     namespace nstring
     {

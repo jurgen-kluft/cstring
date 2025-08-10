@@ -810,8 +810,8 @@ namespace ncore
 
     string_t::string_t(const char* str)
     {
-        const char* end;
-        s32 const   byteslen = ascii::strlen(str, &end, nullptr);
+        ascii::pcrune end;
+        s32 const   byteslen = ascii::strlen(str, end, nullptr);
 
         if (byteslen > 0)
         {
@@ -896,9 +896,9 @@ namespace ncore
 
     string_t string_t::operator()(s32 _from, s32 _to) const
     {
-        math::sort(_from, _to);
-        const u32            from = math::min(m_item->m_range.m_from + _from, m_item->m_range.m_to);
-        const u32            to   = math::min(m_item->m_range.m_from + _to, m_item->m_range.m_to);
+        math::g_sort(_from, _to);
+        const u32            from = math::g_min(m_item->m_range.m_from + _from, m_item->m_range.m_to);
+        const u32            to   = math::g_min(m_item->m_range.m_from + _to, m_item->m_range.m_to);
         nstring::instance_t* item = m_item->clone_slice();
         return string_t(item, from, to, 8888);
     }
@@ -981,8 +981,8 @@ namespace ncore
     string_t string_t::select(u32 from, u32 to) const
     {
         // Make sure we keep within the bounds of the string
-        from = math::min(from, (u32)size());
-        to   = math::min(to, (u32)size());
+        from = math::g_min(from, (u32)size());
+        to   = math::g_min(to, (u32)size());
 
         nstring::instance_t* item = m_item->clone_slice();
         item->m_range.m_from      = m_item->m_range.m_from + from;
